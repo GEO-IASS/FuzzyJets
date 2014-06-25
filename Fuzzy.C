@@ -62,10 +62,6 @@ int main(int argc, char* argv[]){
         return 1;
     }
 
-    debugMode = false;
-    if (vm.count("Debug")>0){
-        debugMode = true;
-    }
 
 
     //------
@@ -85,7 +81,11 @@ int main(int argc, char* argv[]){
     pythia8->readString("24:onMode = off");
     pythia8->readString("24:onIfAny = 1 2 3 4");
 
+    if (fDebug == 0) {
 
+        pythia8->readString("Next:numberShowEvent = 0");
+
+    }
 
 
 
