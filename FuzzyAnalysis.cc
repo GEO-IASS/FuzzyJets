@@ -36,9 +36,9 @@ FuzzyAnalysis::FuzzyAnalysis(){
     tool = new FuzzyTools();
 
     // jet def
-    m_jet_def               = new fastjet::JetDefinition(fastjet::antikt_algorithm, 0.4);
+    m_jet_def                = new fastjet::JetDefinition(fastjet::antikt_algorithm, 0.4);
     m_jet_def_largeR_antikt  = new fastjet::JetDefinition(fastjet::antikt_algorithm, 1.0);
-    m_jet_def_largeR_ca  = new fastjet::JetDefinition(fastjet::cambridge_algorithm, 1.0);
+    m_jet_def_largeR_ca      = new fastjet::JetDefinition(fastjet::cambridge_algorithm, 1.0);
 
     if(fDebug) cout << "FuzzyAnalysis::FuzzyAnalysis End " << endl;
 }
@@ -76,7 +76,7 @@ void FuzzyAnalysis::End(){
 void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     if(fDebug) cout << "FuzzyAnalysis::AnalyzeEvent Begin " << endl;
 
-    // -------------------------
+    // generate a new event
     if (!pythia8->next()) return;
     if(fDebug) cout << "FuzzyAnalysis::AnalyzeEvent Event Number " << ievt << endl;
 
@@ -92,24 +92,31 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     fastjet::PseudoJet dl2;
     tops.push_back(dl);
 
-    // Particle loop -----------------------------------------------------------
-    for (unsigned int ip=0; ip < (unsigned) pythia8->event.size(); ++ip){
 
-        fastjet::PseudoJet p(pythia8->event[ip].px(), pythia8->event[ip].py(), pythia8->event[ip].pz(),pythia8->event[ip].e() );
+    // Particle loop -----------------------------------------------------------
+    // The Pythia event listing contains a lot more than we want to process,
+    // we prune out certain particles (muons / neutrinos) and only add final
+    // state particles
+
+    double px, py, pz, e;
+    for (unsigned int ip=0; ip < (unsigned) pythia8->event.size(); ++ip){
+        // prune uninteresting particles
+        if (!pythia8->event[ip].isFinal() )      continue; // only final state
+        if (fabs(pythia8->event[ip].id())  ==12) continue; // prune nu-e
+        if (fabs(pythia8->event[ip].id())  ==13) continue; // ...   mu
+        if (fabs(pythia8->event[ip].id())  ==14) continue; // ...   nu-mu
+        if (fabs(pythia8->event[ip].id())  ==16) continue; // ...   nu-tau
+        if (pythia8->event[ip].pT()       < 0.5) continue; // ...   low pT
+
+        px = pythia8->event[ip].px();
+        py = pythia8->event[ip].py();
+        pz = pythia8->event[ip].pz();
+        e  = pythia8->event[ip].e();
+        fastjet::PseudoJet p(px, py, pz, e);
         p.set_user_info(new MyUserInfo(pythia8->event[ip].id(),ip,pythia8->event[ip].charge()));
 
-        //if (fabs(pythia8->event[ip].id())  ==34) tops.push_back(p);
-        //if (fabs(pythia8->event[ip].id())  ==24) tops[0]=p;
         if (pythia8->event[ip].id()  ==6) tops[0]=p;
         if (pythia8->event[ip].id()  ==-6) tops[1]=p;
-
-        // particles for jets --------------
-        if (!pythia8->event[ip].isFinal() )      continue;
-        if (fabs(pythia8->event[ip].id())  ==12) continue;
-        if (fabs(pythia8->event[ip].id())  ==13) continue;
-        if (fabs(pythia8->event[ip].id())  ==14) continue;
-        if (fabs(pythia8->event[ip].id())  ==16) continue;
-        if (pythia8->event[ip].pT()       < 0.5) continue;
 
         particlesForJets.push_back(p);
 
@@ -125,16 +132,13 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
         fTCA_m = tj.m();
         fTCA_pt = tj.pt();
     }
+
+
     // Fuzzy Jets: mGMM --------------------
-
-
-    //std::cout << "help ! " << myJetsLargeR_ca[0].constituents().size() << std::endl;
-    //vector<fastjet::PseudoJet> parts = myJetsLargeR_ca[0].constituents();
     vector<fastjet::PseudoJet> parts = particlesForJets;
 
     vector<vector<double> > Weights;
     vector<TMatrix> mGMMjetsparams;
-    //vector<fastjet::PseudoJet> mGMMjets = tool->ClusterFuzzy(parts, myJetsLargeR_ca, &Weights, &mGMMjetsparams);
     vector<fastjet::PseudoJet> mGMMjets = tool->ClusterFuzzy(parts, parts, &Weights, &mGMMjetsparams);
 
     int leadmGMM=-1;
