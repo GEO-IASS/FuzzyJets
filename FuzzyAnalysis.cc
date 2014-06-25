@@ -100,14 +100,6 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
 
     double px, py, pz, e;
     for (unsigned int ip=0; ip < (unsigned) pythia8->event.size(); ++ip){
-        // prune uninteresting particles
-        if (!pythia8->event[ip].isFinal() )      continue; // only final state
-        if (fabs(pythia8->event[ip].id())  ==12) continue; // prune nu-e
-        if (fabs(pythia8->event[ip].id())  ==13) continue; // ...   mu
-        if (fabs(pythia8->event[ip].id())  ==14) continue; // ...   nu-mu
-        if (fabs(pythia8->event[ip].id())  ==16) continue; // ...   nu-tau
-        if (pythia8->event[ip].pT()       < 0.5) continue; // ...   low pT
-
         px = pythia8->event[ip].px();
         py = pythia8->event[ip].py();
         pz = pythia8->event[ip].pz();
@@ -117,6 +109,14 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
 
         if (pythia8->event[ip].id()  ==6) tops[0]=p;
         if (pythia8->event[ip].id()  ==-6) tops[1]=p;
+
+        // prune uninteresting particles
+        if (!pythia8->event[ip].isFinal() )      continue; // only final state
+        if (fabs(pythia8->event[ip].id())  ==12) continue; // prune nu-e
+        if (fabs(pythia8->event[ip].id())  ==13) continue; // ...   mu
+        if (fabs(pythia8->event[ip].id())  ==14) continue; // ...   nu-mu
+        if (fabs(pythia8->event[ip].id())  ==16) continue; // ...   nu-tau
+        if (pythia8->event[ip].pT()       < 0.5) continue; // ...   low pT
 
         particlesForJets.push_back(p);
 
@@ -136,10 +136,12 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
 
     // Fuzzy Jets: mGMM --------------------
     vector<fastjet::PseudoJet> parts = particlesForJets;
+    tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
+    tool->SetSeeds(parts);
 
     vector<vector<double> > Weights;
     vector<TMatrix> mGMMjetsparams;
-    vector<fastjet::PseudoJet> mGMMjets = tool->ClusterFuzzy(parts, parts, &Weights, &mGMMjetsparams);
+    vector<fastjet::PseudoJet> mGMMjets = tool->ClusterFuzzy(parts, &Weights, &mGMMjetsparams);
 
     int leadmGMM=-1;
     double maxpt = -1;
