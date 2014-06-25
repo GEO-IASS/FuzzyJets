@@ -101,7 +101,8 @@ int main(int argc, char* argv[]){
       pythia8->readString("23:onIfAny = 11");
     */
 
-    pythia8->init(2212 /* p */, 2212 /* p */, 14000. /* TeV */); //this has to be the last line!
+    //this has to be the last line!
+    pythia8->init(2212 /* p */, 2212 /* p */, 14000. /* GeV */);
 
 
     //Background: QCD
