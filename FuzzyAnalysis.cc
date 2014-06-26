@@ -107,6 +107,9 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
         fastjet::PseudoJet p(px, py, pz, e);
         p.set_user_info(new MyUserInfo(pythia8->event[ip].id(),ip,pythia8->event[ip].charge()));
 
+        // In reality we should be more careful about finding tops,
+        // but this will do for now. In the future consider refactoring
+        // and tracing to find a top quark with no daughters
         if (pythia8->event[ip].id()  ==6) tops[0]=p;
         if (pythia8->event[ip].id()  ==-6) tops[1]=p;
 
