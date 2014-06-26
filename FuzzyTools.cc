@@ -58,38 +58,36 @@ FuzzyTools::InitWeights(vecPseudoJet particles,
     return out;
 }
 
+
+//  compute N(x1, x2, Sigma, mu1, mu2)
+//  the value of the Gaussian distribution with covariance Sigma
 double
 FuzzyTools::doGaus(double x1, double x2, double mu1, double mu2,
                    TMatrix sigma){
-
-    TMatrix summT(1,2);
-    TMatrix summ(2,1);
+    TMatrix summT(1,2); // (x-mu) tranpose
+    TMatrix summ(2,1);  // (x-mu)
     summT(0,0) = x1-mu1;
     summT(0,1) = x2-mu2;
     summ(0,0) = x1-mu1;
     summ(1,0) = x2-mu2;
     TMatrix sigmaInverse(2,2);
     Double_t det;
+
+    // check for singularity in Sigma
     sigmaInverse(0,0)=sigma(0,0);
     sigmaInverse(0,1)=sigma(0,1);
     sigmaInverse(1,0)=sigma(1,0);
     sigmaInverse(1,1)=sigma(1,1);
-
     if (sigma(0,0)*sigma(1,1)-sigma(1,0)*sigma(0,1) < 0.001*0.001){
         sigmaInverse(0,0)=0.01;
         sigmaInverse(1,1)=0.01;
     }
-
-    // std::cout <<  " here " << sigma(0,0) << " " << sigma(1,1) << " " <<
-    //    sigma(0,1) << " " << sigma(1,0) << std::endl;
-
     sigmaInverse.Invert(&det);
+
+    // compute the value of the pdf at (x1, x2)
     TMatrix hold = summT*sigmaInverse*summ;
-    double numerator = exp(-0.5*hold(0,0))/(sqrt(fabs(det))*2*TMath::Pi());
-
-    //std::cout << "its here " << numerator << " " << det << std::endl;
-
-    return numerator;
+    double exparg = -0.5*hold(0, 0);
+    return exp(exparg)/(sqrt(fabs(det))*2*TMath::Pi());
 }
 
 vector<TMatrix>
@@ -106,7 +104,11 @@ FuzzyTools::Initializeparams(__attribute__((unused)) vecPseudoJet particles,
     }
     return outparams;
 }
-
+// Compute new membership probabilities for each particle beloing to each
+// cluster. This ammounts to computing the conditional probability that
+// particle i belongs to jet j given a fixed set of cluster parameters.
+// We divide by the total conditional probability (denom) in accordance with
+// Bayes rule.
 void
 FuzzyTools::ComputeWeights(vecPseudoJet particles,
                            vector<vector<double> >* Weights,
@@ -121,18 +123,18 @@ FuzzyTools::ComputeWeights(vecPseudoJet particles,
                           mGMMjets[j].rapidity(),
                           mGMMjets[j].phi(),
                           mGMMjetsparams[j]);
-            //std::cout << i << " " << denom << std::endl;
         }
         for (unsigned int j=0; j<mGMMjets.size(); j++){
             Weights->at(i)[j] = doGaus(particles[i].rapidity(),
                                        particles[i].phi(),
                                        mGMMjets[j].rapidity(),
                                        mGMMjets[j].phi(),
-                                       mGMMjetsparams[j]) / denom;
-            //std::cout << i << " " << j << " " << Weights->at(i)[j] << std::endl;
+                                       mGMMjetsparams[j])
+                / denom;
         }
     }
 }
+
 
 vecPseudoJet
 FuzzyTools::UpdateJets(vecPseudoJet particles,
@@ -148,67 +150,74 @@ FuzzyTools::UpdateJets(vecPseudoJet particles,
     //For now, we fix the sigma at 1.
     //Means:
 
+
+    // iterate over clusters and update parameters and the covariance matrix
     for (int i=0; i<k; i++){
         double jety=0;
         double jetphi=0;
-        double denom=0;
-        for (unsigned int j=0; j<Weights.size(); j++){
-            denom+=pow(particles[j].pt(),alpha)*Weights[j][i];
-            //std:cout << "   " <<j << " " << denom << " " << Weights[j][i] << std::endl;
-        }
-        for (unsigned int j=0; j<Weights.size(); j++){
-            jety+=pow(particles[j].pt(),alpha) * Weights[j][i]
-                * particles[j].rapidity() / denom;
-            jetphi+=pow(particles[j].pt(),alpha) * Weights[j][i]
-                * particles[j].phi() / denom;
-        }
-        fastjet::PseudoJet myjet;
+        double clusterWeightedPt = 0;
+        unsigned int particleCount = Weights.size();
 
-        if (!(denom >=0)){
+        // build the pT fraction belonging to cluster i
+        for (unsigned int j=0; j<particleCount; j++){
+            clusterWeightedPt += pow(particles[j].pt(),alpha)*Weights[j][i];
+        }
+
+        // compute new cluster location on the basis of the EM update steps
+        for (unsigned int j=0; j<particleCount; j++){
+            jety+=pow(particles[j].pt(),alpha) * Weights[j][i]
+                * particles[j].rapidity() / clusterWeightedPt;
+            jetphi+=pow(particles[j].pt(),alpha) * Weights[j][i]
+                * particles[j].phi() / clusterWeightedPt;
+        }
+        if (!(clusterWeightedPt > 0)){
             jety = 0;
             jetphi = 0;
         }
-        //std::cout << i << " poop " << jety << " " << jetphi << " " << denom << " " << std::endl;
+
+        fastjet::PseudoJet myjet;
         myjet.reset_PtYPhiM(1.,jety,jetphi,0.);
-        //std::cout << "umpoop " << std::endl;
         outjets.push_back(myjet);
 
         //now, we update sigma
         TMatrix sigmaupdate(2,2);
-        for (unsigned int j=0; j<Weights.size(); j++){
+        for (unsigned int j=0; j<particleCount; j++){
             TMatrix hold(2,2);
-            hold(0,0) = pow(particles[j].pt(),alpha) * Weights[j][i]
-                * (particles[j].rapidity()-myjet.rapidity())
-                * (particles[j].rapidity()-myjet.rapidity()) / denom;
 
-            hold(0,1) = pow(particles[j].pt(),alpha) * Weights[j][i]
+            // pt scaled particle weight
+            double q_ji = pow(particles[j].pt(),alpha) * Weights[j][i];
+            hold(0,0) = q_ji
                 * (particles[j].rapidity()-myjet.rapidity())
-                * (particles[j].phi()-myjet.phi()) / denom;
+                * (particles[j].rapidity()-myjet.rapidity()) / clusterWeightedPt;
 
-            hold(1,0) = pow(particles[j].pt(),alpha) * Weights[j][i]
+            hold(0,1) = q_ji
                 * (particles[j].rapidity()-myjet.rapidity())
-                * (particles[j].phi()-myjet.phi()) / denom;
+                * (particles[j].phi()-myjet.phi()) / clusterWeightedPt;
 
-            hold(1,1) = pow(particles[j].pt(),alpha) * Weights[j][i]
+            hold(1,0) = q_ji
+                * (particles[j].rapidity()-myjet.rapidity())
+                * (particles[j].phi()-myjet.phi()) / clusterWeightedPt;
+
+            hold(1,1) = q_ji
                 * (particles[j].phi()-myjet.phi())
-                * (particles[j].phi()-myjet.phi()) / denom;
+                * (particles[j].phi()-myjet.phi()) / clusterWeightedPt;
 
             sigmaupdate+=hold;
         }
 
+        // if the matrix is looking singular...
         if (sigmaupdate(0,0)+sigmaupdate(1,1)+sigmaupdate(0,1) < 0.01){
             sigmaupdate(0,0)=0.1*0.1;
             sigmaupdate(1,1)=0.1*0.1;
         }
 
-        if (!(denom >=0)){
+        // updated sigma is junk if it had almost no contained pT
+        if (!(clusterWeightedPt > 0)){
             sigmaupdate(0,0)=0.001*0.001;
             sigmaupdate(1,1)=0.001*0.001;
             sigmaupdate(0,1)=0.;
             sigmaupdate(1,0)=0.;
         }
-
-        //std::cout << "green " << i << " " << sigmaupdate(0,0) << " " << sigmaupdate(0,1) << " " << sigmaupdate(1,0) << " " << sigmaupdate(1,1) << std::endl;
 
         //mGMMjetsparams->at(i)=sigmaupdate;
 
@@ -217,42 +226,50 @@ FuzzyTools::UpdateJets(vecPseudoJet particles,
     return outjets;
 }
 
+vector<unsigned int>
+FuzzyTools::ClustersForRemoval(vecPseudoJet& mGMMjets,
+                               vector<TMatrix>& mGMMjetsparams) {
+    vector<unsigned int>removalIndices;
+
+    // remove any jets which are candidates for mergers
+    for (unsigned int j=0; j<mGMMjets.size(); j++){
+        for (unsigned int k=j+1; k<mGMMjets.size(); k++){
+            if (mGMMjets[j].delta_R(mGMMjets[k])<0.01){
+                removalIndices.push_back(k);
+            }
+        }
+    }
+
+    //Also remove jets that are too small if the size is learned
+    for (unsigned int j=0; j<mGMMjets.size(); j++){
+        if (mGMMjetsparams[j](0,0) < 0.01 || mGMMjetsparams[j](1,1) < 0.01){
+            removalIndices.push_back(j);
+        }
+    }
+    return removalIndices;
+}
+
 vecPseudoJet
 FuzzyTools::ClusterFuzzy(vecPseudoJet particles,
-                         vecPseudoJet inits,
                          vector<vector<double> >* Weightsout,
                          vector<TMatrix>* mGMMjetsparamsout){
-    int newk = inits.size();
+    int newk = seeds.size();
 
     vector<vector<double> > Weights = InitWeights(particles,newk);
-    vecPseudoJet mGMMjets = Initialize(particles,newk,inits);
+    vecPseudoJet mGMMjets = Initialize(particles,newk,seeds);
     vector<TMatrix> mGMMjetsparams = Initializeparams(particles,newk);
     for (int i=0; i<100; i++){
         ComputeWeights(particles,&Weights,newk,mGMMjets,mGMMjetsparams);
         mGMMjets = UpdateJets(particles,Weights,newk,&mGMMjetsparams);
 
-        //std::cout << "on repeat " << i << " and the size is " << mGMMjets.size() << std::endl;
-
-        //Now, we check for and remove mergers.
-        vector<unsigned int>repeats;
-        for (unsigned int j=0; j<mGMMjets.size(); j++){
-            for (unsigned int k=j+1; k<mGMMjets.size(); k++){
-                if (mGMMjets[j].delta_R(mGMMjets[k])<0.01){
-                    repeats.push_back(k);
-                }
-            }
-        }
-
-        //Also remove jets that are too small if the size is learned
-        for (unsigned int j=0; j<mGMMjets.size(); j++){
-            if (mGMMjetsparams[j](0,0) < 0.01 || mGMMjetsparams[j](1,1) < 0.01){
-                repeats.push_back(j);
-            }
-        }
+        // determine which if any clusters should be removed
+        vector<unsigned int>repeats = ClustersForRemoval(mGMMjets,
+                                                         mGMMjetsparams);
 
         vector<vector<double> >Weights_hold;
         vecPseudoJet mGMMjets_hold;
         vector<TMatrix> mGMMjetsparams_hold;
+
         for (unsigned int q=0; q<particles.size(); q++){
             vector<double> hhh;
             Weights_hold.push_back(hhh);
@@ -281,7 +298,7 @@ FuzzyTools::ClusterFuzzy(vecPseudoJet particles,
         newk = mGMMjets_hold.size();
 
     }
-
+    cout << Weights.size() << " : " << mGMMjetsparams.size() << endl;
     Weightsout->clear();
     for (unsigned int i=0; i<Weights.size(); i++){
         Weightsout->push_back(Weights[i]);

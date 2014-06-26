@@ -19,10 +19,17 @@ typedef std::vector<fastjet::PseudoJet> vecPseudoJet;
 
 
 class FuzzyTools {
+ public:
+    enum Mode {
+        RECOMBINATION,
+        FIXED
+    };
+
  private:
     int m_test;
-
-
+    int clusterCount;
+    Mode clusteringMode;
+    vecPseudoJet seeds;
 
  public:
     FuzzyTools();
@@ -31,6 +38,17 @@ class FuzzyTools {
     vecPseudoJet Initialize(vecPseudoJet particles,
                             int k,
                             vecPseudoJet jets);
+
+    void SetClusteringMode(Mode m) {
+        clusteringMode = m;
+    }
+
+    vector<unsigned int> ClustersForRemoval(vecPseudoJet& mGMMjets,
+                                            vector<TMatrix>& mGMMjetsparams);
+
+    void SetSeeds(vecPseudoJet s) {
+        seeds = s;
+    }
 
     vector<vector<double> > InitWeights(vecPseudoJet particles,int k);
 
@@ -51,7 +69,6 @@ class FuzzyTools {
                             vector<TMatrix>* mGMMjetsparams);
 
     vecPseudoJet ClusterFuzzy(vecPseudoJet particles,
-                              vecPseudoJet inits,
                               vector<vector<double> >* Weights,
                               vector<TMatrix>* mGMMjetsparamsout);
 
