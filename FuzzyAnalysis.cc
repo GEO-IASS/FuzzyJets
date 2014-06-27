@@ -146,6 +146,12 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     vector<TMatrix> mGMMjetsparams;
     vector<fastjet::PseudoJet> mGMMjets = tool->ClusterFuzzy(parts, &Weights, &mGMMjetsparams);
 
+    int learnedClusterCount = Weights[0].size();
+    if (learnedClusterCount == 0) {
+        cout << "At event " << ievt << " returned no clusters. Continuing." << endl;
+        return;
+    }
+
     int leadmGMM=-1;
     double maxpt = -1;
     for (unsigned int i= 0; i<mGMMjets.size(); i++){
@@ -157,9 +163,9 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     }
 
 
-    //std::cout << mGMMjets.size() << " " << myJetsLargeR_ca.size() << " " << Weights.size() << std::endl;
-    //tool->EventDisplay(parts,myJetsLargeR_ca,tops,mGMMjets,Weights,leadmGMM, mGMMjetsparams,TString::Format("%i",ievt));
-    //tool->Qjetmass(parts, Weights, leadmGMM, TString::Format("%i",ievt));
+    std::cout << mGMMjets.size() << " " << myJetsLargeR_ca.size() << " " << Weights.size() << std::endl;
+    tool->EventDisplay(parts,myJetsLargeR_ca,tops,mGMMjets,Weights,leadmGMM, mGMMjetsparams,TString::Format("%i",ievt));
+    tool->Qjetmass(parts, Weights, leadmGMM, TString::Format("%i",ievt));
 
     fTmGMM_m = tool->MLpT(parts,Weights,leadmGMM,Weights[0].size(),1);
     fTmGMM_pt = tool->MLpT(parts,Weights,leadmGMM,Weights[0].size(),0);
