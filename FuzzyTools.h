@@ -17,7 +17,14 @@ using namespace std;
 
 typedef std::vector<fastjet::PseudoJet> vecPseudoJet;
 
-
+/* TODO:
+ * There is no need to pass around constants giving cluster size etc,
+ * as they can be extracted locally out of the C++ vector, which gives
+ * O(1) size operation. At the moment though, everything is working,
+ * so I won't bother to change this.
+ *
+ * Pass debug flags and print useful information.
+ */
 class FuzzyTools {
  public:
     enum Mode {
@@ -27,6 +34,8 @@ class FuzzyTools {
 
  private:
     int m_test;
+    double alpha;
+
     int clusterCount;
     Mode clusteringMode;
     vecPseudoJet seeds;
@@ -41,6 +50,10 @@ class FuzzyTools {
 
     void SetClusteringMode(Mode m) {
         clusteringMode = m;
+    }
+
+    void SetAlpha(double a) {
+        alpha = a;
     }
 
     vector<unsigned int> ClustersForRemoval(vecPseudoJet& mGMMjets,

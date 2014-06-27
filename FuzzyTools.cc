@@ -28,6 +28,7 @@ using namespace std;
 
 // Constructor
 FuzzyTools::FuzzyTools(){
+    alpha = 1.0;
     m_test = 0;
 }
 
@@ -139,36 +140,32 @@ FuzzyTools::ComputeWeights(vecPseudoJet particles,
 vecPseudoJet
 FuzzyTools::UpdateJets(vecPseudoJet particles,
                        vector<vector<double> > Weights,
-                       int k,
+                       int clusterCount,
                        __attribute__((unused)) vector<TMatrix>* mGMMjetsparams){
     vecPseudoJet outjets;
-
-    double alpha=1.0;
-
-    //mGMMjetsparams->at(0)=2;
 
     //For now, we fix the sigma at 1.
     //Means:
 
 
     // iterate over clusters and update parameters and the covariance matrix
-    for (int i=0; i<k; i++){
+    for (int clusterIter=0; clusterIter<clusterCount; clusterIter++){
         double jety=0;
         double jetphi=0;
         double clusterWeightedPt = 0;
         unsigned int particleCount = Weights.size();
 
-        // build the pT fraction belonging to cluster i
-        for (unsigned int j=0; j<particleCount; j++){
-            clusterWeightedPt += pow(particles[j].pt(),alpha)*Weights[j][i];
+        // build the pT fraction belonging to cluster clusterIter
+        for (unsigned int particleIter=0; particleIter<particleCount; particleIter++){
+            clusterWeightedPt += pow(particles[particleIter].pt(),alpha)*Weights[particleIter][clusterIter];
         }
 
         // compute new cluster location on the basis of the EM update steps
-        for (unsigned int j=0; j<particleCount; j++){
-            jety+=pow(particles[j].pt(),alpha) * Weights[j][i]
-                * particles[j].rapidity() / clusterWeightedPt;
-            jetphi+=pow(particles[j].pt(),alpha) * Weights[j][i]
-                * particles[j].phi() / clusterWeightedPt;
+        for (unsigned int particleIter=0; particleIter<particleCount; particleIter++){
+            jety+=pow(particles[particleIter].pt(),alpha) * Weights[particleIter][clusterIter]
+                * particles[particleIter].rapidity() / clusterWeightedPt;
+            jetphi+=pow(particles[particleIter].pt(),alpha) * Weights[particleIter][clusterIter]
+                * particles[particleIter].phi() / clusterWeightedPt;
         }
         if (!(clusterWeightedPt > 0)){
             jety = 0;
@@ -181,26 +178,26 @@ FuzzyTools::UpdateJets(vecPseudoJet particles,
 
         //now, we update sigma
         TMatrix sigmaupdate(2,2);
-        for (unsigned int j=0; j<particleCount; j++){
+        for (unsigned int particleIter=0; particleIter<particleCount; particleIter++){
             TMatrix hold(2,2);
 
             // pt scaled particle weight
-            double q_ji = pow(particles[j].pt(),alpha) * Weights[j][i];
+            double q_ji = pow(particles[particleIter].pt(),alpha) * Weights[particleIter][clusterIter];
             hold(0,0) = q_ji
-                * (particles[j].rapidity()-myjet.rapidity())
-                * (particles[j].rapidity()-myjet.rapidity()) / clusterWeightedPt;
+                * (particles[particleIter].rapidity()-myjet.rapidity())
+                * (particles[particleIter].rapidity()-myjet.rapidity()) / clusterWeightedPt;
 
             hold(0,1) = q_ji
-                * (particles[j].rapidity()-myjet.rapidity())
-                * (particles[j].phi()-myjet.phi()) / clusterWeightedPt;
+                * (particles[particleIter].rapidity()-myjet.rapidity())
+                * (particles[particleIter].phi()-myjet.phi()) / clusterWeightedPt;
 
             hold(1,0) = q_ji
-                * (particles[j].rapidity()-myjet.rapidity())
-                * (particles[j].phi()-myjet.phi()) / clusterWeightedPt;
+                * (particles[particleIter].rapidity()-myjet.rapidity())
+                * (particles[particleIter].phi()-myjet.phi()) / clusterWeightedPt;
 
             hold(1,1) = q_ji
-                * (particles[j].phi()-myjet.phi())
-                * (particles[j].phi()-myjet.phi()) / clusterWeightedPt;
+                * (particles[particleIter].phi()-myjet.phi())
+                * (particles[particleIter].phi()-myjet.phi()) / clusterWeightedPt;
 
             sigmaupdate+=hold;
         }
@@ -219,7 +216,7 @@ FuzzyTools::UpdateJets(vecPseudoJet particles,
             sigmaupdate(1,0)=0.;
         }
 
-        //mGMMjetsparams->at(i)=sigmaupdate;
+        //mGMMjetsparams->at(clusterIter)=sigmaupdate;
 
     }
 
@@ -253,14 +250,19 @@ vecPseudoJet
 FuzzyTools::ClusterFuzzy(vecPseudoJet particles,
                          vector<vector<double> >* Weightsout,
                          vector<TMatrix>* mGMMjetsparamsout){
-    int newk = seeds.size();
+    int clusterCount = seeds.size();
 
-    vector<vector<double> > Weights = InitWeights(particles,newk);
-    vecPseudoJet mGMMjets = Initialize(particles,newk,seeds);
-    vector<TMatrix> mGMMjetsparams = Initializeparams(particles,newk);
+    vector<vector<double> > Weights = InitWeights(particles,clusterCount);
+    vecPseudoJet mGMMjets = Initialize(particles,clusterCount,seeds);
+    vector<TMatrix> mGMMjetsparams = Initializeparams(particles,clusterCount);
     for (int i=0; i<100; i++){
-        ComputeWeights(particles,&Weights,newk,mGMMjets,mGMMjetsparams);
-        mGMMjets = UpdateJets(particles,Weights,newk,&mGMMjetsparams);
+        // EM algorithm update steps
+        ComputeWeights(particles,&Weights,clusterCount,mGMMjets,mGMMjetsparams);
+        mGMMjets = UpdateJets(particles,Weights,clusterCount,&mGMMjetsparams);
+
+        // do not flag clusters for deletion and remove them
+        // if we are not in recombination mode
+        if (clusteringMode == FuzzyTools::FIXED) continue;
 
         // determine which if any clusters should be removed
         vector<unsigned int>repeats = ClustersForRemoval(mGMMjets,
@@ -289,16 +291,20 @@ FuzzyTools::ClusterFuzzy(vecPseudoJet particles,
                 mGMMjetsparams_hold.push_back(mGMMjetsparams[j]);
             }
         }
+
+        // now replace and update weights and parameters vectors
         Weights.clear();
         mGMMjets.clear();
         mGMMjetsparams.clear();
+
+
         Weights = Weights_hold;
         mGMMjets = mGMMjets_hold;
         mGMMjetsparams = mGMMjetsparams_hold;
-        newk = mGMMjets_hold.size();
+
+        clusterCount = mGMMjets_hold.size();
 
     }
-    cout << Weights.size() << " : " << mGMMjetsparams.size() << endl;
     Weightsout->clear();
     for (unsigned int i=0; i<Weights.size(); i++){
         Weightsout->push_back(Weights[i]);
@@ -322,8 +328,6 @@ FuzzyTools::EventDisplay(vecPseudoJet particles,
                          vector<TMatrix> mGMMjetsparams,
                          TString out){
 
-    //std::cout << "ardvark " << particles.size() << std::endl;
-
     gStyle->SetOptStat(0);
     //gROOT->Reset();
     //gROOT->SetStyle("ATLAS");
@@ -334,6 +338,7 @@ FuzzyTools::EventDisplay(vecPseudoJet particles,
     TCanvas *c = new TCanvas("","",500,500);
 
     __attribute__((unused)) double maxpt=-1;
+
     const int n=particles.size();
     map<int, TGraph*> Vars;
     for (int i=0; i<n; i++) {
