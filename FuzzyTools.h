@@ -48,6 +48,12 @@ class FuzzyTools {
                             int k,
                             vecPseudoJet jets);
 
+    vector<double> CentralMoments(vecPseudoJet particles,
+                                  vector<vector<double> >Weights,
+                                  unsigned int clusterID,
+                                  unsigned int momentCount,
+                                  double (*f) (vecPseudoJet, vector<unsigned int>));
+
     void SetClusteringMode(Mode m) {
         clusteringMode = m;
     }

@@ -1,8 +1,11 @@
 #include <math.h>
+#include <assert.h>
 #include <vector>
 #include <string>
 #include <sstream>
+#include <ostream>
 #include <set>
+#include <time.h>
 
 #include "fastjet/ClusterSequence.hh"
 #include "fastjet/PseudoJet.hh"
@@ -25,6 +28,22 @@
 #include "TLine.h"
 
 using namespace std;
+
+// Makes debugging a little easier, pretty print vectors
+template<typename T>
+ostream& operator<< (ostream& out, const vector<T> v) {
+    int last = v.size() - 1;
+    if (last == -1) {
+        out << "[EMPTYVEC]";
+        return out;
+    }
+    out << "[";
+    for(int i = 0; i < last; i++)
+        out << v[i] << ", ";
+    out << v[last] << "]";
+    return out;
+}
+
 
 // Constructor
 FuzzyTools::FuzzyTools(){
@@ -97,8 +116,8 @@ FuzzyTools::Initializeparams(__attribute__((unused)) vecPseudoJet particles,
     vector<TMatrix> outparams;
     for (int i=0; i<k;i++){
         TMatrix hold(2,2);
-        hold(0,0) = 0.2*0.2; //0.5
-        hold(1,1) = 0.2*0.2; //0.5
+        hold(0,0) = 1;
+        hold(1,1) = 1;
         hold(0,1) = 0.0;
         hold(1,0) = 0.0;
         outparams.push_back(hold);
@@ -216,7 +235,7 @@ FuzzyTools::UpdateJets(vecPseudoJet particles,
             sigmaupdate(1,0)=0.;
         }
 
-        //mGMMjetsparams->at(clusterIter)=sigmaupdate;
+        mGMMjetsparams->at(clusterIter)=sigmaupdate;
 
     }
 
@@ -227,22 +246,25 @@ vector<unsigned int>
 FuzzyTools::ClustersForRemoval(vecPseudoJet& mGMMjets,
                                vector<TMatrix>& mGMMjetsparams) {
     vector<unsigned int>removalIndices;
-
     // remove any jets which are candidates for mergers
+    double epsilon = 0.0000001;
     for (unsigned int j=0; j<mGMMjets.size(); j++){
         for (unsigned int k=j+1; k<mGMMjets.size(); k++){
-            if (mGMMjets[j].delta_R(mGMMjets[k])<0.01){
+            if (mGMMjets[j].delta_R(mGMMjets[k])<epsilon){
                 removalIndices.push_back(k);
             }
         }
     }
 
     //Also remove jets that are too small if the size is learned
+    double muepsilon = 0.0;
+    epsilon = muepsilon*muepsilon;
     for (unsigned int j=0; j<mGMMjets.size(); j++){
-        if (mGMMjetsparams[j](0,0) < 0.01 || mGMMjetsparams[j](1,1) < 0.01){
+        if (mGMMjetsparams[j](0,0) < epsilon || mGMMjetsparams[j](1,1) < epsilon){
             removalIndices.push_back(j);
         }
     }
+    cout << removalIndices.size() << endl;
     return removalIndices;
 }
 
@@ -459,7 +481,9 @@ FuzzyTools::Qjetmass(vecPseudoJet particles, vector<vector<double> > Weights, in
 
     TH1F* qjetmass = new TH1F("","",100,0,250);
     TRandom3 rand = TRandom3(1);
-    for (int j=0; j<1000; j++){
+
+    for (int j=0; j<10000; j++){
+
         fastjet::PseudoJet qmass;
         for (unsigned int i=0; i<particles.size(); i++){
             double mythrow = rand.Uniform(0,1);
@@ -488,6 +512,75 @@ FuzzyTools::Qjetmass(vecPseudoJet particles, vector<vector<double> > Weights, in
     //myText(0.2,0.9,kBlack,"#scale[0.9]{#sqrt{s} = 8 TeV PYTHIA Z' #rightarrow t#bar{t}, m_{Z'}=1.5 TeV}");
     c->Print("Qjetmass"+out+".root");
 
+}
+
+
+// returns the vector of central moments for the distribution
+// given by f(P) where P is the collection of particles,
+// f is a function operating on all the particles,
+// and the randomness in the distribution comes from the fact
+// that particles are assigned fuzzily to the cluster
+// note that instead of the first central moment (which is
+// always zero) this function returns the mean instead.
+//
+// NOTE: At the moment, this function overwrites the value
+// of the random number generator's seed so it can guarantee
+// it will use the same samples when computing higher moments.
+vector<double>
+FuzzyTools::CentralMoments(vecPseudoJet particles,
+                           vector<vector<double> >Weights,
+                           unsigned int clusterID,
+                           unsigned int momentCount,
+                           double (*f)(vecPseudoJet, vector<unsigned int>)) {
+    unsigned int nTrials = 10000;
+
+    vector<unsigned int> particleIndices;
+    particleIndices.reserve(particles.size());
+
+    vector<double> moments;
+    moments.reserve(momentCount);
+
+    TRandom3 rand = TRandom3(1);
+    UInt_t seed = rand.GetSeed();
+
+    // compute throws and the mean
+    moments.push_back(0);
+    for (unsigned int trial = 0; trial < nTrials; trial++) {
+        for (unsigned int particleIter=0; particleIter<particles.size(); particleIter++) {
+            double mythrow = rand.Uniform(0, 1);
+            if (mythrow < Weights[particleIter][clusterID]) {
+                particleIndices.push_back(particleIter);
+            }
+        }
+        moments[0] += (*f)(particles, particleIndices);
+        particleIndices.clear();
+    }
+
+    moments[0] /= nTrials;
+    rand.SetSeed(seed);
+    particleIndices.clear();
+    for (unsigned int i = 1; i < momentCount; i++) {
+        moments.push_back(0);
+    }
+
+    for(unsigned int trial = 0; trial < nTrials; trial++) {
+        for (unsigned int particleIter = 0; particleIter < particles.size(); particleIter++) {
+            double mythrow = rand.Uniform(0, 1);
+            if (mythrow < Weights[particleIter][clusterID]) {
+                particleIndices.push_back(particleIter);
+            }
+        }
+        double v = (*f)(particles, particleIndices);
+
+        for (unsigned int i = 1; i < momentCount; i++) {
+            moments[i] += pow(v - moments[0], i+1);
+        }
+        particleIndices.clear();
+    }
+    for (unsigned int i = 1; i < momentCount; i++) {
+        moments[i] /= nTrials;
+    }
+    return moments;
 }
 
 double
