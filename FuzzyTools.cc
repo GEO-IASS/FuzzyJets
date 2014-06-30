@@ -131,12 +131,19 @@ FuzzyTools::Initializeparams(__attribute__((unused)) vecPseudoJet particles,
 // particle i belongs to jet j given a fixed set of cluster parameters.
 // We divide by the total conditional probability (denom) in accordance with
 // Bayes rule.
+
+// This series of functions, which constitutes the expectation step of EM
+// would be better suited to a functional style, and would be quite trivial
+// with a higher order function. I don't want to litter the code with function
+// pointers though. A way around this is to introduce a class
+// ProbabilityDistribution so that subtype polymorphism can stand in for the
+// higher function. Unfortunately, all this adds complexity.
 void
-FuzzyTools::ComputeWeights(vecPseudoJet particles,
-                           vector<vector<double> >* Weights,
-                           __attribute__((unused)) int k,
-                           vecPseudoJet mGMMjets,
-                           vector<TMatrix> mGMMjetsparams){
+FuzzyTools::ComputeWeightsGaussian(vecPseudoJet particles,
+                                   vector<vector<double> >* Weights,
+                                   __attribute__((unused)) int k,
+                                   vecPseudoJet mGMMjets,
+                                   vector<TMatrix> mGMMjetsparams){
     for (unsigned int i=0; i<particles.size(); i++){
         double denom=0.;
         for (unsigned int j=0; j<mGMMjets.size(); j++){
@@ -159,10 +166,10 @@ FuzzyTools::ComputeWeights(vecPseudoJet particles,
 
 
 vecPseudoJet
-FuzzyTools::UpdateJets(vecPseudoJet particles,
-                       vector<vector<double> > Weights,
-                       int clusterCount,
-                       __attribute__((unused)) vector<TMatrix>* mGMMjetsparams){
+FuzzyTools::UpdateJetsGaussian(vecPseudoJet particles,
+                               vector<vector<double> > Weights,
+                               int clusterCount,
+                               __attribute__((unused)) vector<TMatrix>* mGMMjetsparams){
     vecPseudoJet outjets;
 
     //For now, we fix the sigma at 1.
@@ -271,9 +278,9 @@ FuzzyTools::ClustersForRemoval(vecPseudoJet& mGMMjets,
 }
 
 vecPseudoJet
-FuzzyTools::ClusterFuzzy(vecPseudoJet particles,
-                         vector<vector<double> >* Weightsout,
-                         vector<TMatrix>* mGMMjetsparamsout){
+FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet particles,
+                                 vector<vector<double> >* Weightsout,
+                                 vector<TMatrix>* mGMMjetsparamsout){
     assert(clusteringMode != FuzzyTools::NOCLUSTERINGMODE);
     assert(kernelType != FuzzyTools::NOKERNEL);
 
@@ -284,8 +291,8 @@ FuzzyTools::ClusterFuzzy(vecPseudoJet particles,
     vector<TMatrix> mGMMjetsparams = Initializeparams(particles,clusterCount);
     for (int i=0; i<100; i++){
         // EM algorithm update steps
-        ComputeWeights(particles,&Weights,clusterCount,mGMMjets,mGMMjetsparams);
-        mGMMjets = UpdateJets(particles,Weights,clusterCount,&mGMMjetsparams);
+        ComputeWeightsGaussian(particles,&Weights,clusterCount,mGMMjets,mGMMjetsparams);
+        mGMMjets = UpdateJetsGaussian(particles,Weights,clusterCount,&mGMMjetsparams);
 
         // do not flag clusters for deletion and remove them
         // if we are not in recombination mode

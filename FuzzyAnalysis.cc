@@ -144,7 +144,7 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
 
     vector<vector<double> > Weights;
     vector<TMatrix> mGMMjetsparams;
-    vector<fastjet::PseudoJet> mGMMjets = tool->ClusterFuzzy(parts, &Weights, &mGMMjetsparams);
+    vector<fastjet::PseudoJet> mGMMjets = tool->ClusterFuzzyGaussian(parts, &Weights, &mGMMjetsparams);
 
     int learnedClusterCount = Weights[0].size();
     if (learnedClusterCount == 0) {

@@ -1,0 +1,3 @@
+The structure of FuzzyTools at the moment is tied a bit too tightly to the kernel selection. For instance, mGMMjetsparams not only references the cluster type in the name (Gaussian Mixture Model), but consists of a series of covariance matrices. I'm not sure of the best way to decouple this at the moment while still making things as easy as possible for the client. 
+
+Also, the interface functions are not consistent because they treat the weights, the cluster parameters, and the cluster locations differently (two are modified by reference, one is returned as a vector).

@@ -89,20 +89,20 @@ class FuzzyTools {
     vector<TMatrix> Initializeparams(vecPseudoJet particles,
                                      int k);
 
-    void ComputeWeights(vecPseudoJet particles,
-                        vector<vector<double> >* Weights,
-                        int k,
-                        vecPseudoJet mGMMjets,
-                        vector<TMatrix> mGMMjetsparams);
+    void ComputeWeightsGaussian(vecPseudoJet particles,
+                                vector<vector<double> >* Weights,
+                                int k,
+                                vecPseudoJet mGMMjets,
+                                vector<TMatrix> mGMMjetsparams);
 
-    vecPseudoJet UpdateJets(vecPseudoJet particles,
-                            vector<vector<double> > Weights,
-                            int k,
-                            vector<TMatrix>* mGMMjetsparams);
+    vecPseudoJet UpdateJetsGaussian(vecPseudoJet particles,
+                                    vector<vector<double> > Weights,
+                                    int k,
+                                    vector<TMatrix>* mGMMjetsparams);
 
-    vecPseudoJet ClusterFuzzy(vecPseudoJet particles,
-                              vector<vector<double> >* Weights,
-                              vector<TMatrix>* mGMMjetsparamsout);
+    vecPseudoJet ClusterFuzzyGaussian(vecPseudoJet particles,
+                                      vector<vector<double> >* Weights,
+                                      vector<TMatrix>* mGMMjetsparamsout);
 
     void EventDisplay(vecPseudoJet particles,
                       vecPseudoJet CAjets,
