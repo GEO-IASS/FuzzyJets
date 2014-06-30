@@ -27,7 +27,15 @@ typedef std::vector<fastjet::PseudoJet> vecPseudoJet;
  */
 class FuzzyTools {
  public:
+    enum Kernel {
+        NOKERNEL,
+        GAUSSIAN,
+        TRUNCGAUSSIAN,
+        UNIFORM
+    };
+
     enum Mode {
+        NOCLUSTERINGMODE,
         RECOMBINATION,
         FIXED
     };
@@ -38,6 +46,7 @@ class FuzzyTools {
 
     int clusterCount;
     Mode clusteringMode;
+    Kernel kernelType;
     vecPseudoJet seeds;
 
  public:
@@ -47,6 +56,10 @@ class FuzzyTools {
     vecPseudoJet Initialize(vecPseudoJet particles,
                             int k,
                             vecPseudoJet jets);
+
+    void SetKernelType(Kernel k) {
+        kernelType = k;
+    }
 
     vector<double> CentralMoments(vecPseudoJet particles,
                                   vector<vector<double> >Weights,

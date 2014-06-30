@@ -34,7 +34,8 @@ FuzzyAnalysis::FuzzyAnalysis(){
     fDebug = false;
     fOutName = "test.root";
     tool = new FuzzyTools();
-
+    tool->SetKernelType(FuzzyTools::GAUSSIAN);
+    tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
     // jet def
     m_jet_def                = new fastjet::JetDefinition(fastjet::antikt_algorithm, 0.4);
     m_jet_def_largeR_antikt  = new fastjet::JetDefinition(fastjet::antikt_algorithm, 1.0);
@@ -139,7 +140,6 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
 
     // Fuzzy Jets: mGMM --------------------
     vector<fastjet::PseudoJet> parts = particlesForJets;
-    tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
     tool->SetSeeds(parts);
 
     vector<vector<double> > Weights;

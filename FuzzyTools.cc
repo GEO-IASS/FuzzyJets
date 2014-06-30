@@ -49,6 +49,8 @@ ostream& operator<< (ostream& out, const vector<T> v) {
 FuzzyTools::FuzzyTools(){
     alpha = 1.0;
     m_test = 0;
+    clusteringMode = FuzzyTools::NOCLUSTERINGMODE;
+    kernelType = FuzzyTools::NOKERNEL;
 }
 
 vecPseudoJet
@@ -272,6 +274,9 @@ vecPseudoJet
 FuzzyTools::ClusterFuzzy(vecPseudoJet particles,
                          vector<vector<double> >* Weightsout,
                          vector<TMatrix>* mGMMjetsparamsout){
+    assert(clusteringMode != FuzzyTools::NOCLUSTERINGMODE);
+    assert(kernelType != FuzzyTools::NOKERNEL);
+
     int clusterCount = seeds.size();
 
     vector<vector<double> > Weights = InitWeights(particles,clusterCount);
