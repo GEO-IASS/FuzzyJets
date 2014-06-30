@@ -43,6 +43,8 @@ class FuzzyTools {
  private:
     int m_test;
     double alpha;
+    double R;
+    int maxiters;
 
     int clusterCount;
     Mode clusteringMode;
@@ -56,6 +58,10 @@ class FuzzyTools {
     vecPseudoJet Initialize(vecPseudoJet particles,
                             int k,
                             vecPseudoJet jets);
+
+    void SetR(double r) {
+        R = r;
+    }
 
     void SetKernelType(Kernel k) {
         kernelType = k;
@@ -75,8 +81,11 @@ class FuzzyTools {
         alpha = a;
     }
 
-    vector<unsigned int> ClustersForRemoval(vecPseudoJet& mGMMjets,
-                                            vector<TMatrix>& mGMMjetsparams);
+    vector<unsigned int> ClustersForRemovalGaussian(vecPseudoJet& mGMMjets,
+                                                    vector<TMatrix>& mGMMjetsparams);
+
+    vector<unsigned int> ClustersForRemovalUniform(vecPseudoJet& mUMMjets,
+                                                   vector<double>& mUMMweights);
 
     void SetSeeds(vecPseudoJet s) {
         seeds = s;
@@ -103,6 +112,22 @@ class FuzzyTools {
     vecPseudoJet ClusterFuzzyGaussian(vecPseudoJet particles,
                                       vector<vector<double> >* Weights,
                                       vector<TMatrix>* mGMMjetsparamsout);
+
+    void ComputeWeightsUniform(vecPseudoJet particles,
+                               vector<vector<double> >* Weights,
+                               int k,
+                               vecPseudoJet mUMMjets,
+                               vector<double> mUMMweights);
+
+    vecPseudoJet UpdateJetsUniform(vecPseudoJet particles,
+                                   vector<vector<double> > Weights,
+                                   int k,
+                                   vector<double>* mUMMweights);
+
+    vecPseudoJet ClusterFuzzyUniform(vecPseudoJet particles,
+                                     vector<vector<double> >* Weights,
+                                     vector<double>* mUMMweightsout);
+
 
     void EventDisplay(vecPseudoJet particles,
                       vecPseudoJet CAjets,

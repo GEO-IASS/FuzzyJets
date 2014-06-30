@@ -49,6 +49,7 @@ ostream& operator<< (ostream& out, const vector<T> v) {
 FuzzyTools::FuzzyTools(){
     alpha = 1.0;
     m_test = 0;
+    maxiters = 100;
     clusteringMode = FuzzyTools::NOCLUSTERINGMODE;
     kernelType = FuzzyTools::NOKERNEL;
 }
@@ -164,6 +165,78 @@ FuzzyTools::ComputeWeightsGaussian(vecPseudoJet particles,
     }
 }
 
+void
+FuzzyTools::ComputeWeightsUniform(vecPseudoJet particles,
+                                  vector<vector<double> >* Weights,
+                                  __attribute__((unused)) int k,
+                                  vecPseudoJet mUMMjets,
+                                  vector<double> mUMMweights) {
+    for (unsigned int i=0; i<particles.size(); i++) {
+        double denom=0.;
+        double dist;
+        double t;
+        for (unsigned int j=0; j < mUMMjets.size(); j++) {
+            dist = particles[i].delta_R(mUMMjets[j]);
+            if (dist <= R) {
+                // pT to scale by cluster weight
+                denom += mUMMweights[j]/(TMath::Pi() * R*R);
+            }
+        }
+        for (unsigned int j=0; j <  mUMMjets.size(); j++) {
+            dist = particles[i].delta_R(mUMMjets[j]);
+            t = (dist <= R) ? mUMMweights[j] : 0;
+            Weights->at(i)[j] = t/((TMath::Pi() * R*R) * denom);
+        }
+    }
+}
+
+vecPseudoJet
+FuzzyTools::UpdateJetsUniform(vecPseudoJet particles,
+                              vector<vector<double> > Weights,
+                              int clusterCount,
+                              vector<double>* mUMMweights) {
+    vecPseudoJet outjets;
+
+    double totalParticlePt = 0;
+    unsigned int particleCount = Weights.size();
+    for (unsigned int particleIter = 0; particleIter < particleCount; particleIter++) {
+        totalParticlePt += pow(particles[particleIter].pt(), alpha);
+    }
+    // iterate over clusters and update parameters and the covariance matrix
+    for (int clusterIter=0; clusterIter<clusterCount; clusterIter++){
+        double jety=0;
+        double jetphi=0;
+        double clusterWeightedPt = 0;
+        double clusterPi = 0;
+
+        // build the pT fraction belonging to cluster clusterIter
+        for (unsigned int particleIter=0; particleIter<particleCount; particleIter++){
+            clusterWeightedPt += pow(particles[particleIter].pt(),alpha)*Weights[particleIter][clusterIter];
+        }
+
+        // compute new cluster location on the basis of the EM update steps
+        for (unsigned int particleIter=0; particleIter<particleCount; particleIter++){
+            jety+=pow(particles[particleIter].pt(),alpha) * Weights[particleIter][clusterIter]
+                * particles[particleIter].rapidity() / clusterWeightedPt;
+            jetphi+=pow(particles[particleIter].pt(),alpha) * Weights[particleIter][clusterIter]
+                * particles[particleIter].phi() / clusterWeightedPt;
+        }
+        clusterPi = clusterWeightedPt / totalParticlePt;
+        mUMMweights->at(clusterIter) = clusterPi;
+
+        // compute new cluster weight on the basis of the EM update steps
+        if (!(clusterWeightedPt > 0)){
+            jety = 0;
+            jetphi = 0;
+        }
+
+        fastjet::PseudoJet myjet;
+        myjet.reset_PtYPhiM(1,jety,jetphi,0.);
+        outjets.push_back(myjet);
+    }
+
+    return outjets;
+}
 
 vecPseudoJet
 FuzzyTools::UpdateJetsGaussian(vecPseudoJet particles,
@@ -251,12 +324,14 @@ FuzzyTools::UpdateJetsGaussian(vecPseudoJet particles,
     return outjets;
 }
 
+
+
 vector<unsigned int>
-FuzzyTools::ClustersForRemoval(vecPseudoJet& mGMMjets,
-                               vector<TMatrix>& mGMMjetsparams) {
+FuzzyTools::ClustersForRemovalGaussian(vecPseudoJet& mGMMjets,
+                                       vector<TMatrix>& mGMMjetsparams) {
     vector<unsigned int>removalIndices;
     // remove any jets which are candidates for mergers
-    double epsilon = 0.0000001;
+    double epsilon = 0.001;
     for (unsigned int j=0; j<mGMMjets.size(); j++){
         for (unsigned int k=j+1; k<mGMMjets.size(); k++){
             if (mGMMjets[j].delta_R(mGMMjets[k])<epsilon){
@@ -266,7 +341,7 @@ FuzzyTools::ClustersForRemoval(vecPseudoJet& mGMMjets,
     }
 
     //Also remove jets that are too small if the size is learned
-    double muepsilon = 0.0;
+    double muepsilon = 0.0001;
     epsilon = muepsilon*muepsilon;
     for (unsigned int j=0; j<mGMMjets.size(); j++){
         if (mGMMjetsparams[j](0,0) < epsilon || mGMMjetsparams[j](1,1) < epsilon){
@@ -277,19 +352,113 @@ FuzzyTools::ClustersForRemoval(vecPseudoJet& mGMMjets,
     return removalIndices;
 }
 
+vector<unsigned int>
+FuzzyTools::ClustersForRemovalUniform(vecPseudoJet& mUMMjets,
+                                      vector<double>& mUMMweights) {
+    vector<unsigned int>removalIndices;
+    // remove any jets which are candidates for mergers
+    double epsilon = 0.001;
+    for (unsigned int j=0; j<mUMMjets.size(); j++){
+        for (unsigned int k=j+1; k<mUMMjets.size(); k++){
+            if (mUMMjets[j].delta_R(mUMMjets[k])<epsilon){
+                removalIndices.push_back(k);
+            }
+        }
+    }
+
+    //Also remove jets that are too small if the size is learned
+    double minWeight = 0;
+    for (unsigned int j=0; j<mUMMjets.size(); j++){
+        if (mUMMweights[j] < minWeight) {
+            removalIndices.push_back(j);
+        }
+    }
+    cout << removalIndices.size() << endl;
+    return removalIndices;
+}
+
+vecPseudoJet
+FuzzyTools::ClusterFuzzyUniform(vecPseudoJet particles,
+                                vector<vector<double> >* Weightsout,
+                                vector<double>* mUMMweightsout) {
+    assert(kernelType == FuzzyTools::UNIFORM);
+
+    int clusterCount = seeds.size();
+
+    vector<vector<double> > Weights = InitWeights(particles, clusterCount);
+    vecPseudoJet mUMMjets = Initialize(particles, clusterCount, seeds);
+
+    vector<double> mUMMweights;
+    for (int i = 0; i < clusterCount; i++) {
+        mUMMweights.push_back(1.0/clusterCount);
+    }
+
+    for(int iter = 0; iter < maxiters; iter++) {
+        ComputeWeightsUniform(particles, &Weights, clusterCount, mUMMjets, mUMMweights);
+        mUMMjets = UpdateJetsUniform(particles, Weights, clusterCount, &mUMMweights);
+
+        if (clusteringMode == FuzzyTools::FIXED) continue;
+
+        vector<unsigned int>repeats = ClustersForRemovalUniform(mUMMjets,
+                                                                 mUMMweights);
+
+        vector<vector<double> >Weights_hold;
+        vecPseudoJet mUMMjets_hold;
+        vector<double> mUMMweights_hold;
+
+        for (unsigned int q = 0; q < particles.size(); q++) {
+            vector<double> hhh;
+            Weights_hold.push_back(hhh);
+
+        }
+        for (unsigned int j=0; j < mUMMjets.size(); j++) {
+            bool myadd = true;
+            for (unsigned int k=0; k < repeats.size(); k++) {
+                if (repeats[k] == j) {
+                    myadd = false;
+                }
+            }
+            if (myadd) {
+                for (unsigned int q=0; q < particles.size(); q++) {
+                    Weights_hold[q].push_back(Weights[q][j]);
+                }
+                mUMMjets_hold.push_back(mUMMjets[j]);
+                mUMMweights_hold.push_back(mUMMweights[j]);
+            }
+        }
+        Weights.clear();
+        mUMMjets.clear();
+        mUMMweights.clear();
+        Weights = Weights_hold;
+        mUMMjets = mUMMjets_hold;
+        mUMMweights = mUMMweights_hold;
+
+        clusterCount = mUMMjets.size();
+    }
+    Weightsout->clear();
+    for (unsigned int i=0; i<Weights.size(); i++){
+        Weightsout->push_back(Weights[i]);
+    }
+    mUMMweightsout->clear();
+    for (unsigned int i=0; i<mUMMweights.size(); i++){
+        mUMMweightsout->push_back(mUMMweights[i]);
+    }
+
+    return mUMMjets;
+}
+
 vecPseudoJet
 FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet particles,
                                  vector<vector<double> >* Weightsout,
                                  vector<TMatrix>* mGMMjetsparamsout){
-    assert(clusteringMode != FuzzyTools::NOCLUSTERINGMODE);
-    assert(kernelType != FuzzyTools::NOKERNEL);
+    assert(kernelType == FuzzyTools::GAUSSIAN);
 
     int clusterCount = seeds.size();
 
     vector<vector<double> > Weights = InitWeights(particles,clusterCount);
     vecPseudoJet mGMMjets = Initialize(particles,clusterCount,seeds);
     vector<TMatrix> mGMMjetsparams = Initializeparams(particles,clusterCount);
-    for (int i=0; i<100; i++){
+    for (int iter=0; iter<maxiters; iter++){
         // EM algorithm update steps
         ComputeWeightsGaussian(particles,&Weights,clusterCount,mGMMjets,mGMMjetsparams);
         mGMMjets = UpdateJetsGaussian(particles,Weights,clusterCount,&mGMMjetsparams);
@@ -299,8 +468,8 @@ FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet particles,
         if (clusteringMode == FuzzyTools::FIXED) continue;
 
         // determine which if any clusters should be removed
-        vector<unsigned int>repeats = ClustersForRemoval(mGMMjets,
-                                                         mGMMjetsparams);
+        vector<unsigned int>repeats = ClustersForRemovalGaussian(mGMMjets,
+                                                                 mGMMjetsparams);
 
         vector<vector<double> >Weights_hold;
         vecPseudoJet mGMMjets_hold;
