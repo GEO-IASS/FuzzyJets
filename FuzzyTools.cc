@@ -52,6 +52,10 @@ FuzzyTools::FuzzyTools(){
     maxiters = 100;
     clusteringMode = FuzzyTools::NOCLUSTERINGMODE;
     kernelType = FuzzyTools::NOKERNEL;
+
+    mergeDist = 0.001;
+    minWeight = 0;
+    minSigma = 0.01;
 }
 
 vecPseudoJet
@@ -331,18 +335,16 @@ FuzzyTools::ClustersForRemovalGaussian(vecPseudoJet& mGMMjets,
                                        vector<TMatrix>& mGMMjetsparams) {
     vector<unsigned int>removalIndices;
     // remove any jets which are candidates for mergers
-    double epsilon = 0.001;
     for (unsigned int j=0; j<mGMMjets.size(); j++){
         for (unsigned int k=j+1; k<mGMMjets.size(); k++){
-            if (mGMMjets[j].delta_R(mGMMjets[k])<epsilon){
+            if (mGMMjets[j].delta_R(mGMMjets[k]) < mergeDist){
                 removalIndices.push_back(k);
             }
         }
     }
 
     //Also remove jets that are too small if the size is learned
-    double muepsilon = 0.0001;
-    epsilon = muepsilon*muepsilon;
+    double epsilon = minSigma*minSigma;
     for (unsigned int j=0; j<mGMMjets.size(); j++){
         if (mGMMjetsparams[j](0,0) < epsilon || mGMMjetsparams[j](1,1) < epsilon){
             removalIndices.push_back(j);
@@ -357,17 +359,15 @@ FuzzyTools::ClustersForRemovalUniform(vecPseudoJet& mUMMjets,
                                       vector<double>& mUMMweights) {
     vector<unsigned int>removalIndices;
     // remove any jets which are candidates for mergers
-    double epsilon = 0.001;
     for (unsigned int j=0; j<mUMMjets.size(); j++){
         for (unsigned int k=j+1; k<mUMMjets.size(); k++){
-            if (mUMMjets[j].delta_R(mUMMjets[k])<epsilon){
+            if (mUMMjets[j].delta_R(mUMMjets[k])<mergeDist){
                 removalIndices.push_back(k);
             }
         }
     }
 
     //Also remove jets that are too small if the size is learned
-    double minWeight = 0;
     for (unsigned int j=0; j<mUMMjets.size(); j++){
         if (mUMMweights[j] < minWeight) {
             removalIndices.push_back(j);

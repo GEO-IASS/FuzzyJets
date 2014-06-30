@@ -46,6 +46,10 @@ class FuzzyTools {
     double R;
     int maxiters;
 
+    double mergeDist;
+    double minWeight;
+    double minSigma;
+
     int clusterCount;
     Mode clusteringMode;
     Kernel kernelType;
@@ -65,6 +69,18 @@ class FuzzyTools {
 
     void SetKernelType(Kernel k) {
         kernelType = k;
+    }
+
+    void SetMergeDistance(double d) {
+        mergeDist = d;
+    }
+
+    void SetMinimumWeight(double m) {
+        minWeight = m;
+    }
+
+    void SetMinimumSigma(double s) {
+        minSigma = s;
     }
 
     vector<double> CentralMoments(vecPseudoJet particles,
