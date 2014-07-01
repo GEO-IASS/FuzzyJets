@@ -57,9 +57,9 @@ FuzzyTools::FuzzyTools(){
 
     learnWeights = true;
 
-    mergeDist = 0.000001;
+    mergeDist = 0.001;
     minWeight = 0;
-    minSigma = 0.0001;
+    minSigma = 0.001;
 }
 
 vecPseudoJet
@@ -121,6 +121,7 @@ FuzzyTools::doGaus(double x1, double x2, double mu1, double mu2,
     return exp(exparg)/(sqrt(fabs(det))*2*TMath::Pi());
 }
 
+// return the *square* of the Mahalanobis distance
 double
 FuzzyTools::MDist(double x1, double x2, double mu1, double mu2,
                   TMatrix sigma) {
@@ -144,7 +145,18 @@ FuzzyTools::MDist(double x1, double x2, double mu1, double mu2,
     }
     sigmaInverse.Invert(&det);
     TMatrix hold = summT*sigmaInverse*summ;
-    return sqrt(hold(0, 0));
+    return hold(0, 0);
+}
+
+double
+FuzzyTools::doTruncGaus(double x1, double x2, double mu1, double mu2,
+                        TMatrix sigma) {
+    double dist = MDist(x1, x2, mu1, mu2, sigma);
+    if (dist > R*R) {
+        return 0;
+    }
+    double scale = (1-exp(-dist/2));
+    return doGaus(x1, x2, mu1, mu2, sigma) / scale;
 }
 
 vector<TMatrix>
@@ -153,8 +165,8 @@ FuzzyTools::Initializeparams(__attribute__((unused)) vecPseudoJet particles,
     vector<TMatrix> outparams;
     for (int i=0; i<k;i++){
         TMatrix hold(2,2);
-        hold(0,0) = 1;
-        hold(1,1) = 1;
+        hold(0,0) = 0.5;
+        hold(1,1) = 0.5;
         hold(0,1) = 0.0;
         hold(1,0) = 0.0;
         outparams.push_back(hold);
@@ -195,6 +207,34 @@ FuzzyTools::ComputeWeightsGaussian(vecPseudoJet particles,
                                        mGMMjets[j].phi(),
                                        mGMMjetsparams[j])
                 / denom;
+        }
+    }
+}
+
+void
+FuzzyTools::ComputeWeightsTruncGaus(vecPseudoJet particles,
+                                    vector<vector<double> >* Weights,
+                                    __attribute__((unused)) int k,
+                                    vecPseudoJet mTGMMjets,
+                                    vector<TMatrix> mTGMMjetsparams,
+                                    vector<double> mTGMMweights) {
+    for (unsigned int i=0; i < particles.size(); i++) {
+        double denom = 0;
+        for (unsigned int j = 0; j < mTGMMjets.size(); j++) {
+            denom += doTruncGaus(particles[i].rapidity(),
+                                 particles[i].phi(),
+                                 mTGMMjets[j].rapidity(),
+                                 mTGMMjets[j].phi(),
+                                 mTGMMjetsparams[j])
+                * mTGMMweights[j];
+        }
+        for (unsigned int j = 0; j < mTGMMjets.size(); j++) {
+            Weights->at(i)[j] = doTruncGaus(particles[i].rapidity(),
+                                            particles[i].phi(),
+                                            mTGMMjets[j].rapidity(),
+                                            mTGMMjets[j].phi(),
+                                            mTGMMjetsparams[j])
+                * mTGMMweights[j] / denom;
         }
     }
 }
@@ -275,10 +315,106 @@ FuzzyTools::UpdateJetsUniform(vecPseudoJet particles,
 }
 
 vecPseudoJet
+FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet particles,
+                                vector<vector<double> > Weights,
+                                int clusterCount,
+                                vector<TMatrix>* mTGMMjetsparams,
+                                vector<double>* mTGMMweights) {
+    vecPseudoJet outjets;
+
+    //For now, we fix the sigma at 1.
+    //Means:
+
+    double totalParticlePt = 0;
+    unsigned int particleCount = Weights.size();
+    for (unsigned int particleIter = 0; particleIter < particleCount; particleIter++) {
+        totalParticlePt += pow(particles[particleIter].pt(), alpha);
+    }
+    // iterate over clusters and update parameters and the covariance matrix
+    for (int clusterIter=0; clusterIter<clusterCount; clusterIter++){
+        double jety=0;
+        double jetphi=0;
+        double clusterWeightedPt = 0;
+        double clusterPi = 0;
+        unsigned int particleCount = Weights.size();
+
+        // build the pT fraction belonging to cluster clusterIter
+        for (unsigned int particleIter=0; particleIter<particleCount; particleIter++){
+            clusterWeightedPt += pow(particles[particleIter].pt(),alpha)*Weights[particleIter][clusterIter];
+        }
+
+        // compute new cluster location on the basis of the EM update steps
+        for (unsigned int particleIter=0; particleIter<particleCount; particleIter++){
+            jety+=pow(particles[particleIter].pt(),alpha) * Weights[particleIter][clusterIter]
+                * particles[particleIter].rapidity() / clusterWeightedPt;
+            jetphi+=pow(particles[particleIter].pt(),alpha) * Weights[particleIter][clusterIter]
+                * particles[particleIter].phi() / clusterWeightedPt;
+        }
+        clusterPi = clusterWeightedPt / totalParticlePt;
+        if (learnWeights) {
+            mTGMMweights->at(clusterIter) = clusterPi;
+        }
+        if (!(clusterWeightedPt > 0)){
+            jety = 0;
+            jetphi = 0;
+        }
+
+        fastjet::PseudoJet myjet;
+        myjet.reset_PtYPhiM(1.,jety,jetphi,0.);
+        outjets.push_back(myjet);
+
+        //now, we update sigma
+        TMatrix sigmaupdate(2,2);
+        for (unsigned int particleIter=0; particleIter<particleCount; particleIter++){
+            TMatrix hold(2,2);
+
+            // pt scaled particle weight
+            double q_ji = pow(particles[particleIter].pt(),alpha) * Weights[particleIter][clusterIter];
+            hold(0,0) = q_ji
+                * (particles[particleIter].rapidity()-myjet.rapidity())
+                * (particles[particleIter].rapidity()-myjet.rapidity()) / clusterWeightedPt;
+
+            hold(0,1) = q_ji
+                * (particles[particleIter].rapidity()-myjet.rapidity())
+                * (particles[particleIter].phi()-myjet.phi()) / clusterWeightedPt;
+
+            hold(1,0) = q_ji
+                * (particles[particleIter].rapidity()-myjet.rapidity())
+                * (particles[particleIter].phi()-myjet.phi()) / clusterWeightedPt;
+
+            hold(1,1) = q_ji
+                * (particles[particleIter].phi()-myjet.phi())
+                * (particles[particleIter].phi()-myjet.phi()) / clusterWeightedPt;
+
+            sigmaupdate+=hold;
+        }
+
+        // if the matrix is looking singular...
+        if (sigmaupdate(0,0)+sigmaupdate(1,1)+sigmaupdate(0,1) < 0.01){
+            sigmaupdate(0,0)=0.1*0.1;
+            sigmaupdate(1,1)=0.1*0.1;
+        }
+
+        // updated sigma is junk if it had almost no contained pT
+        if (!(clusterWeightedPt > 0)){
+            sigmaupdate(0,0)=0.001*0.001;
+            sigmaupdate(1,1)=0.001*0.001;
+            sigmaupdate(0,1)=0.;
+            sigmaupdate(1,0)=0.;
+        }
+
+        mTGMMjetsparams->at(clusterIter)=sigmaupdate;
+
+    }
+
+    return outjets;
+}
+
+vecPseudoJet
 FuzzyTools::UpdateJetsGaussian(vecPseudoJet particles,
                                vector<vector<double> > Weights,
                                int clusterCount,
-                               __attribute__((unused)) vector<TMatrix>* mGMMjetsparams){
+                               vector<TMatrix>* mGMMjetsparams){
     vecPseudoJet outjets;
 
     //For now, we fix the sigma at 1.
@@ -434,7 +570,7 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet particles,
         if (clusteringMode == FuzzyTools::FIXED) continue;
 
         set<unsigned int>repeats = ClustersForRemovalUniform(mUMMjets,
-                                                                mUMMweights);
+                                                             mUMMweights);
 
         vector<vector<double> >Weights_hold;
         vecPseudoJet mUMMjets_hold;
@@ -501,7 +637,7 @@ FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet particles,
 
         // determine which if any clusters should be removed
         set<unsigned int>repeats = ClustersForRemovalGaussian(mGMMjets,
-                                                                 mGMMjetsparams);
+                                                              mGMMjetsparams);
 
         vector<vector<double> >Weights_hold;
         vecPseudoJet mGMMjets_hold;

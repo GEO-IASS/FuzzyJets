@@ -120,6 +120,8 @@ class FuzzyTools {
 
     double doGaus(double x1, double x2, double mu1, double mu2, TMatrix sigma);
 
+    double doTruncGaus(double x1, double x2, double mu1, double mu2, TMatrix sigma);
+
     vector<TMatrix> Initializeparams(vecPseudoJet particles,
                                      int k);
 
@@ -153,6 +155,23 @@ class FuzzyTools {
                                      vector<vector<double> >* Weights,
                                      vector<double>* mUMMweightsout);
 
+    void ComputeWeightsTruncGaus(vecPseudoJet particles,
+                                 vector<vector<double> >* Weights,
+                                 int k,
+                                 vecPseudoJet mTGMMjets,
+                                 vector<TMatrix> mTGMMjetsparams,
+                                 vector<double> mTGMMweights);
+
+    vecPseudoJet UpdateJetsTruncGaus(vecPseudoJet particles,
+                                     vector<vector<double> > Weights,
+                                     int k,
+                                     vector<TMatrix>* mTGMMjetsparams,
+                                     vector<double>* mTGMMweights);
+
+    vecPseudoJet ClusterFuzzyTruncGaus(vecPseudoJet particles,
+                                       vector<vector<double> >* Weights,
+                                       vector<TMatrix>* mTGMMjetsparamsout,
+                                       vector<double> mTGMMweights);
 
     void EventDisplay(vecPseudoJet particles,
                       vecPseudoJet CAjets,
