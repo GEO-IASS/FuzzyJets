@@ -9,7 +9,7 @@
 CXXFLAGS =   -O2 -Wall -Wextra -equal -Wshadow -Werror
 CXX = g++
 
-.PHONY: clean debug all
+.PHONY: clean debug all clear
 
 all: Fuzzy
 
@@ -48,3 +48,6 @@ clean:
 	rm -rf *.o
 	rm -rf *.so
 	rm -f *~
+
+clear:
+	rm *.root
