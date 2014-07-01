@@ -46,6 +46,8 @@ class FuzzyTools {
     double R;
     int maxiters;
 
+    bool learnWeights;
+
     double mergeDist;
     double minWeight;
     double minSigma;
@@ -62,6 +64,10 @@ class FuzzyTools {
     vecPseudoJet Initialize(vecPseudoJet particles,
                             int k,
                             vecPseudoJet jets);
+
+    void SetLearnWeights(bool b) {
+        learnWeights = b;
+    }
 
     void SetR(double r) {
         R = r;
@@ -108,6 +114,8 @@ class FuzzyTools {
     }
 
     vector<vector<double> > InitWeights(vecPseudoJet particles,int k);
+
+    double MDist(double x1, double x2, double mu1, double mu2, TMatrix sigma);
 
     double doGaus(double x1, double x2, double mu1, double mu2, TMatrix sigma);
 

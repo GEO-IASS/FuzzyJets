@@ -1,6 +1,8 @@
 #include <math.h>
 #include <assert.h>
 #include <vector>
+#include <numeric>
+#include <functional>
 #include <string>
 #include <sstream>
 #include <ostream>
@@ -53,9 +55,11 @@ FuzzyTools::FuzzyTools(){
     clusteringMode = FuzzyTools::NOCLUSTERINGMODE;
     kernelType = FuzzyTools::NOKERNEL;
 
-    mergeDist = 0.001;
+    learnWeights = true;
+
+    mergeDist = 0.0001;
     minWeight = 0;
-    minSigma = 0.01;
+    minSigma = 0.001;
 }
 
 vecPseudoJet
@@ -115,6 +119,32 @@ FuzzyTools::doGaus(double x1, double x2, double mu1, double mu2,
     TMatrix hold = summT*sigmaInverse*summ;
     double exparg = -0.5*hold(0, 0);
     return exp(exparg)/(sqrt(fabs(det))*2*TMath::Pi());
+}
+
+double
+FuzzyTools::MDist(double x1, double x2, double mu1, double mu2,
+                  TMatrix sigma) {
+    TMatrix summT(1,2); // (x-mu) tranpose
+    TMatrix summ(2,1);  // (x-mu)
+    summT(0,0) = x1-mu1;
+    summT(0,1) = x2-mu2;
+    summ(0,0) = x1-mu1;
+    summ(1,0) = x2-mu2;
+    TMatrix sigmaInverse(2,2);
+    Double_t det;
+
+    // check for singularity in Sigma
+    sigmaInverse(0,0)=sigma(0,0);
+    sigmaInverse(0,1)=sigma(0,1);
+    sigmaInverse(1,0)=sigma(1,0);
+    sigmaInverse(1,1)=sigma(1,1);
+    if (sigma(0,0)*sigma(1,1)-sigma(1,0)*sigma(0,1) < 0.001*0.001){
+        sigmaInverse(0,0)=0.01;
+        sigmaInverse(1,1)=0.01;
+    }
+    sigmaInverse.Invert(&det);
+    TMatrix hold = summT*sigmaInverse*summ;
+    return sqrt(hold(0, 0));
 }
 
 vector<TMatrix>
@@ -226,7 +256,9 @@ FuzzyTools::UpdateJetsUniform(vecPseudoJet particles,
                 * particles[particleIter].phi() / clusterWeightedPt;
         }
         clusterPi = clusterWeightedPt / totalParticlePt;
-        mUMMweights->at(clusterIter) = clusterPi;
+        if (learnWeights) {
+            mUMMweights->at (clusterIter) = clusterPi;
+        }
 
         // compute new cluster weight on the basis of the EM update steps
         if (!(clusterWeightedPt > 0)){
@@ -400,7 +432,7 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet particles,
         if (clusteringMode == FuzzyTools::FIXED) continue;
 
         vector<unsigned int>repeats = ClustersForRemovalUniform(mUMMjets,
-                                                                 mUMMweights);
+                                                                mUMMweights);
 
         vector<vector<double> >Weights_hold;
         vecPseudoJet mUMMjets_hold;
@@ -432,8 +464,12 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet particles,
         Weights = Weights_hold;
         mUMMjets = mUMMjets_hold;
         mUMMweights = mUMMweights_hold;
-
         clusterCount = mUMMjets.size();
+
+        // rescale the weights vector so that they sum to one
+        double totalWeight = std::accumulate(mUMMweights.begin(), mUMMweights.end(), 0);
+        std::transform(mUMMweights.begin(), mUMMweights.end(), mUMMweights.begin(),
+                       std::bind2nd(std::multiplies<double>(), 1.0/totalWeight));
     }
     Weightsout->clear();
     for (unsigned int i=0; i<Weights.size(); i++){

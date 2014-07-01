@@ -29,9 +29,9 @@ using namespace std;
 
 // Constructor
 FuzzyAnalysis::FuzzyAnalysis(){
+    fDebug = false;
     if(fDebug) cout << "FuzzyAnalysis::FuzzyAnalysis Start " << endl;
     ftest = 0;
-    fDebug = false;
     fOutName = "test.root";
     tool = new FuzzyTools();
 
