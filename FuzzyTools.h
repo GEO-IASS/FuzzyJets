@@ -2,6 +2,7 @@
 #define FUZZYTOOLS_H
 
 #include <vector>
+#include <set>
 #include <math.h>
 #include <string>
 #include "TMatrix.h"
@@ -103,10 +104,10 @@ class FuzzyTools {
         alpha = a;
     }
 
-    vector<unsigned int> ClustersForRemovalGaussian(vecPseudoJet& mGMMjets,
+    set<unsigned int> ClustersForRemovalGaussian(vecPseudoJet& mGMMjets,
                                                     vector<TMatrix>& mGMMjetsparams);
 
-    vector<unsigned int> ClustersForRemovalUniform(vecPseudoJet& mUMMjets,
+    set<unsigned int> ClustersForRemovalUniform(vecPseudoJet& mUMMjets,
                                                    vector<double>& mUMMweights);
 
     void SetSeeds(vecPseudoJet s) {

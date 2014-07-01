@@ -57,9 +57,9 @@ FuzzyTools::FuzzyTools(){
 
     learnWeights = true;
 
-    mergeDist = 0.0001;
+    mergeDist = 0.000001;
     minWeight = 0;
-    minSigma = 0.001;
+    minSigma = 0.0001;
 }
 
 vecPseudoJet
@@ -362,15 +362,16 @@ FuzzyTools::UpdateJetsGaussian(vecPseudoJet particles,
 
 
 
-vector<unsigned int>
+set<unsigned int>
 FuzzyTools::ClustersForRemovalGaussian(vecPseudoJet& mGMMjets,
                                        vector<TMatrix>& mGMMjetsparams) {
-    vector<unsigned int>removalIndices;
+    set<unsigned int>removalIndices;
     // remove any jets which are candidates for mergers
     for (unsigned int j=0; j<mGMMjets.size(); j++){
+        if (removalIndices.count(j)) continue; // skip flagged indices
         for (unsigned int k=j+1; k<mGMMjets.size(); k++){
             if (mGMMjets[j].delta_R(mGMMjets[k]) < mergeDist){
-                removalIndices.push_back(k);
+                removalIndices.insert(k);
             }
         }
     }
@@ -379,22 +380,23 @@ FuzzyTools::ClustersForRemovalGaussian(vecPseudoJet& mGMMjets,
     double epsilon = minSigma*minSigma;
     for (unsigned int j=0; j<mGMMjets.size(); j++){
         if (mGMMjetsparams[j](0,0) < epsilon || mGMMjetsparams[j](1,1) < epsilon){
-            removalIndices.push_back(j);
+            removalIndices.insert(j);
         }
     }
     cout << removalIndices.size() << endl;
     return removalIndices;
 }
 
-vector<unsigned int>
+set<unsigned int>
 FuzzyTools::ClustersForRemovalUniform(vecPseudoJet& mUMMjets,
                                       vector<double>& mUMMweights) {
-    vector<unsigned int>removalIndices;
+    set<unsigned int>removalIndices;
     // remove any jets which are candidates for mergers
     for (unsigned int j=0; j<mUMMjets.size(); j++){
+        if (removalIndices.count(j)) continue;
         for (unsigned int k=j+1; k<mUMMjets.size(); k++){
             if (mUMMjets[j].delta_R(mUMMjets[k])<mergeDist){
-                removalIndices.push_back(k);
+                removalIndices.insert(k);
             }
         }
     }
@@ -402,7 +404,7 @@ FuzzyTools::ClustersForRemovalUniform(vecPseudoJet& mUMMjets,
     //Also remove jets that are too small if the size is learned
     for (unsigned int j=0; j<mUMMjets.size(); j++){
         if (mUMMweights[j] < minWeight) {
-            removalIndices.push_back(j);
+            removalIndices.insert(j);
         }
     }
     cout << removalIndices.size() << endl;
@@ -431,7 +433,7 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet particles,
 
         if (clusteringMode == FuzzyTools::FIXED) continue;
 
-        vector<unsigned int>repeats = ClustersForRemovalUniform(mUMMjets,
+        set<unsigned int>repeats = ClustersForRemovalUniform(mUMMjets,
                                                                 mUMMweights);
 
         vector<vector<double> >Weights_hold;
@@ -444,13 +446,7 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet particles,
 
         }
         for (unsigned int j=0; j < mUMMjets.size(); j++) {
-            bool myadd = true;
-            for (unsigned int k=0; k < repeats.size(); k++) {
-                if (repeats[k] == j) {
-                    myadd = false;
-                }
-            }
-            if (myadd) {
+            if (repeats.count(j) == 0) {
                 for (unsigned int q=0; q < particles.size(); q++) {
                     Weights_hold[q].push_back(Weights[q][j]);
                 }
@@ -504,7 +500,7 @@ FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet particles,
         if (clusteringMode == FuzzyTools::FIXED) continue;
 
         // determine which if any clusters should be removed
-        vector<unsigned int>repeats = ClustersForRemovalGaussian(mGMMjets,
+        set<unsigned int>repeats = ClustersForRemovalGaussian(mGMMjets,
                                                                  mGMMjetsparams);
 
         vector<vector<double> >Weights_hold;
@@ -516,13 +512,7 @@ FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet particles,
             Weights_hold.push_back(hhh);
         }
         for (unsigned int j=0; j<mGMMjets.size(); j++){
-            bool myadd=true;
-            for (unsigned int k=0; k<repeats.size(); k++){
-                if (repeats[k]==j){
-                    myadd=false;
-                }
-            }
-            if (myadd){
+            if (repeats.count(j) == 0){
                 for (unsigned int q=0; q<particles.size(); q++){
                     Weights_hold[q].push_back(Weights[q][j]);
                 }
