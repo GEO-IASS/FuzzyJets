@@ -48,6 +48,7 @@ class FuzzyTools {
     int maxiters;
 
     bool learnWeights;
+    bool learnShape;
 
     double mergeDist;
     double minWeight;
@@ -86,6 +87,10 @@ class FuzzyTools {
         minWeight = m;
     }
 
+    void SetLearnShape(bool s) {
+        learnShape = s;
+    }
+
     void SetMinimumSigma(double s) {
         minSigma = s;
     }
@@ -105,10 +110,11 @@ class FuzzyTools {
     }
 
     set<unsigned int> ClustersForRemovalGaussian(vecPseudoJet& mGMMjets,
-                                                    vector<TMatrix>& mGMMjetsparams);
+                                                 vector<TMatrix>& mGMMjetsparams,
+                                                 vector<double>& mGMMweights);
 
     set<unsigned int> ClustersForRemovalUniform(vecPseudoJet& mUMMjets,
-                                                   vector<double>& mUMMweights);
+                                                vector<double>& mUMMweights);
 
     void SetSeeds(vecPseudoJet s) {
         seeds = s;
@@ -129,16 +135,19 @@ class FuzzyTools {
                                 vector<vector<double> >* Weights,
                                 int k,
                                 vecPseudoJet mGMMjets,
-                                vector<TMatrix> mGMMjetsparams);
+                                vector<TMatrix> mGMMjetsparams,
+                                vector<double> mGMMweights);
 
     vecPseudoJet UpdateJetsGaussian(vecPseudoJet particles,
                                     vector<vector<double> > Weights,
                                     int k,
-                                    vector<TMatrix>* mGMMjetsparams);
+                                    vector<TMatrix>* mGMMjetsparams,
+                                    vector<double>* mGMMweights);
 
     vecPseudoJet ClusterFuzzyGaussian(vecPseudoJet particles,
                                       vector<vector<double> >* Weights,
-                                      vector<TMatrix>* mGMMjetsparamsout);
+                                      vector<TMatrix>* mGMMjetsparamsout,
+                                      vector<double>* mGMMweightsout);
 
     void ComputeWeightsUniform(vecPseudoJet particles,
                                vector<vector<double> >* Weights,
@@ -171,7 +180,7 @@ class FuzzyTools {
     vecPseudoJet ClusterFuzzyTruncGaus(vecPseudoJet particles,
                                        vector<vector<double> >* Weights,
                                        vector<TMatrix>* mTGMMjetsparamsout,
-                                       vector<double> mTGMMweights);
+                                       vector<double>* mTGMMweights);
 
     void EventDisplay(vecPseudoJet particles,
                       vecPseudoJet CAjets,
