@@ -1,0 +1,9 @@
+# Configure pythia to run Z' --> ttbar --> all hadronic
+NewGaugeBoson:ffbar2gmZZprime= on
+32:m0=1500
+Zprime:gmZmode=3
+32:onMode = off
+32:onIfAny = 6
+24:onMode = off
+
+24:onIfAny = 1 2 3 4

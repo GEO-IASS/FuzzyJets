@@ -6,6 +6,10 @@
 #include <vector>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string>
+#include <iterator>
+#include <algorithm>
+
 
 #include "TString.h"
 #include "TSystem.h"
@@ -68,49 +72,33 @@ int main(int argc, char* argv[]){
 
     // Configure and initialize pythia
     Pythia8::Pythia* pythia8 = new Pythia8::Pythia();
-    //pythia8->init(2212,2212,8000.);
 
-    //Signal: Z' -> ttbar -> all hadronic
+    vector<string> pythiaCommands;
 
-
-    pythia8->readString("NewGaugeBoson:ffbar2gmZZprime= on");
-    pythia8->readString("32:m0=1500");
-    pythia8->readString("Zprime:gmZmode=3");
-    pythia8->readString("32:onMode = off");
-    pythia8->readString("32:onIfAny = 6");
-    pythia8->readString("24:onMode = off");
-    pythia8->readString("24:onIfAny = 1 2 3 4");
-
-    if (fDebug == 0) {
-
-        pythia8->readString("Next:numberShowEvent = 0");
-
+    ifstream pythiaConfigFile("configs/default.pythia");
+    string line;
+    while (getline(pythiaConfigFile, line, '\n')) {
+        pythiaCommands.push_back(line);
     }
 
+    string command;
+    for(unsigned int i = 0; i < pythiaCommands.size(); i++) {
+        command = pythiaCommands[i];
+        if (command.size() == 0) continue;
+        if (command[0] == '#') {
+            // its a comment
+            cout << command << endl;
+            continue;
+        }
+        pythia8->readString(command);
+    }
 
-
-    /*
-      pythia8->readString("NewGaugeBoson:ffbar2Wprime = on");
-      pythia8->readString("Wprime:coup2WZ=1");
-      pythia8->readString("34:m0=600");
-      pythia8->readString("34:onMode = off");
-      pythia8->readString("34:onIfAny = 23 24");
-      pythia8->readString("24:onMode = off");
-      pythia8->readString("24:onIfAny = 1 2 3 4");
-      pythia8->readString("23:onMode = off");
-      pythia8->readString("23:onIfAny = 11");
-    */
+    if (fDebug == 0) {
+        pythia8->readString("Next:numberShowEvent = 0");
+    }
 
     //this has to be the last line!
     pythia8->init(2212 /* p */, 2212 /* p */, 14000. /* GeV */);
-
-
-    //Background: QCD
-    //pythia8->readString("HardQCD:all = on ");
-    //pythia8->readString("PhaseSpace:pTHatMax = 700");
-    //pythia8->readString("PhaseSpace:pTHatMin = 300");
-
-    //pythia8->init(2212,2212,8000.);
 
     // FuzzyAnalysis
     FuzzyAnalysis * analysis = new FuzzyAnalysis();
