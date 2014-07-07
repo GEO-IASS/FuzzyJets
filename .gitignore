@@ -15,6 +15,9 @@
 *.a
 *.lib
 
+# Plots and results
+results/
+
 # Executables
 *.exe
 *.out
