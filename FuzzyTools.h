@@ -191,6 +191,16 @@ class FuzzyTools {
                       vector<TMatrix> mGMMjetsparams,
                       TString out);
 
+    void NewEventDisplay(vecPseudoJet particles,
+                         vecPseudoJet CAjets,
+                         vecPseudoJet tops,
+                         vecPseudoJet mGMMjets,
+                         vector<vector<double> > Weights,
+                         int which,
+                         vector<TMatrix> mGMMjetsparams,
+                         vector<double> mGMMweights,
+                         TString out);
+
     double MLpT(vecPseudoJet particles,
                 vector<vector<double> > Weights,
                 int jetindex,

@@ -172,7 +172,14 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
 
     std::cout << mGMMjets.size() << " " << myJetsLargeR_ca.size() << " " << Weights.size() << std::endl;
     tool->EventDisplay(parts,myJetsLargeR_ca,tops,mGMMjets,Weights,leadmGMM, mGMMjetsparams,TString::Format("%i",ievt));
-    tool->Qjetmass(parts, Weights, leadmGMM, TString::Format("%i",ievt));
+    tool->NewEventDisplay(parts,myJetsLargeR_ca,tops,
+                          mGMMjets,
+                          Weights,
+                          leadmGMM,
+                          mGMMjetsparams,
+                          mGMMweights,
+                          TString::Format("%i",ievt));
+    //tool->Qjetmass(parts, Weights, leadmGMM, TString::Format("%i",ievt));
 
     fTmGMM_m = tool->MLpT(parts,Weights,leadmGMM,Weights[0].size(),1);
     fTmGMM_pt = tool->MLpT(parts,Weights,leadmGMM,Weights[0].size(),0);

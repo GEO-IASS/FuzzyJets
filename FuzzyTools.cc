@@ -23,6 +23,7 @@
 #include <map>
 #include "TEllipse.h"
 #include "TH1F.h"
+#include "TH2F.h"
 #include "TCanvas.h"
 #include "TStyle.h"
 #include "TGraph.h"
@@ -649,9 +650,9 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet particles,
 
 vecPseudoJet
 FuzzyTools::ClusterFuzzyTruncGaus(vecPseudoJet particles,
-                                 vector<vector<double> >* Weightsout,
-                                 vector<TMatrix>* mTGMMjetsparamsout,
-                                 vector<double>* mTGMMweightsout){
+                                  vector<vector<double> >* Weightsout,
+                                  vector<TMatrix>* mTGMMjetsparamsout,
+                                  vector<double>* mTGMMweightsout){
     assert(kernelType == FuzzyTools::TRUNCGAUSSIAN);
 
     int clusterCount = seeds.size();
@@ -810,6 +811,77 @@ FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet particles,
 
     return mGMMjets;
 
+}
+
+void
+FuzzyTools::NewEventDisplay(vecPseudoJet particles,
+                            __attribute__((unused)) vecPseudoJet CAjets,
+                            __attribute__((unused)) vecPseudoJet tops,
+                            __attribute__((unused)) vecPseudoJet mGMMjets,
+                            __attribute__((unused)) vector<vector<double> > Weights,
+                            __attribute__((unused)) int which,
+                            __attribute__((unused)) vector<TMatrix> mGMMjetsparams,
+                            __attribute__((unused)) vector<double> mGMMweights,
+                            TString out) {
+    double mineta = -5;
+    double maxeta = 5;
+    TCanvas canv("", "", 1200, 600);
+    TH2F hist("hist", "TEST", 30, mineta, maxeta, 28, 0, 7);
+
+    double eta, phi, pT;
+    for (unsigned int i = 0; i < particles.size(); i++) {
+        eta = particles[i].eta();
+        phi = particles[i].phi();
+        pT = particles[i].pt();
+        hist.Fill(eta, phi, pT);
+    }
+
+    vector<TEllipse> ellipses;
+    for (unsigned int i=0; i < mGMMjetsparams.size(); i++) {
+        double vareta = mGMMjetsparams[i](0,0);
+        double varphi = mGMMjetsparams[i](1,1);
+        double covar  = mGMMjetsparams[i](1,0);
+        double tempa  = 0.5*(vareta + varphi);
+        double tempb  = 0.5*sqrt((vareta-varphi)*(vareta-varphi) + 4*covar*covar);
+        double lambdaeta = tempa + tempb;
+        double lambdaphi = tempa - tempb;
+        double theta = 0;
+        if(covar > 0) theta=atan((lambdaeta - vareta)/covar);
+        double loceta = mGMMjets[i].eta();
+        double locphi = mGMMjets[i].phi();
+        TEllipse currentEllipse(loceta, locphi,
+                                sqrt(lambdaeta), sqrt(lambdaphi),
+                                0, 360, theta*180/TMath::Pi());
+        currentEllipse.SetFillStyle(0);
+        if(learnWeights) {
+            currentEllipse.SetLineWidth(2);
+            currentEllipse.SetLineWidth(mGMMweights[i]);
+        } else {
+            currentEllipse.SetLineWidth(2);
+        }
+        if(loceta < maxeta && loceta > mineta)
+            ellipses.push_back(currentEllipse);
+    }
+
+
+    canv.Divide(2, 1);
+
+    canv.cd(1);
+    hist.Draw("colz");
+    for (unsigned int eli = 0; eli < ellipses.size(); eli++) {
+        ellipses[eli].Draw();
+    }
+
+    canv.cd(2);
+    hist.Draw("colz");
+    for (unsigned int eli = 0; eli < ellipses.size(); eli++) {
+        ellipses[eli].Draw();
+    }
+    gPad->SetLogz();
+    canv.Update();
+
+
+    canv.Print("NEWEvent"+out+".root");
 }
 
 void
