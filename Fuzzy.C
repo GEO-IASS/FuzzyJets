@@ -49,6 +49,7 @@ int main(int argc, char* argv[]){
     int nEvents = 0;
     int fDebug  = 0;
     string outName = "FuzzyJets.root";
+    string pythiaConfigName = "configs/default.pythia";
 
     po::options_description desc("Allowed options");
     desc.add_options()
@@ -56,7 +57,7 @@ int main(int argc, char* argv[]){
         ("NEvents", po::value<int>(&nEvents)->default_value(1000) ,    "Number of Events ")
         ("Debug",   po::value<int>(&fDebug) ->default_value(0) ,     "Debug flag")
         ("OutFile", po::value<string>(&outName)->default_value("test.root"), "output file name")
-        ;
+        ("PythiaConfig", po::value<string>(&pythiaConfigName)->default_value("configs/default.pythia"), "Pythia configuration file location");
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
@@ -75,7 +76,7 @@ int main(int argc, char* argv[]){
 
     vector<string> pythiaCommands;
 
-    ifstream pythiaConfigFile("configs/default.pythia");
+    ifstream pythiaConfigFile(pythiaConfigName.c_str());
     string line;
     while (getline(pythiaConfigFile, line, '\n')) {
         pythiaCommands.push_back(line);
