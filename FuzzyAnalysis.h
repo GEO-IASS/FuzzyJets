@@ -33,13 +33,22 @@ class FuzzyAnalysis{
     FuzzyTools *tool;
 
     // Tree Vars ---------------------------------------
-    int              fTEventNumber;
+    int   fTEventNumber;
     float fTCA_m;
     float fTCA_pt;
+    float fTtoppt;
+
+    float fTmUMM_m;
+    float fTmUMM_pt;
+    float fTdeltatop_mUMM;
+
     float fTmGMM_m;
     float fTmGMM_pt;
-    float fTdeltatop;
-    float fTtoppt;
+    float fTdeltatop_mGMM;
+
+    float fTmTGMM_m;
+    float fTmTGMM_pt;
+    float fTdeltatop_mTGMM;
 
     fastjet::JetDefinition     *m_jet_def;
     fastjet::JetDefinition     *m_jet_def_largeR_antikt;

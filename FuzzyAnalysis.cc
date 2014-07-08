@@ -95,9 +95,9 @@ namespace {
         tool->SetLearnShape(learnShape);
         tool->SetR(size);
         jets = tool->ClusterFuzzyTruncGaus(parts,
-                                          &particleWeights,
-                                          &parameters,
-                                          &jetWeights);
+                                           &particleWeights,
+                                           &parameters,
+                                           &jetWeights);
         FindLeadingJet(particles, jets, particleWeights, tool, leadIndex, leadpT);
     }
 
@@ -232,8 +232,12 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     // large-R jets: C/A --------------------
     vecPseudoJet myJetsLargeR_ca;
     DoFastJetFinding(particlesForJets, m_jet_def_largeR_ca, 1.0, myJetsLargeR_ca);
+    fTCA_m = myJetsLargeR_ca[0].m();
+    fTCA_pt = myJetsLargeR_ca[0].pt();
 
-    // Fuzzy Jets: mGMM --------------------
+    // Various mixture models ---------------
+    tool->SetMergeDistance(0.05);
+    // Fuzzy Jets: mGMM ---------------------
     vector<vector<double> > Weights;
     vector<TMatrix> mGMMjetsparams;
     vector<double> mGMMweights;
@@ -276,30 +280,79 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
                       mTGMMparticleWeights, mTGMMjetsparams, mTGMMweights);
 
 
-    std::cout << mGMMjets.size() << " " << myJetsLargeR_ca.size() << " " << Weights.size() << std::endl;
-    tool->EventDisplay(particlesForJets,myJetsLargeR_ca,tops,mGMMjets,Weights,leadmGMMindex, mGMMjetsparams,TString::Format("%i",ievt));
-    tool->NewEventDisplay(particlesForJets,
-                          myJetsLargeR_ca,tops,
-                          mGMMjets,
-                          Weights,
-                          leadmGMMindex,
-                          mGMMjetsparams,
-                          mGMMweights,
-                          TString::Format("%i",ievt));
-    //tool->Qjetmass(parts, Weights, leadmGMM, TString::Format("%i",ievt));
+    // Having found jets, now do a bit of data logging and analysis
+    bool doEventDisplays = true;
+    if (doEventDisplays) {
+        tool->EventDisplay(particlesForJets,
+                           myJetsLargeR_ca,tops,
+                           mGMMjets,
+                           Weights,
+                           leadmGMMindex,
+                           mGMMjetsparams,
+                           TString::Format("%i",ievt));
 
-    fTmGMM_m = tool->MLpT(particlesForJets,Weights,leadmGMMindex,Weights[0].size(),1);
-    fTmGMM_pt = tool->MLpT(particlesForJets,Weights,leadmGMMindex,Weights[0].size(),0);
-    //std::cout << "mGMM " << tool->MLpT(particlesForJets,Weights,leadmGMM,newk,0) << " " << tool->MLpT(particlesForJets,Weights,leadmGMM,newk,1) << std::endl;
+        tool->NewEventDisplay(particlesForJets,
+                              myJetsLargeR_ca,tops,
+                              mGMMjets,
+                              Weights,
+                              leadmGMMindex,
+                              mGMMjetsparams,
+                              mGMMweights,
+                              TString::Format("_mGMM_%i",ievt));
+
+        tool->NewEventDisplay(particlesForJets,
+                              myJetsLargeR_ca,tops,
+                              mTGMMjets,
+                              mTGMMparticleWeights,
+                              leadmTGMMindex,
+                              mTGMMjetsparams,
+                              mTGMMweights,
+                              TString::Format("_mTGMM_%i",ievt));
+
+        tool->NewEventDisplayUniform(particlesForJets,
+                                     myJetsLargeR_ca,tops,
+                                     mUMMjets,
+                                     mUMMparticleWeights,
+                                     leadmUMMindex,
+                                     mUMMweights,
+                                     TString::Format("_mUMM_%i",ievt));
+    }
+
+
+    fTmGMM_m = tool->MLpT(particlesForJets,Weights,
+                          leadmGMMindex,Weights[0].size(),1);
+    fTmGMM_pt = tool->MLpT(particlesForJets,Weights,
+                           leadmGMMindex,Weights[0].size(),0);
+
+    fTmUMM_m = tool->MLpT(particlesForJets, mUMMparticleWeights,
+                          leadmUMMindex, mUMMparticleWeights[0].size(), 1);
+    fTmUMM_pt = maxpTmUMM;
+
+    fTmTGMM_m = tool->MLpT(particlesForJets, mTGMMparticleWeights,
+                           leadmTGMMindex, mTGMMparticleWeights[0].size(), 1);
+    fTmTGMM_pt = maxpTmTGMM;
+
     int mytop=0;
     if (tops[1].pt()> tops[0].pt()){
         mytop=1;
     }
+
     fTtoppt = tops[0].pt();
-    fTdeltatop = tops[0].delta_R(mGMMjets[leadmGMMindex]);
-    if (tops[1].delta_R(mGMMjets[leadmGMMindex]) < fTdeltatop){
-        fTdeltatop = tops[1].delta_R(mGMMjets[leadmGMMindex]);
+    fTdeltatop_mGMM = tops[0].delta_R(mGMMjets[leadmGMMindex]);
+
+    if (tops[1].delta_R(mGMMjets[leadmGMMindex]) < fTdeltatop_mGMM){
+        fTdeltatop_mGMM = tops[1].delta_R(mGMMjets[leadmGMMindex]);
         fTtoppt = tops[1].pt();
+    }
+
+    fTdeltatop_mUMM = tops[0].delta_R(mUMMjets[leadmUMMindex]);
+    if (tops[1].delta_R(mUMMjets[leadmUMMindex]) <  fTdeltatop_mUMM) {
+        fTdeltatop_mUMM = tops[1].delta_R(mUMMjets[leadmUMMindex]);
+    }
+
+    fTdeltatop_mTGMM = tops[0].delta_R(mTGMMjets[leadmTGMMindex]);
+    if (tops[1].delta_R(mTGMMjets[leadmTGMMindex]) < fTdeltatop_mTGMM) {
+        fTdeltatop_mTGMM = tops[1].delta_R(mTGMMjets[leadmTGMMindex]);
     }
 
     tT->Fill();
@@ -314,13 +367,22 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
 void FuzzyAnalysis::DeclareBranches(){
 
     // Event Properties
-    tT->Branch("EventNumber",               &fTEventNumber,            "EventNumber/I");
-    tT->Branch("CA_m,",                  &fTCA_m,                 "CA_m/F");
-    tT->Branch("CA_pt,",                  &fTCA_pt,                 "CA_pt/F");
-    tT->Branch("mGMM_m,",                  &fTmGMM_m,                 "mGMM_m/F");
-    tT->Branch("mGMM_pt,",                  &fTmGMM_pt,                 "mGMM_pt/F");
-    tT->Branch("deltatop", &fTdeltatop, "deltatop/F");
-    tT->Branch("toppt", &fTtoppt, "toppt/F");
+    tT->Branch("EventNumber",    &fTEventNumber,    "EventNumber/I");
+    tT->Branch("CA_m,",          &fTCA_m,           "CA_m/F");
+    tT->Branch("CA_pt,",         &fTCA_pt,          "CA_pt/F");
+    tT->Branch("toppt",          &fTtoppt,          "toppt/F");
+
+    tT->Branch("mUMM_m,",        &fTmUMM_m,         "mUMM_m/F");
+    tT->Branch("mUMM_pt,",       &fTmUMM_pt,        "mUMM_pt/F");
+    tT->Branch("deltatop_mUMM",  &fTdeltatop_mUMM,  "deltatop_mUMM/F");
+
+    tT->Branch("mGMM_m,",        &fTmGMM_m,         "mGMM_m/F");
+    tT->Branch("mGMM_pt,",       &fTmGMM_pt,        "mGMM_pt/F");
+    tT->Branch("deltatop_mGMM",  &fTdeltatop_mGMM,  "deltatop_mGMM/F");
+
+    tT->Branch("mTGMM_m,",       &fTmTGMM_m,        "mTGMM_m/F");
+    tT->Branch("mTGMM_pt,",      &fTmTGMM_pt,       "mTGMM_pt/F");
+    tT->Branch("deltatop_mTGMM", &fTdeltatop_mTGMM, "deltatop_mTGMM/F");
 
     tT->GetListOfBranches()->ls();
 
@@ -331,12 +393,20 @@ void FuzzyAnalysis::DeclareBranches(){
 // resets vars
 void FuzzyAnalysis::ResetBranches(){
     // reset branches
-    fTEventNumber                 = -999;
-    fTCA_m = 0;
-    fTCA_pt = 0;
-    fTmGMM_m = 0;
-    fTmGMM_pt = 0;
-    fTdeltatop = 0;
-    fTtoppt = 0.;
+    fTEventNumber    = -999;
+    fTCA_m           = -1.;
+    fTCA_pt          = -1.;
+    fTtoppt          = -1.;
 
+    fTmGMM_m         = -1.;
+    fTmGMM_pt        = -1.;
+    fTdeltatop_mGMM  = -1.;
+
+    fTmUMM_m         = -1.;
+    fTmUMM_pt        = -1.;
+    fTdeltatop_mUMM  = -1.;
+
+    fTmTGMM_m        = -1.;
+    fTmTGMM_pt       = -1.;
+    fTdeltatop_mTGMM = -1.;
 }
