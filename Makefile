@@ -50,4 +50,4 @@ clean:
 	rm -f *~
 
 clear:
-	rm *.root
+	rm ./results/tmp/*.root
