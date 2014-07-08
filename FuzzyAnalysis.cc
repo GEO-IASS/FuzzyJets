@@ -27,6 +27,72 @@
 
 using namespace std;
 
+
+// Privately separate the logic of different analysis modes from using them
+namespace {
+    void DoFastJetFinding(vecPseudoJet particles,
+                          fastjet::JetDefinition *pJetDef,
+                          double size,
+                          vecPseudoJet& jets) {
+        fastjet::ClusterSequence csLargeR_ca(particles, *pJetDef);
+        jets = fastjet::sorted_by_pt(csLargeR_ca.inclusive_jets(size));
+    }
+
+    void DoMUMMJetFinding(vecPseudoJet& particles,
+                          bool learnWeights,
+                          double size,
+                          FuzzyTools *tool,
+                          vecPseudoJet& jets,
+                          vector<vector<double> >& particleWeights,
+                          vector<double>& jetWeights) {
+        vecPseudoJet parts = particles;
+        tool->SetSeeds(parts);
+        tool->SetLearnWeights(learnWeights);
+        tool->SetR(size);
+        jets = tool->ClusterFuzzyUniform(parts,
+                                         &particleWeights,
+                                         &jetWeights);
+    }
+
+    void DoMTGMMJetFinding(vecPseudoJet& particles,
+                           bool learnWeights,
+                           bool learnShape,
+                           bool size,
+                           FuzzyTools *tool,
+                           vecPseudoJet& jets,
+                           vector<vector<double> >& particleWeights,
+                           vector<TMatrix>& parameters,
+                           vector<double>& jetWeights) {
+        vecPseudoJet parts = particles;
+        tool->SetSeeds(parts);
+        tool->SetLearnWeights(learnWeights);
+        tool->SetLearnShape(learnShape);
+        tool->SetR(size);
+        jets = tool->ClusterFuzzyGaussian(parts,
+                                          &particleWeights,
+                                          &parameters,
+                                          &jetWeights);
+    }
+
+    void DoMGMMJetFinding(vecPseudoJet& particles,
+                          bool learnWeights,
+                          bool learnShape,
+                          FuzzyTools *tool,
+                          vecPseudoJet& jets,
+                          vector<vector<double> >& particleWeights,
+                          vector<TMatrix>& parameters,
+                          vector<double>& jetWeights) {
+        vecPseudoJet parts = particles;
+        tool->SetSeeds(parts);
+        tool->SetLearnWeights(learnWeights);
+        tool->SetLearnShape(learnShape);
+        jets = tool->ClusterFuzzyGaussian(parts,
+                                          &particleWeights,
+                                          &parameters,
+                                          &jetWeights);
+    }
+}
+
 // Constructor
 FuzzyAnalysis::FuzzyAnalysis(){
     fDebug = false;
@@ -133,30 +199,16 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     } // end particle loop -----------------------------------------------
 
     // large-R jets: C/A --------------------
-    fastjet::ClusterSequence csLargeR_ca(particlesForJets, *m_jet_def_largeR_ca);
-    vector<fastjet::PseudoJet> myJetsLargeR_ca = fastjet::sorted_by_pt(csLargeR_ca.inclusive_jets(1.0)); //was 10
-    for (unsigned int ij = 0; ij < myJetsLargeR_ca.size(); ij++){
-        if (ij > 0) break;
-        fastjet::PseudoJet tj = myJetsLargeR_ca[ij];
-        //std::cout << "CA " << tj.pt() << " " << tj.m() << std::endl;
-        fTCA_m = tj.m();
-        fTCA_pt = tj.pt();
-    }
+    vecPseudoJet myJetsLargeR_ca;
+    DoFastJetFinding(particlesForJets, m_jet_def_largeR_ca, 1.0, myJetsLargeR_ca);
 
     // Fuzzy Jets: mGMM --------------------
-    vector<fastjet::PseudoJet> parts = particlesForJets;
-    tool->SetSeeds(parts);
-    tool->SetLearnWeights(false);
-    tool->SetLearnShape(false);
-
     vector<vector<double> > Weights;
     vector<TMatrix> mGMMjetsparams;
     vector<double> mGMMweights;
-    vector<fastjet::PseudoJet> mGMMjets
-        = tool->ClusterFuzzyGaussian(parts,
-                                     &Weights,
-                                     &mGMMjetsparams,
-                                     &mGMMweights);
+    vector<fastjet::PseudoJet> mGMMjets;
+    DoMGMMJetFinding(particlesForJets, false, false, tool, mGMMjets, Weights, mGMMjetsparams, mGMMweights);
+
 
     int learnedClusterCount = Weights[0].size();
     if (learnedClusterCount == 0) {
@@ -166,8 +218,9 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
 
     int leadmGMM=-1;
     double maxpt = -1;
+    assert(particlesForJets.size() == Weights.size());
     for (unsigned int i= 0; i<mGMMjets.size(); i++){
-        double holdpt = tool->MLpT(parts,Weights,i,Weights[0].size(),0);
+        double holdpt = tool->MLpT(particlesForJets,Weights,i,Weights[0].size(),0);
         if (holdpt>maxpt){
             maxpt = holdpt;
             leadmGMM = i;
@@ -176,8 +229,9 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
 
 
     std::cout << mGMMjets.size() << " " << myJetsLargeR_ca.size() << " " << Weights.size() << std::endl;
-    tool->EventDisplay(parts,myJetsLargeR_ca,tops,mGMMjets,Weights,leadmGMM, mGMMjetsparams,TString::Format("%i",ievt));
-    tool->NewEventDisplay(parts,myJetsLargeR_ca,tops,
+    tool->EventDisplay(particlesForJets,myJetsLargeR_ca,tops,mGMMjets,Weights,leadmGMM, mGMMjetsparams,TString::Format("%i",ievt));
+    tool->NewEventDisplay(particlesForJets,
+                          myJetsLargeR_ca,tops,
                           mGMMjets,
                           Weights,
                           leadmGMM,
@@ -186,8 +240,8 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
                           TString::Format("%i",ievt));
     //tool->Qjetmass(parts, Weights, leadmGMM, TString::Format("%i",ievt));
 
-    fTmGMM_m = tool->MLpT(parts,Weights,leadmGMM,Weights[0].size(),1);
-    fTmGMM_pt = tool->MLpT(parts,Weights,leadmGMM,Weights[0].size(),0);
+    fTmGMM_m = tool->MLpT(particlesForJets,Weights,leadmGMM,Weights[0].size(),1);
+    fTmGMM_pt = tool->MLpT(particlesForJets,Weights,leadmGMM,Weights[0].size(),0);
     //std::cout << "mGMM " << tool->MLpT(particlesForJets,Weights,leadmGMM,newk,0) << " " << tool->MLpT(particlesForJets,Weights,leadmGMM,newk,1) << std::endl;
     int mytop=0;
     if (tops[1].pt()> tops[0].pt()){
