@@ -887,6 +887,67 @@ FuzzyTools::NewEventDisplay(vecPseudoJet particles,
 }
 
 void
+FuzzyTools::NewEventDisplayUniform(vecPseudoJet particles,
+                                   __attribute__((unused)) vecPseudoJet CAjets,
+                                   __attribute__((unused)) vecPseudoJet tops,
+                                   __attribute__((unused)) vecPseudoJet mUMMjets,
+                                   __attribute__((unused)) vector<vector<double> > Weights,
+                                   __attribute__((unused)) int which,
+                                   __attribute__((unused)) vector<double> mUMMweights,
+                                   TString out) {
+    double mineta = -5;
+    double maxeta = 5;
+    TCanvas canv("", "", 1200, 600);
+    TH2F hist("hist", "TEST", 30, mineta, maxeta, 28, 0, 7);
+
+    double eta, phi, pT;
+    for (unsigned int i = 0; i < particles.size(); i++) {
+        eta = particles[i].eta();
+        phi = particles[i].phi();
+        pT = particles[i].pt();
+        hist.Fill(eta, phi, pT);
+    }
+
+    vector<TEllipse> ellipses;
+    for (unsigned int i=0; i < mUMMjets.size(); i++) {
+        double loceta = mUMMjets[i].eta();
+        double locphi = mUMMjets[i].phi();
+        TEllipse currentEllipse(loceta, locphi,
+                                R, R,
+                                0, 360, 0);
+        currentEllipse.SetFillStyle(0);
+        if(learnWeights) {
+            currentEllipse.SetLineWidth(2);
+            currentEllipse.SetLineWidth(mUMMweights[i]);
+        } else {
+            currentEllipse.SetLineWidth(2);
+        }
+        if(loceta < maxeta && loceta > mineta)
+            ellipses.push_back(currentEllipse);
+    }
+
+
+    canv.Divide(2, 1);
+
+    canv.cd(1);
+    hist.Draw("colz");
+    for (unsigned int eli = 0; eli < ellipses.size(); eli++) {
+        ellipses[eli].Draw();
+    }
+
+    canv.cd(2);
+    hist.Draw("colz");
+    for (unsigned int eli = 0; eli < ellipses.size(); eli++) {
+        ellipses[eli].Draw();
+    }
+    gPad->SetLogz();
+    canv.Update();
+
+
+    canv.Print(directoryPrefix + "NEWEventUniform"+out+".root");
+}
+
+void
 FuzzyTools::EventDisplay(vecPseudoJet particles,
                          vecPseudoJet CAjets,
                          vecPseudoJet tops,
