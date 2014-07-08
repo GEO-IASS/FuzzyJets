@@ -239,12 +239,16 @@ FuzzyTools::ComputeWeightsTruncGaus(vecPseudoJet particles,
                 * mTGMMweights[j];
         }
         for (unsigned int j = 0; j < mTGMMjets.size(); j++) {
-            Weights->at(i)[j] = doTruncGaus(particles[i].rapidity(),
-                                            particles[i].phi(),
-                                            mTGMMjets[j].rapidity(),
-                                            mTGMMjets[j].phi(),
-                                            mTGMMjetsparams[j])
+            double newWeight = doTruncGaus(particles[i].rapidity(),
+                                           particles[i].phi(),
+                                           mTGMMjets[j].rapidity(),
+                                           mTGMMjets[j].phi(),
+                                           mTGMMjetsparams[j])
                 * mTGMMweights[j] / denom;
+            if(newWeight < 0 || newWeight > 1 || isnan(newWeight)) {
+                newWeight = 0.;
+            }
+            Weights->at(i)[j] = newWeight;
         }
     }
 }
@@ -269,7 +273,11 @@ FuzzyTools::ComputeWeightsUniform(vecPseudoJet particles,
         for (unsigned int j=0; j <  mUMMjets.size(); j++) {
             dist = particles[i].delta_R(mUMMjets[j]);
             t = (dist <= R) ? mUMMweights[j] : 0;
-            Weights->at(i)[j] = t/((TMath::Pi() * R*R) * denom);
+            double newWeight = t/((TMath::Pi() * R*R) * denom);
+            if(newWeight < 0 || newWeight > 1 || isnan(newWeight)) {
+                newWeight = 0.;
+            }
+            Weights->at(i)[j] = newWeight;
         }
     }
 }
@@ -294,7 +302,7 @@ FuzzyTools::UpdateJetsUniform(vecPseudoJet particles,
         double clusterPi = 0;
 
         // build the pT fraction belonging to cluster clusterIter
-        for (unsigned int particleIter=0; particleIter<particleCount; particleIter++){
+        for (unsigned int particleIter=0; particleIter<particleCount; particleIter++) {
             clusterWeightedPt += pow(particles[particleIter].pt(),alpha)*Weights[particleIter][clusterIter];
         }
 
@@ -549,20 +557,22 @@ FuzzyTools::ClustersForRemovalGaussian(vecPseudoJet& mGMMjets,
             removalIndices.insert(j);
         }
     }
-    cout << removalIndices.size() << endl;
+    if (kernelType == FuzzyTools::UNIFORM) {
+        cout << removalIndices.size() << endl;
+    }
     return removalIndices;
 }
 
 set<unsigned int>
 FuzzyTools::ClustersForRemovalUniform(vecPseudoJet& mUMMjets,
                                       vector<double>& mUMMweights) {
-    set<unsigned int>removalIndices;
+    set<unsigned int> removalIndices;
     // remove any jets which are candidates for mergers
     for (unsigned int j=0; j<mUMMjets.size(); j++){
         if (removalIndices.count(j)) continue;
         for (unsigned int k=j+1; k<mUMMjets.size(); k++){
             if (mUMMjets[j].delta_R(mUMMjets[k])<mergeDist){
-                if(mUMMweights[k] < mUMMweights[j]) {
+                if(mUMMweights[k] <= mUMMweights[j]) {
                     removalIndices.insert(k);
                 } else {
                     removalIndices.insert(j);
@@ -578,7 +588,7 @@ FuzzyTools::ClustersForRemovalUniform(vecPseudoJet& mUMMjets,
             removalIndices.insert(j);
         }
     }
-    cout << removalIndices.size() << endl;
+    // cout << removalIndices.size() << endl;
     return removalIndices;
 }
 
@@ -589,7 +599,6 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet particles,
     assert(kernelType == FuzzyTools::UNIFORM);
 
     int clusterCount = seeds.size();
-
     vector<vector<double> > Weights = InitWeights(particles, clusterCount);
     vecPseudoJet mUMMjets = Initialize(particles, clusterCount, seeds);
 
@@ -601,7 +610,6 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet particles,
     for(int iter = 0; iter < maxiters; iter++) {
         ComputeWeightsUniform(particles, &Weights, clusterCount, mUMMjets, mUMMweights);
         mUMMjets = UpdateJetsUniform(particles, Weights, clusterCount, &mUMMweights);
-
         if (clusteringMode == FuzzyTools::FIXED) continue;
 
         set<unsigned int>repeats = ClustersForRemovalUniform(mUMMjets,
@@ -646,7 +654,6 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet particles,
     for (unsigned int i=0; i<mUMMweights.size(); i++){
         mUMMweightsout->push_back(mUMMweights[i]);
     }
-
     return mUMMjets;
 }
 
@@ -987,7 +994,7 @@ FuzzyTools::EventDisplay(vecPseudoJet particles,
         Vars[i]->SetMarkerColor(1);//mycolor);
     }
 
-    std::cout << "here1 ? " << std::endl;
+    // std::cout << "here1 ? " << std::endl;
 
     const int n2=CAjets.size();
     double x2[n2];
@@ -1007,7 +1014,7 @@ FuzzyTools::EventDisplay(vecPseudoJet particles,
     }
     TGraph *gr3 = new TGraph (n3, x3, y3);
 
-    std::cout << "here2 ? " << std::endl;
+    // std::cout << "here2 ? " << std::endl;
 
     const int n4=mGMMjets.size();
     double x4[n4];
@@ -1032,7 +1039,7 @@ FuzzyTools::EventDisplay(vecPseudoJet particles,
         Vars[i]->Draw("samep");
     }
 
-    std::cout << "here3 ? " << std::endl;
+    // std::cout << "here3 ? " << std::endl;
 
     gr2->SetMarkerSize(2);
     gr2->SetMarkerStyle(5);
@@ -1049,7 +1056,7 @@ FuzzyTools::EventDisplay(vecPseudoJet particles,
     gr4->SetMarkerColor(6);
     gr4->Draw("psame");
 
-    std::cout << "here4 ? " << std::endl;
+    // std::cout << "here4 ? " << std::endl;
 
     for (unsigned int i=0; i<mGMMjetsparams.size(); i++){
         double a = mGMMjetsparams[i](0,0);
@@ -1059,13 +1066,13 @@ FuzzyTools::EventDisplay(vecPseudoJet particles,
         double lambda2 = 0.5*(a+b)-0.5*sqrt((a-b)*(a-b)+4.*c*c);
         double theta = 0.;
         if (c>0) theta=atan((lambda1-a)/c);
-        std::cout << "yo " << i << " " << sqrt(lambda1) << " " << sqrt(lambda2) << " " << theta << std::endl;
+        // std::cout << "yo " << i << " " << sqrt(lambda1) << " " << sqrt(lambda2) << " " << theta << std::endl;
         TEllipse *el4 = new TEllipse(x4[i],y4[i],sqrt(lambda1),sqrt(lambda2),0,360,theta*180/TMath::Pi());
         el4->SetFillStyle(0);
         el4->Draw("same");
     }
 
-    std::cout << "here5 ? " << std::endl;
+    // std::cout << "here5 ? " << std::endl;
 
     //myText(0.2,0.9,kBlack,"#scale[0.9]{#sqrt{s} = 8 TeV PYTHIA Z' #rightarrow t#bar{t}, m_{Z'}=1.5 TeV}");
 
