@@ -159,7 +159,7 @@ FuzzyTools::doTruncGaus(double x1, double x2, double mu1, double mu2,
     if (dist > R*R) {
         return 0;
     }
-    double scale = (1-exp(-dist/2));
+    double scale = (1.0-exp(-R*R/2.0));
     return doGaus(x1, x2, mu1, mu2, sigma) / scale;
 }
 
@@ -340,9 +340,6 @@ FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet particles,
                                 vector<double>* mTGMMweights) {
     vecPseudoJet outjets;
 
-    //For now, we fix the sigma at 1.
-    //Means:
-
     double totalParticlePt = 0;
     unsigned int particleCount = Weights.size();
     for (unsigned int particleIter = 0; particleIter < particleCount; particleIter++) {
@@ -420,8 +417,9 @@ FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet particles,
             sigmaupdate(0,1)=0.;
             sigmaupdate(1,0)=0.;
         }
-
-        mTGMMjetsparams->at(clusterIter)=sigmaupdate;
+        if (learnShape) {
+            mTGMMjetsparams->at(clusterIter) = sigmaupdate;
+        }
 
     }
 
@@ -534,7 +532,7 @@ FuzzyTools::ClustersForRemovalGaussian(vecPseudoJet& mGMMjets,
         if (removalIndices.count(j)) continue; // skip flagged indices
         for (unsigned int k=j+1; k<mGMMjets.size(); k++){
             if (mGMMjets[j].delta_R(mGMMjets[k]) < mergeDist){
-                if(mGMMweights[k] < mGMMweights[j]) {
+                if(mGMMweights[k] <= mGMMweights[j]) {
                     removalIndices.insert(k);
                 } else {
                     removalIndices.insert(j);
@@ -588,7 +586,6 @@ FuzzyTools::ClustersForRemovalUniform(vecPseudoJet& mUMMjets,
             removalIndices.insert(j);
         }
     }
-    // cout << removalIndices.size() << endl;
     return removalIndices;
 }
 
