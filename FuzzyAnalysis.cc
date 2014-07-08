@@ -38,51 +38,81 @@ namespace {
         jets = fastjet::sorted_by_pt(csLargeR_ca.inclusive_jets(size));
     }
 
+    void FindLeadingJet(vecPseudoJet& particles,
+                        vecPseudoJet& jets,
+                        vector<vector<double> >& particleWeights,
+                        FuzzyTools *tool,
+                        int& index,
+                        double& pT) {
+        pT = -1;
+        index = -1;
+        int clusterCount = particleWeights[0].size();
+        for (unsigned int i=0; i < jets.size(); i++) {
+            double holdpT = tool->MLpT(particles, particleWeights, i,
+                                       clusterCount, 0);
+            if (holdpT > pT) {
+                pT = holdpT;
+                index = i;
+            }
+        }
+    }
+
     void DoMUMMJetFinding(vecPseudoJet& particles,
                           bool learnWeights,
                           double size,
+                          int& leadIndex,
+                          double& leadpT,
                           FuzzyTools *tool,
                           vecPseudoJet& jets,
                           vector<vector<double> >& particleWeights,
                           vector<double>& jetWeights) {
         vecPseudoJet parts = particles;
+        tool->SetKernelType(FuzzyTools::UNIFORM);
         tool->SetSeeds(parts);
         tool->SetLearnWeights(learnWeights);
         tool->SetR(size);
         jets = tool->ClusterFuzzyUniform(parts,
                                          &particleWeights,
                                          &jetWeights);
+        FindLeadingJet(particles, jets, particleWeights, tool, leadIndex, leadpT);
     }
 
     void DoMTGMMJetFinding(vecPseudoJet& particles,
                            bool learnWeights,
                            bool learnShape,
                            bool size,
+                           int& leadIndex,
+                           double& leadpT,
                            FuzzyTools *tool,
                            vecPseudoJet& jets,
                            vector<vector<double> >& particleWeights,
                            vector<TMatrix>& parameters,
                            vector<double>& jetWeights) {
         vecPseudoJet parts = particles;
+        tool->SetKernelType(FuzzyTools::TRUNCGAUSSIAN);
         tool->SetSeeds(parts);
         tool->SetLearnWeights(learnWeights);
         tool->SetLearnShape(learnShape);
         tool->SetR(size);
-        jets = tool->ClusterFuzzyGaussian(parts,
+        jets = tool->ClusterFuzzyTruncGaus(parts,
                                           &particleWeights,
                                           &parameters,
                                           &jetWeights);
+        FindLeadingJet(particles, jets, particleWeights, tool, leadIndex, leadpT);
     }
 
     void DoMGMMJetFinding(vecPseudoJet& particles,
                           bool learnWeights,
                           bool learnShape,
+                          int& leadIndex,
+                          double& leadpT,
                           FuzzyTools *tool,
                           vecPseudoJet& jets,
                           vector<vector<double> >& particleWeights,
                           vector<TMatrix>& parameters,
                           vector<double>& jetWeights) {
         vecPseudoJet parts = particles;
+        tool->SetKernelType(FuzzyTools::GAUSSIAN);
         tool->SetSeeds(parts);
         tool->SetLearnWeights(learnWeights);
         tool->SetLearnShape(learnShape);
@@ -90,6 +120,7 @@ namespace {
                                           &particleWeights,
                                           &parameters,
                                           &jetWeights);
+        FindLeadingJet(particles, jets, particleWeights, tool, leadIndex, leadpT);
     }
 }
 
@@ -104,7 +135,7 @@ FuzzyAnalysis::FuzzyAnalysis(){
     tool = new FuzzyTools();
 
     tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
-    tool->SetKernelType(FuzzyTools::GAUSSIAN);
+
 
     // jet def
     m_jet_def                = new fastjet::JetDefinition(fastjet::antikt_algorithm, 0.4);
@@ -207,7 +238,12 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     vector<TMatrix> mGMMjetsparams;
     vector<double> mGMMweights;
     vector<fastjet::PseudoJet> mGMMjets;
-    DoMGMMJetFinding(particlesForJets, false, false, tool, mGMMjets, Weights, mGMMjetsparams, mGMMweights);
+    int leadmGMMindex;
+    double maxpTmGMM;
+    DoMGMMJetFinding(particlesForJets, false, false,
+                     leadmGMMindex, maxpTmGMM,
+                     tool, mGMMjets, Weights,
+                     mGMMjetsparams, mGMMweights);
 
 
     int learnedClusterCount = Weights[0].size();
@@ -216,41 +252,53 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
         return;
     }
 
-    int leadmGMM=-1;
-    double maxpt = -1;
-    assert(particlesForJets.size() == Weights.size());
-    for (unsigned int i= 0; i<mGMMjets.size(); i++){
-        double holdpt = tool->MLpT(particlesForJets,Weights,i,Weights[0].size(),0);
-        if (holdpt>maxpt){
-            maxpt = holdpt;
-            leadmGMM = i;
-        }
-    }
+    // Fuzzy Jets: mUMM ---------------------
+    vector<vector<double> > mUMMparticleWeights;
+    vector<double> mUMMweights;
+    vecPseudoJet mUMMjets;
+
+    int leadmUMMindex;
+    double maxpTmUMM;
+    double size = 1.0;
+    DoMUMMJetFinding(particlesForJets, false, size,
+                     leadmUMMindex, maxpTmUMM, tool, mUMMjets,
+                     mUMMparticleWeights, mUMMweights);
+
+    // Fuzzy Jets: mTGMM --------------------
+    vector<vector<double> > mTGMMparticleWeights;
+    vector<double> mTGMMweights;
+    vecPseudoJet mTGMMjets;
+    vector<TMatrix> mTGMMjetsparams;
+    int leadmTGMMindex;
+    double maxpTmTGMM;
+    DoMTGMMJetFinding(particlesForJets, false, false, size,
+                      leadmTGMMindex, maxpTmTGMM, tool, mTGMMjets,
+                      mTGMMparticleWeights, mTGMMjetsparams, mTGMMweights);
 
 
     std::cout << mGMMjets.size() << " " << myJetsLargeR_ca.size() << " " << Weights.size() << std::endl;
-    tool->EventDisplay(particlesForJets,myJetsLargeR_ca,tops,mGMMjets,Weights,leadmGMM, mGMMjetsparams,TString::Format("%i",ievt));
+    tool->EventDisplay(particlesForJets,myJetsLargeR_ca,tops,mGMMjets,Weights,leadmGMMindex, mGMMjetsparams,TString::Format("%i",ievt));
     tool->NewEventDisplay(particlesForJets,
                           myJetsLargeR_ca,tops,
                           mGMMjets,
                           Weights,
-                          leadmGMM,
+                          leadmGMMindex,
                           mGMMjetsparams,
                           mGMMweights,
                           TString::Format("%i",ievt));
     //tool->Qjetmass(parts, Weights, leadmGMM, TString::Format("%i",ievt));
 
-    fTmGMM_m = tool->MLpT(particlesForJets,Weights,leadmGMM,Weights[0].size(),1);
-    fTmGMM_pt = tool->MLpT(particlesForJets,Weights,leadmGMM,Weights[0].size(),0);
+    fTmGMM_m = tool->MLpT(particlesForJets,Weights,leadmGMMindex,Weights[0].size(),1);
+    fTmGMM_pt = tool->MLpT(particlesForJets,Weights,leadmGMMindex,Weights[0].size(),0);
     //std::cout << "mGMM " << tool->MLpT(particlesForJets,Weights,leadmGMM,newk,0) << " " << tool->MLpT(particlesForJets,Weights,leadmGMM,newk,1) << std::endl;
     int mytop=0;
     if (tops[1].pt()> tops[0].pt()){
         mytop=1;
     }
     fTtoppt = tops[0].pt();
-    fTdeltatop = tops[0].delta_R(mGMMjets[leadmGMM]);
-    if (tops[1].delta_R(mGMMjets[leadmGMM]) < fTdeltatop){
-        fTdeltatop = tops[1].delta_R(mGMMjets[leadmGMM]);
+    fTdeltatop = tops[0].delta_R(mGMMjets[leadmGMMindex]);
+    if (tops[1].delta_R(mGMMjets[leadmGMMindex]) < fTdeltatop){
+        fTdeltatop = tops[1].delta_R(mGMMjets[leadmGMMindex]);
         fTtoppt = tops[1].pt();
     }
 
