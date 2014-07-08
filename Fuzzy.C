@@ -50,6 +50,7 @@ int main(int argc, char* argv[]){
     int fDebug  = 0;
     string outName = "FuzzyJets.root";
     string pythiaConfigName = "configs/default.pythia";
+    string directory = "results/tmp/";
 
     po::options_description desc("Allowed options");
     desc.add_options()
@@ -57,7 +58,8 @@ int main(int argc, char* argv[]){
         ("NEvents", po::value<int>(&nEvents)->default_value(1000) ,    "Number of Events ")
         ("Debug",   po::value<int>(&fDebug) ->default_value(0) ,     "Debug flag")
         ("OutFile", po::value<string>(&outName)->default_value("test.root"), "output file name")
-        ("PythiaConfig", po::value<string>(&pythiaConfigName)->default_value("configs/default.pythia"), "Pythia configuration file location");
+        ("PythiaConfig", po::value<string>(&pythiaConfigName)->default_value("configs/default.pythia"), "Pythia configuration file location")
+        ("Directory", po::value<string>(&directory)->default_value("results/tmp/"), "Directory in which to place results (.root files etc.)");
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
@@ -66,10 +68,6 @@ int main(int argc, char* argv[]){
         cout << desc << "\n";
         return 1;
     }
-
-
-
-    //------
 
     // Configure and initialize pythia
     Pythia8::Pythia* pythia8 = new Pythia8::Pythia();
@@ -104,6 +102,7 @@ int main(int argc, char* argv[]){
     // FuzzyAnalysis
     FuzzyAnalysis * analysis = new FuzzyAnalysis();
     analysis->SetOutName(outName);
+    analysis->SetPrefix(directory);
     analysis->Begin();
     analysis->Debug(fDebug);
 

@@ -33,10 +33,13 @@ FuzzyAnalysis::FuzzyAnalysis(){
     if(fDebug) cout << "FuzzyAnalysis::FuzzyAnalysis Start " << endl;
     ftest = 0;
     fOutName = "test.root";
+    directoryPrefix = "results/";
+
     tool = new FuzzyTools();
 
     tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
     tool->SetKernelType(FuzzyTools::GAUSSIAN);
+
     // jet def
     m_jet_def                = new fastjet::JetDefinition(fastjet::antikt_algorithm, 0.4);
     m_jet_def_largeR_antikt  = new fastjet::JetDefinition(fastjet::antikt_algorithm, 1.0);
@@ -56,12 +59,14 @@ FuzzyAnalysis::~FuzzyAnalysis(){
 // Begin method
 void FuzzyAnalysis::Begin(){
     // Declare TTree
-    tF = new TFile(fOutName.c_str(), "RECREATE");
+    string fullName = directoryPrefix + fOutName;
+    tF = new TFile(fullName.c_str(), "RECREATE");
     tT = new TTree("EventTree", "Event Tree for Fuzzy");
 
     DeclareBranches();
     ResetBranches();
 
+    tool->SetPrefix(directoryPrefix);
 
     return;
 }

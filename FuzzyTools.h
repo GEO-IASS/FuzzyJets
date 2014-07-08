@@ -47,6 +47,8 @@ class FuzzyTools {
     double R;
     int maxiters;
 
+    string directoryPrefix;
+
     bool learnWeights;
     bool learnShape;
 
@@ -93,6 +95,10 @@ class FuzzyTools {
 
     void SetMinimumSigma(double s) {
         minSigma = s;
+    }
+
+    void SetPrefix(string p) {
+        directoryPrefix = p;
     }
 
     vector<double> CentralMoments(vecPseudoJet particles,

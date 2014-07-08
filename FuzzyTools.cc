@@ -62,6 +62,8 @@ FuzzyTools::FuzzyTools(){
     mergeDist = 0.01;
     minWeight = 0.0001;
     minSigma = 0.01;
+
+    directoryPrefix = "";
 }
 
 vecPseudoJet
@@ -881,7 +883,7 @@ FuzzyTools::NewEventDisplay(vecPseudoJet particles,
     canv.Update();
 
 
-    canv.Print("NEWEvent"+out+".root");
+    canv.Print(directoryPrefix + "NEWEvent"+out+".root");
 }
 
 void
@@ -1017,7 +1019,7 @@ FuzzyTools::EventDisplay(vecPseudoJet particles,
     leggaa->SetBorderSize(0);
     leggaa->Draw();
 
-    c->Print("Event"+out+".root");
+    c->Print(directoryPrefix + "Event"+out+".root");
 }
 
 void
@@ -1054,7 +1056,7 @@ FuzzyTools::Qjetmass(vecPseudoJet particles, vector<vector<double> > Weights, in
     qjetmass->GetYaxis()->SetTitleOffset(1.4);
     qjetmass->Draw();
     //myText(0.2,0.9,kBlack,"#scale[0.9]{#sqrt{s} = 8 TeV PYTHIA Z' #rightarrow t#bar{t}, m_{Z'}=1.5 TeV}");
-    c->Print("Qjetmass"+out+".root");
+    c->Print(directoryPrefix + "Qjetmass"+out+".root");
 
 }
 

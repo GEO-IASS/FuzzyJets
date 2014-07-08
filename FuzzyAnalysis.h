@@ -26,6 +26,7 @@ class FuzzyAnalysis{
     int  ftest;
     int  fDebug;
     string fOutName;
+    string directoryPrefix;
 
     TFile *tF;
     TTree *tT;
@@ -58,6 +59,9 @@ class FuzzyAnalysis{
     }
     void SetOutName(string outname){
         fOutName = outname;
+    }
+    void SetPrefix(string prefix) {
+        directoryPrefix = prefix;
     }
 
 };
