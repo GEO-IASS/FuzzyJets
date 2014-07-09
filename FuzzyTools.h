@@ -18,6 +18,12 @@ using namespace std;
 
 typedef std::vector<fastjet::PseudoJet> vecPseudoJet;
 
+
+// declare helper functions to CentralMoments so they are accessible
+// to any client code
+double totalMass(vecPseudoJet particles, vector<unsigned int> indices);
+double totalpT(vecPseudoJet particles, vector<unsigned int> indices);
+
 /* TODO:
  * There is no need to pass around constants giving cluster size etc,
  * as they can be extracted locally out of the C++ vector, which gives

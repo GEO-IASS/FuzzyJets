@@ -41,14 +41,32 @@ class FuzzyAnalysis{
     float fTmUMM_m;
     float fTmUMM_pt;
     float fTdeltatop_mUMM;
+    float fTmUMM_m_mean;
+    float fTmUMM_m_var;
+    float fTmUMM_m_skew;
+    float fTmUMM_pt_mean;
+    float fTmUMM_pt_var;
+    float fTmUMM_pt_skew;
 
     float fTmGMM_m;
     float fTmGMM_pt;
     float fTdeltatop_mGMM;
+    float fTmGMM_m_mean;
+    float fTmGMM_m_var;
+    float fTmGMM_m_skew;
+    float fTmGMM_pt_mean;
+    float fTmGMM_pt_var;
+    float fTmGMM_pt_skew;
 
     float fTmTGMM_m;
     float fTmTGMM_pt;
     float fTdeltatop_mTGMM;
+    float fTmTGMM_m_mean;
+    float fTmTGMM_m_var;
+    float fTmTGMM_m_skew;
+    float fTmTGMM_pt_mean;
+    float fTmTGMM_pt_var;
+    float fTmTGMM_pt_skew;
 
     fastjet::JetDefinition     *m_jet_def;
     fastjet::JetDefinition     *m_jet_def_largeR_antikt;

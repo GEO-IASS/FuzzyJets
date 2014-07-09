@@ -1125,7 +1125,21 @@ FuzzyTools::Qjetmass(vecPseudoJet particles, vector<vector<double> > Weights, in
 
 }
 
+double totalMass(vecPseudoJet particles, vector<unsigned int> indices) {
+    double mass = 0;
+    for (unsigned int i = 0; i < indices.size(); i++) {
+        mass += particles[indices[i]].m();
+    }
+    return mass;
+}
 
+double totalpT(vecPseudoJet particles, vector<unsigned int> indices) {
+    double pT = 0;
+    for (unsigned int i = 0; i < indices.size(); i++) {
+        pT += particles[indices[i]].pt();
+    }
+    return pT;
+}
 // returns the vector of central moments for the distribution
 // given by f(P) where P is the collection of particles,
 // f is a function operating on all the particles,
