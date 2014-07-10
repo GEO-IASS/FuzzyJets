@@ -1125,6 +1125,18 @@ FuzzyTools::Qjetmass(vecPseudoJet particles, vector<vector<double> > Weights, in
 
 }
 
+void JetContributionDisplay(__attribute__((unused)) vecPseudoJet particles,
+                            __attribute__((unused)) vector<vector<double> > Weights,
+                            __attribute__((unused)) int which,
+                            __attribute__((unused)) int mytype,
+                            __attribute__((unused)) TString out) {
+    double mineta = -5;
+    double maxeta = 5;
+    TCanvas canv("", "", 1200, 600);
+    TH2F hist("hist", "==========REPLACEMENTTITLE1==========", 30, mineta, maxeta, 28, 0, 7);
+
+}
+
 double totalMass(vecPseudoJet particles, vector<unsigned int> indices) {
     double mass = 0;
     for (unsigned int i = 0; i < indices.size(); i++) {

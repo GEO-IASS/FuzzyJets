@@ -222,6 +222,12 @@ class FuzzyTools {
                                 vector<double> mUMMweights,
                                 TString out);
 
+    void JetContributionDisplay(vecPseudoJet particles,
+                                vector<vector<double> > Weights,
+                                int which,
+                                int mtype,
+                                TString out);
+
     double MLpT(vecPseudoJet particles,
                 vector<vector<double> > Weights,
                 int jetindex,
