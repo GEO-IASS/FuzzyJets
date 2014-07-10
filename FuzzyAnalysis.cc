@@ -70,14 +70,16 @@ namespace {
         tool->SetKernelType(FuzzyTools::UNIFORM);
         tool->SetSeeds(parts);
         tool->SetLearnWeights(learnWeights);
+        tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
         tool->SetR(size);
-        jets = tool->ClusterFuzzyUniform(parts,
+        jets = tool->ClusterFuzzyUniform(particles,
                                          &particleWeights,
                                          &jetWeights);
         FindLeadingJet(particles, jets, particleWeights, tool, leadIndex, leadpT);
     }
 
     void DoMTGMMJetFinding(vecPseudoJet& particles,
+                           vecPseudoJet& seeds,
                            bool learnWeights,
                            bool learnShape,
                            bool size,
@@ -88,13 +90,17 @@ namespace {
                            vector<vector<double> >& particleWeights,
                            vector<TMatrix>& parameters,
                            vector<double>& jetWeights) {
-        vecPseudoJet parts = particles;
         tool->SetKernelType(FuzzyTools::TRUNCGAUSSIAN);
-        tool->SetSeeds(parts);
+        tool->SetSeeds(seeds);
         tool->SetLearnWeights(learnWeights);
+        if(learnShape) {
+            tool->SetClusteringMode(FuzzyTools::FIXED);
+        } else {
+            tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
+        }
         tool->SetLearnShape(learnShape);
         tool->SetR(size);
-        jets = tool->ClusterFuzzyTruncGaus(parts,
+        jets = tool->ClusterFuzzyTruncGaus(particles,
                                            &particleWeights,
                                            &parameters,
                                            &jetWeights);
@@ -102,6 +108,7 @@ namespace {
     }
 
     void DoMGMMJetFinding(vecPseudoJet& particles,
+                          vecPseudoJet& seeds,
                           bool learnWeights,
                           bool learnShape,
                           int& leadIndex,
@@ -111,12 +118,16 @@ namespace {
                           vector<vector<double> >& particleWeights,
                           vector<TMatrix>& parameters,
                           vector<double>& jetWeights) {
-        vecPseudoJet parts = particles;
         tool->SetKernelType(FuzzyTools::GAUSSIAN);
-        tool->SetSeeds(parts);
+        tool->SetSeeds(seeds);
         tool->SetLearnWeights(learnWeights);
+        if(learnShape) {
+            tool->SetClusteringMode(FuzzyTools::FIXED);
+        } else {
+            tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
+        }
         tool->SetLearnShape(learnShape);
-        jets = tool->ClusterFuzzyGaussian(parts,
+        jets = tool->ClusterFuzzyGaussian(particles,
                                           &particleWeights,
                                           &parameters,
                                           &jetWeights);
@@ -236,7 +247,49 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     fTCA_pt = myJetsLargeR_ca[0].pt();
 
     // Various mixture models ---------------
+    // ======================================
     tool->SetMergeDistance(0.05);
+    double size = 1.0;
+    bool learnWeights = false;
+
+    // which jets to run
+    bool mUMMon = true;
+    bool mGMMon = true;
+    __attribute__((unused)) bool mGMMson = true;
+    bool mTGMMon = true;
+    __attribute__((unused)) bool mTGMMson = true;
+
+
+    // Fuzzy Jets: mGMMs --------------------
+    vector<vector<double> > mGMMsparticleWeights;
+    vector<TMatrix> mGMMsjetsparams;
+    vector<double> mGMMsweights;
+    vecPseudoJet mGMMsjets;
+    int leadmGMMsindex;
+    double maxpTmGMMs;
+    if(mGMMson) {
+        DoMGMMJetFinding(particlesForJets, myJetsLargeR_ca,
+                         learnWeights, true,
+                         leadmGMMsindex, maxpTmGMMs,
+                         tool, mGMMsjets, mGMMsparticleWeights,
+                         mGMMsjetsparams, mGMMsweights);
+    }
+
+    // Fuzzy Jets: mTGMMs -------------------
+    vector<vector<double > > mTGMMsparticleWeights;
+    vector<TMatrix> mTGMMsjetsparams;
+    vector<double> mTGMMsweights;
+    vecPseudoJet mTGMMsjets;
+    int leadmTGMMsindex;
+    double maxpTmTGMMs;
+    if(mTGMMson) {
+        DoMTGMMJetFinding(particlesForJets, myJetsLargeR_ca,
+                          learnWeights, true,
+                          size, leadmTGMMsindex, maxpTmTGMMs,
+                          tool, mTGMMsjets, mTGMMsparticleWeights,
+                          mTGMMsjetsparams, mTGMMsweights);
+    }
+
     // Fuzzy Jets: mGMM ---------------------
     vector<vector<double> > Weights;
     vector<TMatrix> mGMMjetsparams;
@@ -244,18 +297,12 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     vector<fastjet::PseudoJet> mGMMjets;
     int leadmGMMindex;
     double maxpTmGMM;
-    bool learnWeights = false;
-    bool learnShape = false;
-    DoMGMMJetFinding(particlesForJets, learnWeights, learnShape,
-                     leadmGMMindex, maxpTmGMM,
-                     tool, mGMMjets, Weights,
-                     mGMMjetsparams, mGMMweights);
-
-
-    int learnedClusterCount = Weights[0].size();
-    if (learnedClusterCount == 0) {
-        cout << "At event " << ievt << " returned no clusters. Continuing." << endl;
-        return;
+    if(mGMMon) {
+        DoMGMMJetFinding(particlesForJets, particlesForJets,
+                         learnWeights, false,
+                         leadmGMMindex, maxpTmGMM,
+                         tool, mGMMjets, Weights,
+                         mGMMjetsparams, mGMMweights);
     }
 
     // Fuzzy Jets: mUMM ---------------------
@@ -265,10 +312,11 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
 
     int leadmUMMindex;
     double maxpTmUMM;
-    double size = 1.0;
-    DoMUMMJetFinding(particlesForJets, learnWeights, size,
-                     leadmUMMindex, maxpTmUMM, tool, mUMMjets,
-                     mUMMparticleWeights, mUMMweights);
+    if(mUMMon) {
+        DoMUMMJetFinding(particlesForJets, learnWeights, size,
+                         leadmUMMindex, maxpTmUMM, tool, mUMMjets,
+                         mUMMparticleWeights, mUMMweights);
+    }
 
     // Fuzzy Jets: mTGMM --------------------
     vector<vector<double> > mTGMMparticleWeights;
@@ -277,15 +325,17 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     vector<TMatrix> mTGMMjetsparams;
     int leadmTGMMindex;
     double maxpTmTGMM;
-    DoMTGMMJetFinding(particlesForJets, learnWeights, learnShape, size,
-                      leadmTGMMindex, maxpTmTGMM, tool, mTGMMjets,
-                      mTGMMparticleWeights, mTGMMjetsparams, mTGMMweights);
-
+    if(mTGMMon) {
+        DoMTGMMJetFinding(particlesForJets, particlesForJets,
+                          learnWeights, false, size,
+                          leadmTGMMindex, maxpTmTGMM, tool, mTGMMjets,
+                          mTGMMparticleWeights, mTGMMjetsparams, mTGMMweights);
+    }
 
     // Having found jets, now do a bit of data logging and analysis
     bool doEventDisplays = true;
     if (doEventDisplays) {
-        if(ievt < 10) {
+        if(ievt < 10 && mGMMon) {
             tool->EventDisplay(particlesForJets,
                                myJetsLargeR_ca,tops,
                                mGMMjets,
@@ -294,46 +344,83 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
                                mGMMjetsparams,
                                TString::Format("%i",ievt));
         }
-        tool->NewEventDisplay(particlesForJets,
-                              myJetsLargeR_ca,tops,
-                              mGMMjets,
-                              Weights,
-                              leadmGMMindex,
-                              mGMMjetsparams,
-                              mGMMweights,
-                              TString::Format("_mGMM_%i",ievt));
-
-        tool->NewEventDisplay(particlesForJets,
-                              myJetsLargeR_ca,tops,
-                              mTGMMjets,
-                              mTGMMparticleWeights,
-                              leadmTGMMindex,
-                              mTGMMjetsparams,
-                              mTGMMweights,
-                              TString::Format("_mTGMM_%i",ievt));
-
-        tool->NewEventDisplayUniform(particlesForJets,
-                                     myJetsLargeR_ca,tops,
-                                     mUMMjets,
-                                     mUMMparticleWeights,
-                                     leadmUMMindex,
-                                     mUMMweights,
-                                     TString::Format("_mUMM_%i",ievt));
+        if(mGMMon) {
+            tool->NewEventDisplay(particlesForJets,
+                                  myJetsLargeR_ca,tops,
+                                  mGMMjets,
+                                  Weights,
+                                  leadmGMMindex,
+                                  mGMMjetsparams,
+                                  mGMMweights,
+                                  TString::Format("_mGMM_%i",ievt));
+        }
+        if(mTGMMon) {
+            tool->NewEventDisplay(particlesForJets,
+                                  myJetsLargeR_ca,tops,
+                                  mTGMMjets,
+                                  mTGMMparticleWeights,
+                                  leadmTGMMindex,
+                                  mTGMMjetsparams,
+                                  mTGMMweights,
+                                  TString::Format("_mTGMM_%i",ievt));
+        }
+        if(mUMMon) {
+            tool->NewEventDisplayUniform(particlesForJets,
+                                         myJetsLargeR_ca,tops,
+                                         mUMMjets,
+                                         mUMMparticleWeights,
+                                         leadmUMMindex,
+                                         mUMMweights,
+                                         TString::Format("_mUMM_%i",ievt));
+        }
+        if(mGMMson) {
+            tool->NewEventDisplay(particlesForJets,
+                                  myJetsLargeR_ca, tops,
+                                  mGMMsjets,
+                                  mGMMsparticleWeights,
+                                  leadmGMMsindex,
+                                  mGMMsjetsparams,
+                                  mGMMsweights,
+                                  TString::Format("_mGMMs_%i", ievt));
+        }
+        if(mTGMMson) {
+            tool->NewEventDisplay(particlesForJets,
+                                  myJetsLargeR_ca,tops,
+                                  mTGMMsjets,
+                                  mTGMMsparticleWeights,
+                                  leadmTGMMsindex,
+                                  mTGMMsjetsparams,
+                                  mTGMMsweights,
+                                  TString::Format("_mTGMMs_%i", ievt));
+        }
     }
 
-
-    fTmGMM_m = tool->MLpT(particlesForJets,Weights,
-                          leadmGMMindex,Weights[0].size(),1);
-    fTmGMM_pt = tool->MLpT(particlesForJets,Weights,
-                           leadmGMMindex,Weights[0].size(),0);
-
-    fTmUMM_m = tool->MLpT(particlesForJets, mUMMparticleWeights,
-                          leadmUMMindex, mUMMparticleWeights[0].size(), 1);
-    fTmUMM_pt = maxpTmUMM;
-
-    fTmTGMM_m = tool->MLpT(particlesForJets, mTGMMparticleWeights,
-                           leadmTGMMindex, mTGMMparticleWeights[0].size(), 1);
-    fTmTGMM_pt = maxpTmTGMM;
+    if(mGMMon) {
+        fTmGMM_m = tool->MLpT(particlesForJets,Weights,
+                              leadmGMMindex,Weights[0].size(),1);
+        fTmGMM_pt = tool->MLpT(particlesForJets,Weights,
+                               leadmGMMindex,Weights[0].size(),0);
+    }
+    if(mUMMon) {
+        fTmUMM_m = tool->MLpT(particlesForJets, mUMMparticleWeights,
+                              leadmUMMindex, mUMMparticleWeights[0].size(), 1);
+        fTmUMM_pt = maxpTmUMM;
+    }
+    if(mTGMMon) {
+        fTmTGMM_m = tool->MLpT(particlesForJets, mTGMMparticleWeights,
+                               leadmTGMMindex, mTGMMparticleWeights[0].size(), 1);
+        fTmTGMM_pt = maxpTmTGMM;
+    }
+    if(mTGMMson) {
+        fTmTGMMs_m = tool->MLpT(particlesForJets, mTGMMsparticleWeights,
+                                leadmTGMMsindex, mTGMMsparticleWeights[0].size(), 1);
+        fTmTGMMs_pt = maxpTmTGMMs;
+    }
+    if(mGMMson) {
+        fTmGMMs_m = tool->MLpT(particlesForJets, mGMMsparticleWeights,
+                               leadmGMMsindex, mGMMsparticleWeights[0].size(), 1);
+        fTmGMMs_pt = maxpTmGMMs;
+    }
 
     int mytop=0;
     if (tops[1].pt()> tops[0].pt()){
@@ -341,77 +428,139 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     }
 
     fTtoppt = tops[0].pt();
-    fTdeltatop_mGMM = tops[0].delta_R(mGMMjets[leadmGMMindex]);
 
-    if (tops[1].delta_R(mGMMjets[leadmGMMindex]) < fTdeltatop_mGMM){
-        fTdeltatop_mGMM = tops[1].delta_R(mGMMjets[leadmGMMindex]);
-        fTtoppt = tops[1].pt();
+    if(mGMMon) {
+        fTdeltatop_mGMM = tops[0].delta_R(mGMMjets[leadmGMMindex]);
+
+        if (tops[1].delta_R(mGMMjets[leadmGMMindex]) < fTdeltatop_mGMM){
+            fTdeltatop_mGMM = tops[1].delta_R(mGMMjets[leadmGMMindex]);
+            fTtoppt = tops[1].pt();
+        }
     }
-
-    fTdeltatop_mUMM = tops[0].delta_R(mUMMjets[leadmUMMindex]);
-    if (tops[1].delta_R(mUMMjets[leadmUMMindex]) <  fTdeltatop_mUMM) {
-        fTdeltatop_mUMM = tops[1].delta_R(mUMMjets[leadmUMMindex]);
+    if(mUMMon) {
+        fTdeltatop_mUMM = tops[0].delta_R(mUMMjets[leadmUMMindex]);
+        if (tops[1].delta_R(mUMMjets[leadmUMMindex]) <  fTdeltatop_mUMM) {
+            fTdeltatop_mUMM = tops[1].delta_R(mUMMjets[leadmUMMindex]);
+        }
     }
-
-    fTdeltatop_mTGMM = tops[0].delta_R(mTGMMjets[leadmTGMMindex]);
-    if (tops[1].delta_R(mTGMMjets[leadmTGMMindex]) < fTdeltatop_mTGMM) {
-        fTdeltatop_mTGMM = tops[1].delta_R(mTGMMjets[leadmTGMMindex]);
+    if(mTGMMon) {
+        fTdeltatop_mTGMM = tops[0].delta_R(mTGMMjets[leadmTGMMindex]);
+        if (tops[1].delta_R(mTGMMjets[leadmTGMMindex]) < fTdeltatop_mTGMM) {
+            fTdeltatop_mTGMM = tops[1].delta_R(mTGMMjets[leadmTGMMindex]);
+        }
+    }
+    if(mTGMMson) {
+        fTdeltatop_mTGMMs = tops[0].delta_R(mTGMMsjets[leadmTGMMsindex]);
+        if (tops[1].delta_R(mTGMMsjets[leadmTGMMsindex]) < fTdeltatop_mTGMMs) {
+            fTdeltatop_mTGMMs = tops[1].delta_R(mTGMMsjets[leadmTGMMsindex]);
+        }
+    }
+    if(mGMMson) {
+        fTdeltatop_mGMMs = tops[0].delta_R(mGMMsjets[leadmGMMsindex]);
+        if (tops[1].delta_R(mGMMsjets[leadmGMMsindex]) < fTdeltatop_mGMMs) {
+            fTdeltatop_mGMMs = tops[1].delta_R(mGMMsjets[leadmGMMsindex]);
+        }
     }
 
     // Moments
     vector<double> moments_m;
     vector<double> moments_pt;
-    moments_m = tool->CentralMoments(particlesForJets, Weights,
-                                     leadmGMMindex, 3, &totalMass);
-
-    moments_pt = tool->CentralMoments(particlesForJets, Weights,
-                                      leadmGMMindex, 3, &totalpT);
-
     double sig;
-    fTmGMM_m_mean = moments_m[0];
-    fTmGMM_m_var  = moments_m[1];
-    sig = sqrt(fTmGMM_m_var);
-    fTmGMM_m_skew = moments_m[2];
-    fTmGMM_pt_mean = moments_pt[0];
-    fTmGMM_pt_var = moments_pt[1];
-    sig = sqrt(fTmGMM_m_var);
-    fTmGMM_pt_skew = moments_pt[2];
+    if(mGMMon) {
+        moments_m = tool->CentralMoments(particlesForJets, Weights,
+                                         leadmGMMindex, 3, &totalMass);
+
+        moments_pt = tool->CentralMoments(particlesForJets, Weights,
+                                          leadmGMMindex, 3, &totalpT);
+
+        fTmGMM_m_mean = moments_m[0];
+        fTmGMM_m_var  = moments_m[1];
+        sig = sqrt(fTmGMM_m_var);
+        fTmGMM_m_skew = moments_m[2];
+        fTmGMM_pt_mean = moments_pt[0];
+        fTmGMM_pt_var = moments_pt[1];
+        sig = sqrt(fTmGMM_m_var);
+        fTmGMM_pt_skew = moments_pt[2];
+    }
 
     moments_m.clear();
     moments_pt.clear();
 
-    moments_m = tool->CentralMoments(particlesForJets, mUMMparticleWeights,
-                                     leadmUMMindex, 3, &totalMass);
+    if(mUMMon) {
+        moments_m = tool->CentralMoments(particlesForJets, mUMMparticleWeights,
+                                         leadmUMMindex, 3, &totalMass);
 
-    moments_pt = tool->CentralMoments(particlesForJets, mUMMparticleWeights,
-                                      leadmUMMindex, 3, &totalpT);
+        moments_pt = tool->CentralMoments(particlesForJets, mUMMparticleWeights,
+                                          leadmUMMindex, 3, &totalpT);
 
-    fTmUMM_m_mean = moments_m[0];
-    fTmUMM_m_var  = moments_m[1];
-    sig = sqrt(fTmUMM_m_var);
-    fTmUMM_m_skew = moments_m[2];
-    fTmUMM_pt_mean = moments_pt[0];
-    fTmUMM_pt_var = moments_pt[1];
-    sig = sqrt(fTmUMM_m_var);
-    fTmUMM_pt_skew = moments_pt[2];
+        fTmUMM_m_mean = moments_m[0];
+        fTmUMM_m_var  = moments_m[1];
+        sig = sqrt(fTmUMM_m_var);
+        fTmUMM_m_skew = moments_m[2];
+        fTmUMM_pt_mean = moments_pt[0];
+        fTmUMM_pt_var = moments_pt[1];
+        sig = sqrt(fTmUMM_m_var);
+        fTmUMM_pt_skew = moments_pt[2];
+    }
+    moments_m.clear();
+    moments_pt.clear();
+
+    if(mTGMMon) {
+        moments_m = tool->CentralMoments(particlesForJets, mTGMMparticleWeights,
+                                         leadmTGMMindex, 3, &totalMass);
+
+        moments_pt = tool->CentralMoments(particlesForJets, mTGMMparticleWeights,
+                                          leadmTGMMindex, 3, &totalpT);
+
+        fTmTGMM_m_mean = moments_m[0];
+        fTmTGMM_m_var  = moments_m[1];
+        sig = sqrt(fTmTGMM_m_var);
+        fTmTGMM_m_skew = moments_m[2];
+        fTmTGMM_pt_mean = moments_pt[0];
+        fTmTGMM_pt_var = moments_pt[1];
+        sig = sqrt(fTmTGMM_m_var);
+        fTmTGMM_pt_skew = moments_pt[2];
+    }
 
     moments_m.clear();
     moments_pt.clear();
 
-    moments_m = tool->CentralMoments(particlesForJets, mTGMMparticleWeights,
-                                     leadmTGMMindex, 3, &totalMass);
+    if(mTGMMson) {
+        moments_m = tool->CentralMoments(particlesForJets, mTGMMsparticleWeights,
+                                         leadmTGMMsindex, 3, &totalMass);
 
-    moments_pt = tool->CentralMoments(particlesForJets, mTGMMparticleWeights,
-                                      leadmTGMMindex, 3, &totalpT);
+        moments_pt = tool->CentralMoments(particlesForJets, mTGMMsparticleWeights,
+                                          leadmTGMMsindex, 3, &totalpT);
 
-    fTmTGMM_m_mean = moments_m[0];
-    fTmTGMM_m_var  = moments_m[1];
-    sig = sqrt(fTmTGMM_m_var);
-    fTmTGMM_m_skew = moments_m[2];
-    fTmTGMM_pt_mean = moments_pt[0];
-    fTmTGMM_pt_var = moments_pt[1];
-    sig = sqrt(fTmTGMM_m_var);
-    fTmTGMM_pt_skew = moments_pt[2];
+        fTmTGMMs_m_mean = moments_m[0];
+        fTmTGMMs_m_var  = moments_m[1];
+        sig = sqrt(fTmTGMMs_m_var);
+        fTmTGMMs_m_skew = moments_m[2];
+        fTmTGMMs_pt_mean = moments_pt[0];
+        fTmTGMMs_pt_var = moments_pt[1];
+        sig = sqrt(fTmTGMMs_m_var);
+        fTmTGMMs_pt_skew = moments_pt[2];
+    }
+
+    moments_m.clear();
+    moments_pt.clear();
+
+    if(mGMMson) {
+        moments_m = tool->CentralMoments(particlesForJets, mGMMsparticleWeights,
+                                         leadmGMMsindex, 3, &totalMass);
+
+        moments_pt = tool->CentralMoments(particlesForJets, mGMMsparticleWeights,
+                                          leadmGMMsindex, 3, &totalpT);
+
+        fTmGMMs_m_mean = moments_m[0];
+        fTmGMMs_m_var  = moments_m[1];
+        sig = sqrt(fTmGMMs_m_var);
+        fTmGMMs_m_skew = moments_m[2];
+        fTmGMMs_pt_mean = moments_pt[0];
+        fTmGMMs_pt_var = moments_pt[1];
+        sig = sqrt(fTmGMMs_m_var);
+        fTmGMMs_pt_skew = moments_pt[2];
+    }
 
     moments_m.clear();
     moments_pt.clear();
