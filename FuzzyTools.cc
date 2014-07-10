@@ -906,8 +906,6 @@ FuzzyTools::NewEventDisplay(vecPseudoJet particles,
     }
     gPad->SetLogz();
     canv.Update();
-
-    //canv.Print(directoryPrefix + "NEWEvent"+out+".root");
 }
 
 void
@@ -1157,16 +1155,39 @@ FuzzyTools::Qjetmass(vecPseudoJet particles, vector<vector<double> > Weights, in
     qjetmass.Write();
 }
 
-void JetContributionDisplay(__attribute__((unused)) vecPseudoJet particles,
-                            __attribute__((unused)) vector<vector<double> > Weights,
-                            __attribute__((unused)) int which,
-                            __attribute__((unused)) int mytype,
-                            __attribute__((unused)) TString out) {
+void JetContributionDisplay(vecPseudoJet particles,
+                            vector<vector<double> > Weights,
+                            int which,
+                            int mtype,
+                            TString out) {
     double mineta = -5;
     double maxeta = 5;
-    TCanvas canv("", "", 1200, 600);
-    TH2F hist("hist", "", 30, mineta, maxeta, 28, 0, 7);
+    unsigned int k = Weights[0].size();
+    TH2F hist("JCH_hard" + out, "", 30, mineta, maxeta, 28, 0, 7);
+    for (unsigned int i = 0; i < particles.size(); i++) {
+        int midx = -1;
+        double mweight = -1;
+        for (unsigned int j = 0; j < k; j++) {
+            if (Weights[i][j] > mweight) {
+                mweight = Weights[i][j];
+                midx = j;
+            }
+        }
+        if (midx == which) {
+            double fillval = mtype == 1 ? particles[i].m() : particles[i].pt();
+            hist.Fill(particles[i].eta(), particles[i].phi(), fillval);
+        }
+    }
+    hist.Write();
 
+    TH2F hist2("JCH_soft" + out, "", 30, mineta, maxeta, 28, 0, 7);
+    for (unsigned int i=0; i < particles.size(); i++) {
+        double fillval = mtype == 1 ? particles[i].m() : particles[i].pt();
+        fillval *= Weights[i][which];
+        hist2.Fill(particles[i].eta(), particles[i].phi(), fillval);
+    }
+
+    hist2.Write();
 }
 
 double totalMass(vecPseudoJet particles, vector<unsigned int> indices) {
