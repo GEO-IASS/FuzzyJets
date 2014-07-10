@@ -15,6 +15,7 @@
 #include "FuzzyTools.h"
 #include "myFastJetBase.h"
 
+#include "TTree.h"
 #include "TRandom3.h"
 #include "TError.h"
 #include "TVector3.h"
@@ -831,8 +832,23 @@ FuzzyTools::NewEventDisplay(vecPseudoJet particles,
                             TString out) {
     double mineta = -5;
     double maxeta = 5;
-    TCanvas canv("", "", 1200, 600);
+    TCanvas canv("NEVC" + out, "", 1200, 600);
     TH2F hist("hist", "TEST", 30, mineta, maxeta, 28, 0, 7);
+    TTree aux("NEVT" + out, "");
+
+    double loceta;
+    double locphi;
+    double theta;
+    double xR;
+    double yR;
+    double w;
+
+    aux.Branch("loceta", &loceta, "loceta/F");
+    aux.Branch("locphi", &locphi, "locphi/F");
+    aux.Branch("theta", &theta, "theta/F");
+    aux.Branch("xR", &xR, "xR/F");
+    aux.Branch("yR", &yR, "yR/F");
+    aux.Branch("w", &w, "w/F");
 
     double eta, phi, pT;
     for (unsigned int i = 0; i < particles.size(); i++) {
@@ -851,17 +867,22 @@ FuzzyTools::NewEventDisplay(vecPseudoJet particles,
         double tempb  = 0.5*sqrt((vareta-varphi)*(vareta-varphi) + 4*covar*covar);
         double lambdaeta = tempa + tempb;
         double lambdaphi = tempa - tempb;
-        double theta = 0;
+        theta = 0;
         if(covar > 0) theta=atan((lambdaeta - vareta)/covar);
-        double loceta = mGMMjets[i].eta();
-        double locphi = mGMMjets[i].phi();
+        loceta = mGMMjets[i].eta();
+        locphi = mGMMjets[i].phi();
+        xR = sqrt(lambdaeta);
+        yR = sqrt(lambdaphi);
+        w = mGMMweights[i];
+        theta = theta * 180 / TMath::Pi();
+        aux.Fill();
         TEllipse currentEllipse(loceta, locphi,
-                                sqrt(lambdaeta), sqrt(lambdaphi),
-                                0, 360, theta*180/TMath::Pi());
+                                xR, yR,
+                                0, 360, theta);
         currentEllipse.SetFillStyle(0);
         if(learnWeights) {
             currentEllipse.SetLineWidth(2);
-            currentEllipse.SetLineWidth(mGMMweights[i]);
+            currentEllipse.SetLineWidth(w);
         } else {
             currentEllipse.SetLineWidth(2);
         }
@@ -886,8 +907,7 @@ FuzzyTools::NewEventDisplay(vecPseudoJet particles,
     gPad->SetLogz();
     canv.Update();
 
-
-    canv.Print(directoryPrefix + "NEWEvent"+out+".root");
+    //canv.Print(directoryPrefix + "NEWEvent"+out+".root");
 }
 
 void
@@ -901,8 +921,25 @@ FuzzyTools::NewEventDisplayUniform(vecPseudoJet particles,
                                    TString out) {
     double mineta = -5;
     double maxeta = 5;
-    TCanvas canv("", "", 1200, 600);
-    TH2F hist("hist", "TEST", 30, mineta, maxeta, 28, 0, 7);
+    TCanvas canv("NEVC" + out, "", 1200, 600);
+    TTree aux("NEVT" + out, "");
+
+    double loceta;
+    double locphi;
+    double theta;
+    double xR;
+    double yR;
+    __attribute__((unused)) double w;
+
+    aux.Branch("loceta", &loceta, "loceta/F");
+    aux.Branch("locphi", &locphi, "locphi/F");
+    aux.Branch("theta", &theta, "theta/F");
+    aux.Branch("xR", &xR, "xR/F");
+    aux.Branch("yR", &yR, "yR/F");
+    aux.Branch("w", &w, "w/F");
+
+
+    TH2F hist("NEVH" + out, "TEST", 30, mineta, maxeta, 28, 0, 7);
 
     double eta, phi, pT;
     for (unsigned int i = 0; i < particles.size(); i++) {
@@ -914,11 +951,16 @@ FuzzyTools::NewEventDisplayUniform(vecPseudoJet particles,
 
     vector<TEllipse> ellipses;
     for (unsigned int i=0; i < mUMMjets.size(); i++) {
-        double loceta = mUMMjets[i].eta();
-        double locphi = mUMMjets[i].phi();
+        loceta = mUMMjets[i].eta();
+        locphi = mUMMjets[i].phi();
+        xR = R;
+        yR = R;
+        w = mUMMweights[i];
+        theta = 0;
+        aux.Fill();
         TEllipse currentEllipse(loceta, locphi,
-                                R, R,
-                                0, 360, 0);
+                                xR, yR,
+                                0, 360, theta);
         currentEllipse.SetFillStyle(0);
         if(learnWeights) {
             currentEllipse.SetLineWidth(2);
@@ -930,6 +972,8 @@ FuzzyTools::NewEventDisplayUniform(vecPseudoJet particles,
             ellipses.push_back(currentEllipse);
     }
 
+    hist.Write();
+    aux.Write();
 
     canv.Divide(2, 1);
 
@@ -947,8 +991,7 @@ FuzzyTools::NewEventDisplayUniform(vecPseudoJet particles,
     gPad->SetLogz();
     canv.Update();
 
-
-    canv.Print(directoryPrefix + "NEWEventUniform"+out+".root");
+    //canv.Print(directoryPrefix + "NEWEventUniform"+out+".root");
 }
 
 void
@@ -968,7 +1011,7 @@ FuzzyTools::EventDisplay(vecPseudoJet particles,
     //gStyle->SetPadLeftMargin(0.15);
     //gStyle->SetPadTopMargin(0.15);
 
-    TCanvas *c = new TCanvas("","",500,500);
+    TCanvas *c = new TCanvas("EventDisplayOld" + out,"",500,500);
 
     __attribute__((unused)) double maxpt=-1;
 
@@ -1085,12 +1128,13 @@ FuzzyTools::EventDisplay(vecPseudoJet particles,
     leggaa->Draw();
 
     c->Print(directoryPrefix + "Event"+out+".root");
+    delete c;
 }
 
 void
 FuzzyTools::Qjetmass(vecPseudoJet particles, vector<vector<double> > Weights, int which, TString out){
 
-    TH1F* qjetmass = new TH1F("","",100,0,250);
+    TH1F qjetmass("qjetmass" + out,"",100,0,250);
     TRandom3 rand = TRandom3(1);
 
     for (int j=0; j<10000; j++){
@@ -1102,27 +1146,15 @@ FuzzyTools::Qjetmass(vecPseudoJet particles, vector<vector<double> > Weights, in
                 qmass+=particles[i];
             }
         }
-        qjetmass->Fill(qmass.m());
+        qjetmass.Fill(qmass.m());
     }
 
-    //gStyle->SetOptStat(0);
-    //gROOT->Reset();
-    //gROOT->SetStyle("ATLAS");
-    //gROOT->ForceStyle();
-    //gStyle->SetPadLeftMargin(0.15);
-    //gStyle->SetPadTopMargin(0.15);
-
-    TCanvas *c = new TCanvas("","",500,500);
-
-    qjetmass->Scale(1./qjetmass->Integral());
-    qjetmass->GetXaxis()->SetTitle("Single Jet Mass [GeV]");
-    qjetmass->GetYaxis()->SetTitle("(1/N)dN/d(2.5 GeV)");
-    qjetmass->GetXaxis()->SetTitleOffset(1.4);
-    qjetmass->GetYaxis()->SetTitleOffset(1.4);
-    qjetmass->Draw();
-    //myText(0.2,0.9,kBlack,"#scale[0.9]{#sqrt{s} = 8 TeV PYTHIA Z' #rightarrow t#bar{t}, m_{Z'}=1.5 TeV}");
-    c->Print(directoryPrefix + "Qjetmass"+out+".root");
-
+    qjetmass.Scale(1./qjetmass.Integral());
+    qjetmass.GetXaxis()->SetTitle("Single Jet Mass [GeV]");
+    qjetmass.GetYaxis()->SetTitle("(1/N)dN/d(2.5 GeV)");
+    qjetmass.GetXaxis()->SetTitleOffset(1.4);
+    qjetmass.GetYaxis()->SetTitleOffset(1.4);
+    qjetmass.Write();
 }
 
 void JetContributionDisplay(__attribute__((unused)) vecPseudoJet particles,
@@ -1133,7 +1165,7 @@ void JetContributionDisplay(__attribute__((unused)) vecPseudoJet particles,
     double mineta = -5;
     double maxeta = 5;
     TCanvas canv("", "", 1200, 600);
-    TH2F hist("hist", "==========REPLACEMENTTITLE1==========", 30, mineta, maxeta, 28, 0, 7);
+    TH2F hist("hist", "", 30, mineta, maxeta, 28, 0, 7);
 
 }
 

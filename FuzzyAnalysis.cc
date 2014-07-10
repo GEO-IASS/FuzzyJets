@@ -245,7 +245,7 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     int leadmGMMindex;
     double maxpTmGMM;
     bool learnWeights = false;
-    bool learnShape = true;
+    bool learnShape = false;
     DoMGMMJetFinding(particlesForJets, learnWeights, learnShape,
                      leadmGMMindex, maxpTmGMM,
                      tool, mGMMjets, Weights,
@@ -285,14 +285,15 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     // Having found jets, now do a bit of data logging and analysis
     bool doEventDisplays = true;
     if (doEventDisplays) {
-        tool->EventDisplay(particlesForJets,
-                           myJetsLargeR_ca,tops,
-                           mGMMjets,
-                           Weights,
-                           leadmGMMindex,
-                           mGMMjetsparams,
-                           TString::Format("%i",ievt));
-
+        if(ievt < 10) {
+            tool->EventDisplay(particlesForJets,
+                               myJetsLargeR_ca,tops,
+                               mGMMjets,
+                               Weights,
+                               leadmGMMindex,
+                               mGMMjetsparams,
+                               TString::Format("%i",ievt));
+        }
         tool->NewEventDisplay(particlesForJets,
                               myJetsLargeR_ca,tops,
                               mGMMjets,
@@ -361,10 +362,10 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     vector<double> moments_m;
     vector<double> moments_pt;
     moments_m = tool->CentralMoments(particlesForJets, Weights,
-                               leadmGMMindex, 3, &totalMass);
+                                     leadmGMMindex, 3, &totalMass);
 
     moments_pt = tool->CentralMoments(particlesForJets, Weights,
-                                leadmGMMindex, 3, &totalpT);
+                                      leadmGMMindex, 3, &totalpT);
 
     double sig;
     fTmGMM_m_mean = moments_m[0];
@@ -380,10 +381,10 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     moments_pt.clear();
 
     moments_m = tool->CentralMoments(particlesForJets, mUMMparticleWeights,
-                               leadmUMMindex, 3, &totalMass);
+                                     leadmUMMindex, 3, &totalMass);
 
     moments_pt = tool->CentralMoments(particlesForJets, mUMMparticleWeights,
-                                leadmUMMindex, 3, &totalpT);
+                                      leadmUMMindex, 3, &totalpT);
 
     fTmUMM_m_mean = moments_m[0];
     fTmUMM_m_var  = moments_m[1];
@@ -398,10 +399,10 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     moments_pt.clear();
 
     moments_m = tool->CentralMoments(particlesForJets, mTGMMparticleWeights,
-                               leadmTGMMindex, 3, &totalMass);
+                                     leadmTGMMindex, 3, &totalMass);
 
     moments_pt = tool->CentralMoments(particlesForJets, mTGMMparticleWeights,
-                                leadmTGMMindex, 3, &totalpT);
+                                      leadmTGMMindex, 3, &totalpT);
 
     fTmTGMM_m_mean = moments_m[0];
     fTmTGMM_m_var  = moments_m[1];
