@@ -433,6 +433,27 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("CA_pt",          &fTCA_pt,          "CA_pt/F");
     tT->Branch("toppt",          &fTtoppt,          "toppt/F");
 
+    tT->Branch("mGMMs_m",        &fTmGMMs_m,        "mGMMs_m/F");
+    tT->Branch("mGMMs_pt",       &fTmGMMs_pt,       "mGMMs_pt/F");
+    tT->Branch("deltatop_mGMMs", &fTdeltatop_mGMMs, "deltatop_mGMMs/F");
+    tT->Branch("mGMMs_m_mean",   &fTmGMMs_m_mean,   "mGMMs_m_mean/F");
+    tT->Branch("mGMMs_m_var",    &fTmGMMs_m_var,    "mGMMs_m_var/F");
+    tT->Branch("mGMMs_m_skew",   &fTmGMMs_m_skew,   "mGMMs_m_skew/F");
+    tT->Branch("mGMMs_pt_mean",  &fTmGMMs_pt_mean,  "mGMMs_pt_mean/F");
+    tT->Branch("mGMMs_pt_var",   &fTmGMMs_pt_var,   "mGMMs_pt_var/F");
+    tT->Branch("mGMMs_pt_skew",  &fTmGMMs_pt_skew,  "mGMMs_pt_skew/F");
+
+    tT->Branch("mTGMMs_m",       &fTmTGMMs_m,       "mTGMMs_m/F");
+    tT->Branch("mTGMMs_pt",      &fTmTGMMs_pt,      "mTGMMs_pt/F");
+    tT->Branch("deltatop_mTGMMs",&fTdeltatop_mTGMMs,"deltatop_mTGMMs/F");
+    tT->Branch("mTGMMs_m_mean",  &fTmTGMMs_m_mean,  "mTGMMs_m_mean/F");
+    tT->Branch("mTGMMs_m_var",   &fTmTGMMs_m_var,   "mTGMMs_m_var/F");
+    tT->Branch("mTGMMs_m_skew",  &fTmTGMMs_m_skew,  "mTGMMs_m_skew/F");
+    tT->Branch("mTGMMs_pt_mean", &fTmTGMMs_pt_mean, "mTGMMs_pt_mean/F");
+    tT->Branch("mTGMMs_pt_var",  &fTmTGMMs_pt_var,  "mTGMMs_pt_var/F");
+    tT->Branch("mTGMMs_pt_skew", &fTmTGMMs_pt_skew, "mTGMMs_pt_skew/F");
+
+
     tT->Branch("mUMM_m",         &fTmUMM_m,         "mUMM_m/F");
     tT->Branch("mUMM_pt",        &fTmUMM_pt,        "mUMM_pt/F");
     tT->Branch("deltatop_mUMM",  &fTdeltatop_mUMM,  "deltatop_mUMM/F");
@@ -475,10 +496,30 @@ void FuzzyAnalysis::DeclareBranches(){
 // resets vars
 void FuzzyAnalysis::ResetBranches(){
     // reset branches
-    fTEventNumber    = -999;
-    fTCA_m           = -1.;
-    fTCA_pt          = -1.;
-    fTtoppt          = -1.;
+    fTEventNumber     = -999;
+    fTCA_m            = -1.;
+    fTCA_pt           = -1.;
+    fTtoppt           = -1.;
+
+    fTmGMMs_m         = -1.;
+    fTmGMMs_pt        = -1.;
+    fTdeltatop_mGMMs  = -1.;
+    fTmGMMs_m_mean    = -1.;
+    fTmGMMs_m_var     = -1.;
+    fTmGMMs_m_skew    = -99999;
+    fTmGMMs_pt_mean   = -1.;
+    fTmGMMs_pt_var    = -1.;
+    fTmGMMs_pt_skew   = -99999;
+
+    fTmTGMMs_m        = -1.;
+    fTmTGMMs_pt       = -1.;
+    fTdeltatop_mTGMMs = -1.;
+    fTmTGMMs_m_mean   = -1.;
+    fTmTGMMs_m_var    = -1.;
+    fTmTGMMs_m_skew   = -99999;
+    fTmTGMMs_pt_mean  = -1.;
+    fTmTGMMs_pt_var   = -1.;
+    fTmTGMMs_pt_skew  = -99999;
 
     fTmGMM_m         = -1.;
     fTmGMM_pt        = -1.;

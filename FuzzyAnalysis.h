@@ -48,6 +48,26 @@ class FuzzyAnalysis{
     float fTmUMM_pt_var;
     float fTmUMM_pt_skew;
 
+    float fTmGMMs_m;
+    float fTmGMMs_pt;
+    float fTdeltatop_mGMMs;
+    float fTmGMMs_m_mean;
+    float fTmGMMs_m_var;
+    float fTmGMMs_m_skew;
+    float fTmGMMs_pt_mean;
+    float fTmGMMs_pt_var;
+    float fTmGMMs_pt_skew;
+
+    float fTmTGMMs_m;
+    float fTmTGMMs_pt;
+    float fTdeltatop_mTGMMs;
+    float fTmTGMMs_m_mean;
+    float fTmTGMMs_m_var;
+    float fTmTGMMs_m_skew;
+    float fTmTGMMs_pt_mean;
+    float fTmTGMMs_pt_var;
+    float fTmTGMMs_pt_skew;
+
     float fTmGMM_m;
     float fTmGMM_pt;
     float fTdeltatop_mGMM;
