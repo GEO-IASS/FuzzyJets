@@ -833,7 +833,7 @@ FuzzyTools::NewEventDisplay(vecPseudoJet particles,
     double mineta = -5;
     double maxeta = 5;
     TCanvas canv("NEVC" + out, "", 1200, 600);
-    TH2F hist("hist", "TEST", 30, mineta, maxeta, 28, 0, 7);
+    TH2F hist("NEVH" + out, "", 30, mineta, maxeta, 28, 0, 7);
     TTree aux("NEVT" + out, "");
 
     double loceta;
@@ -843,12 +843,12 @@ FuzzyTools::NewEventDisplay(vecPseudoJet particles,
     double yR;
     double w;
 
-    aux.Branch("loceta", &loceta, "loceta/F");
-    aux.Branch("locphi", &locphi, "locphi/F");
-    aux.Branch("theta", &theta, "theta/F");
-    aux.Branch("xR", &xR, "xR/F");
-    aux.Branch("yR", &yR, "yR/F");
-    aux.Branch("w", &w, "w/F");
+    aux.Branch("loceta", &loceta, "loceta/D");
+    aux.Branch("locphi", &locphi, "locphi/D");
+    aux.Branch("theta", &theta, "theta/D");
+    aux.Branch("xR", &xR, "xR/D");
+    aux.Branch("yR", &yR, "yR/D");
+    aux.Branch("w", &w, "w/D");
 
     double eta, phi, pT;
     for (unsigned int i = 0; i < particles.size(); i++) {
@@ -890,7 +890,8 @@ FuzzyTools::NewEventDisplay(vecPseudoJet particles,
             ellipses.push_back(currentEllipse);
     }
 
-
+    hist.Write();
+    aux.Write();
     canv.Divide(2, 1);
 
     canv.cd(1);
@@ -929,12 +930,12 @@ FuzzyTools::NewEventDisplayUniform(vecPseudoJet particles,
     double yR;
     __attribute__((unused)) double w;
 
-    aux.Branch("loceta", &loceta, "loceta/F");
-    aux.Branch("locphi", &locphi, "locphi/F");
-    aux.Branch("theta", &theta, "theta/F");
-    aux.Branch("xR", &xR, "xR/F");
-    aux.Branch("yR", &yR, "yR/F");
-    aux.Branch("w", &w, "w/F");
+    aux.Branch("loceta", &loceta, "loceta/D");
+    aux.Branch("locphi", &locphi, "locphi/D");
+    aux.Branch("theta", &theta, "theta/D");
+    aux.Branch("xR", &xR, "xR/D");
+    aux.Branch("yR", &yR, "yR/D");
+    aux.Branch("w", &w, "w/D");
 
 
     TH2F hist("NEVH" + out, "TEST", 30, mineta, maxeta, 28, 0, 7);
@@ -1155,7 +1156,8 @@ FuzzyTools::Qjetmass(vecPseudoJet particles, vector<vector<double> > Weights, in
     qjetmass.Write();
 }
 
-void JetContributionDisplay(vecPseudoJet particles,
+void
+FuzzyTools::JetContributionDisplay(vecPseudoJet particles,
                             vector<vector<double> > Weights,
                             int which,
                             int mtype,
@@ -1295,4 +1297,52 @@ FuzzyTools::MLpT(vecPseudoJet particles,
     }
     if (mtype==0) return myjet.pt();
     return myjet.m(); //mtype == 1
+}
+
+
+// has potentially very bad properties, might not conserve pT or mass!
+double
+FuzzyTools::MLlpTGaussian(vecPseudoJet const& particles,
+                          fastjet::PseudoJet const& jet,
+                          TMatrix const& jetParams,
+                          double jetWeight, int mtype) {
+    double acc = 0;
+    for (unsigned int i = 0; i < particles.size(); i++) {
+        const fastjet::PseudoJet p = particles[i];
+        double l = doGaus(p.eta(), p.phi(), jet.eta(), jet.phi(), jetParams);
+        l /= doGaus(jet.eta(), jet.phi(), jet.eta(), jet.phi(), jetParams);
+        l *= (mtype == 1) ? p.m() : p.pt();
+        acc += l;
+    }
+    return acc * jetWeight;
+}
+
+double
+FuzzyTools::MLlpTUniform(vecPseudoJet const& particles,
+                         fastjet::PseudoJet const& jet,
+                         double jetWeight, int mtype) {
+    double acc = 0;
+    for (unsigned int i = 0; i < particles.size(); i++) {
+        const fastjet::PseudoJet p = particles[i];
+        double l = p.delta_R(jet) <= R ? 1 : 0;
+        l *= (mtype == 1) ? p.m() : p.pt();
+        acc += l;
+    }
+    return acc * jetWeight;
+}
+
+double
+FuzzyTools::MLlpTTruncGaus(vecPseudoJet const& particles,
+                           fastjet::PseudoJet const& jet,
+                           TMatrix const& jetParams,
+                           double jetWeight, int mtype) {
+    double acc = 0;
+    for (unsigned int i = 0; i < particles.size(); i++) {
+        const fastjet::PseudoJet p = particles[i];
+        double l = doTruncGaus(p.eta(), p.phi(), jet.eta(), jet.phi(), jetParams);
+        l /= doTruncGaus(jet.eta(), jet.phi(), jet.eta(), jet.phi(), jetParams);
+        l *= (mtype == 1) ? p.m() : p.pt();
+        acc += l;
+    }
+    return acc * jetWeight;
 }

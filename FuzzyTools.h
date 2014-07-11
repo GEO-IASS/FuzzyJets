@@ -234,6 +234,23 @@ class FuzzyTools {
                 int k,
                 int mtype);
 
+    double MLlpTGaussian(vecPseudoJet const& particles,
+                         fastjet::PseudoJet const& jet,
+                         TMatrix const& jetParams,
+                         double jetWeight,
+                         int mtype);
+
+    double MLlpTUniform(vecPseudoJet const& particles,
+                        fastjet::PseudoJet const& jet,
+                        double jetWeight,
+                        int mtype);
+
+    double MLlpTTruncGaus(vecPseudoJet const& particles,
+                          fastjet::PseudoJet const& jet,
+                          TMatrix const& jetParams,
+                          double jetWeight,
+                          int mtype);
+
     void Qjetmass(vecPseudoJet particles,
                   vector<vector<double> > Weights,
                   int which,

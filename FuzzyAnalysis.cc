@@ -249,8 +249,8 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     // Various mixture models ---------------
     // ======================================
     tool->SetMergeDistance(0.05);
-    double size = 1.0;
-    bool learnWeights = false;
+    double size = 0.8;
+    bool learnWeights = true;
 
     // which jets to run
     bool mUMMon = true;
@@ -353,6 +353,15 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
                                   mGMMjetsparams,
                                   mGMMweights,
                                   TString::Format("_mGMM_%i",ievt));
+            tool->JetContributionDisplay(particlesForJets,
+                                         Weights,
+                                         leadmGMMindex,
+                                         1, TString::Format("_m_mGMM_%i", ievt));
+            tool->JetContributionDisplay(particlesForJets,
+                                         Weights,
+                                         leadmGMMindex,
+                                         0, TString::Format("_pt_mGMM_%i", ievt));
+
         }
         if(mTGMMon) {
             tool->NewEventDisplay(particlesForJets,
@@ -400,26 +409,47 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
                               leadmGMMindex,Weights[0].size(),1);
         fTmGMM_pt = tool->MLpT(particlesForJets,Weights,
                                leadmGMMindex,Weights[0].size(),0);
+        fTmGMM_ml = tool->MLlpTGaussian(particlesForJets,mGMMjets[leadmGMMindex],
+                                  mGMMjetsparams[leadmGMMindex], mGMMweights[leadmGMMindex], 1);
+        fTmGMM_ptl = tool->MLlpTGaussian(particlesForJets,mGMMjets[leadmGMMindex],
+                                   mGMMjetsparams[leadmGMMindex], mGMMweights[leadmGMMindex], 0);
     }
     if(mUMMon) {
         fTmUMM_m = tool->MLpT(particlesForJets, mUMMparticleWeights,
                               leadmUMMindex, mUMMparticleWeights[0].size(), 1);
         fTmUMM_pt = maxpTmUMM;
+        fTmUMM_ml = tool->MLlpTUniform(particlesForJets,mUMMjets[leadmUMMindex],
+                                 mUMMweights[leadmUMMindex], 1);
+        fTmUMM_ptl = tool->MLlpTUniform(particlesForJets,mUMMjets[leadmUMMindex],
+                                   mUMMweights[leadmUMMindex], 0);
     }
     if(mTGMMon) {
         fTmTGMM_m = tool->MLpT(particlesForJets, mTGMMparticleWeights,
                                leadmTGMMindex, mTGMMparticleWeights[0].size(), 1);
         fTmTGMM_pt = maxpTmTGMM;
+        fTmTGMM_ml = tool->MLlpTTruncGaus(particlesForJets,mTGMMjets[leadmTGMMindex],
+                                  mTGMMjetsparams[leadmTGMMindex], mTGMMweights[leadmTGMMindex],1);
+        fTmTGMM_ptl = tool->MLlpTTruncGaus(particlesForJets,mTGMMjets[leadmTGMMindex],
+                                   mTGMMjetsparams[leadmTGMMindex], mTGMMweights[leadmTGMMindex],0);
     }
     if(mTGMMson) {
         fTmTGMMs_m = tool->MLpT(particlesForJets, mTGMMsparticleWeights,
                                 leadmTGMMsindex, mTGMMsparticleWeights[0].size(), 1);
         fTmTGMMs_pt = maxpTmTGMMs;
+        fTmTGMM_ml = tool->MLlpTTruncGaus(particlesForJets,mTGMMjets[leadmTGMMindex],
+                                  mTGMMjetsparams[leadmTGMMindex], mTGMMweights[leadmTGMMindex],1);
+        fTmTGMM_ptl = tool->MLlpTTruncGaus(particlesForJets,mTGMMjets[leadmTGMMindex],
+                                   mTGMMjetsparams[leadmTGMMindex], mTGMMweights[leadmTGMMindex],0);
     }
     if(mGMMson) {
         fTmGMMs_m = tool->MLpT(particlesForJets, mGMMsparticleWeights,
                                leadmGMMsindex, mGMMsparticleWeights[0].size(), 1);
         fTmGMMs_pt = maxpTmGMMs;
+        fTmGMMs_ml = tool->MLlpTGaussian(particlesForJets,mGMMsjets[leadmGMMsindex],
+                                  mGMMsjetsparams[leadmGMMsindex], mGMMsweights[leadmGMMsindex],1);
+        fTmGMMs_ptl = tool->MLlpTGaussian(particlesForJets,mGMMsjets[leadmGMMsindex],
+                                   mGMMsjetsparams[leadmGMMsindex], mGMMsweights[leadmGMMsindex],0);
+
     }
 
     int mytop=0;
@@ -591,6 +621,9 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mGMMs_pt_mean",  &fTmGMMs_pt_mean,  "mGMMs_pt_mean/F");
     tT->Branch("mGMMs_pt_var",   &fTmGMMs_pt_var,   "mGMMs_pt_var/F");
     tT->Branch("mGMMs_pt_skew",  &fTmGMMs_pt_skew,  "mGMMs_pt_skew/F");
+    tT->Branch("mGMMs_ptl",      &fTmGMMs_ptl,      "mGMMs_ptl/F");
+    tT->Branch("mGMMs_ml",       &fTmGMMs_ml,       "mGMMs_ml/F");
+
 
     tT->Branch("mTGMMs_m",       &fTmTGMMs_m,       "mTGMMs_m/F");
     tT->Branch("mTGMMs_pt",      &fTmTGMMs_pt,      "mTGMMs_pt/F");
@@ -601,6 +634,7 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mTGMMs_pt_mean", &fTmTGMMs_pt_mean, "mTGMMs_pt_mean/F");
     tT->Branch("mTGMMs_pt_var",  &fTmTGMMs_pt_var,  "mTGMMs_pt_var/F");
     tT->Branch("mTGMMs_pt_skew", &fTmTGMMs_pt_skew, "mTGMMs_pt_skew/F");
+    tT->Branch("mTGMMs_ptl",     &fTmTGMMs_ptl,     "mTGMMs_ml/F");
 
 
     tT->Branch("mUMM_m",         &fTmUMM_m,         "mUMM_m/F");
@@ -612,6 +646,8 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mUMM_pt_mean",   &fTmUMM_pt_mean,   "mUMM_pt_mean/F");
     tT->Branch("mUMM_pt_var",    &fTmUMM_pt_var,    "mUMM_pt_var/F");
     tT->Branch("mUMM_pt_skew",   &fTmUMM_pt_skew,   "mUMM_pt_skew/F");
+    tT->Branch("mUMM_ptl",       &fTmUMM_ptl,       "mUMM_ptl/F");
+    tT->Branch("mUMM_ml",        &fTmUMM_ml,        "mUMM_ml/F");
 
 
     tT->Branch("mGMM_m",         &fTmGMM_m,         "mGMM_m/F");
@@ -623,6 +659,8 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mGMM_pt_mean",   &fTmGMM_pt_mean,   "mGMM_pt_mean/F");
     tT->Branch("mGMM_pt_var",    &fTmGMM_pt_var,    "mGMM_pt_var/F");
     tT->Branch("mGMM_pt_skew",   &fTmGMM_pt_skew,   "mGMM_pt_skew/F");
+    tT->Branch("mGMM_ptl",       &fTmGMM_ptl,       "mGMM_ptl/F");
+    tT->Branch("mGMM_ml",        &fTmGMM_ml,        "mGMM_ml/F");
 
 
     tT->Branch("mTGMM_m",        &fTmTGMM_m,        "mTGMM_m/F");
@@ -634,6 +672,8 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mTGMM_pt_mean",  &fTmTGMM_pt_mean,  "mTGMM_pt_mean/F");
     tT->Branch("mTGMM_pt_var",   &fTmTGMM_pt_var,   "mTGMM_pt_var/F");
     tT->Branch("mTGMM_pt_skew",  &fTmTGMM_pt_skew,  "mTGMM_pt_skew/F");
+    tT->Branch("mTGMM_ptl",      &fTmTGMM_ptl,      "mTGMM_ptl/F");
+    tT->Branch("mTGMM_ml",       &fTmTGMM_ml,       "mTGMM_ml/F");
 
 
     tT->GetListOfBranches()->ls();
@@ -659,6 +699,8 @@ void FuzzyAnalysis::ResetBranches(){
     fTmGMMs_pt_mean   = -1.;
     fTmGMMs_pt_var    = -1.;
     fTmGMMs_pt_skew   = -99999;
+    fTmGMMs_ptl       = -1.;
+    fTmGMMs_ml        = -1.;
 
     fTmTGMMs_m        = -1.;
     fTmTGMMs_pt       = -1.;
@@ -669,6 +711,8 @@ void FuzzyAnalysis::ResetBranches(){
     fTmTGMMs_pt_mean  = -1.;
     fTmTGMMs_pt_var   = -1.;
     fTmTGMMs_pt_skew  = -99999;
+    fTmTGMMs_ptl      = -1.;
+    fTmTGMMs_ml = -1.;
 
     fTmGMM_m         = -1.;
     fTmGMM_pt        = -1.;
@@ -679,6 +723,8 @@ void FuzzyAnalysis::ResetBranches(){
     fTmGMM_pt_mean    = -1.;
     fTmGMM_pt_var     = -1.;
     fTmGMM_pt_skew    = -99999;
+    fTmGMM_ptl = -1.;
+    fTmGMM_ml = -1.;
 
     fTmUMM_m         = -1.;
     fTmUMM_pt        = -1.;
@@ -689,6 +735,8 @@ void FuzzyAnalysis::ResetBranches(){
     fTmUMM_pt_mean    = -1.;
     fTmUMM_pt_var     = -1.;
     fTmUMM_pt_skew    = -99999;
+    fTmUMM_ptl = -1.;
+    fTmUMM_ml = -1.;
 
     fTmTGMM_m        = -1.;
     fTmTGMM_pt       = -1.;
@@ -699,4 +747,6 @@ void FuzzyAnalysis::ResetBranches(){
     fTmTGMM_pt_mean    = -1.;
     fTmTGMM_pt_var     = -1.;
     fTmTGMM_pt_skew    = -99999;
+    fTmTGMM_ptl = -1.;
+    fTmTGMM_ml = -1.;
 }
