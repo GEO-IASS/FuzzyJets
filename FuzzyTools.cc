@@ -1299,6 +1299,18 @@ FuzzyTools::MLpT(vecPseudoJet particles,
     return myjet.m(); //mtype == 1
 }
 
+double
+FuzzyTools::SoftpT(vecPseudoJet const& particles,
+                   vector<vector<double> > const& Weights,
+                   int jetindex,
+                   int mtype) {
+    fastjet::PseudoJet myjet;
+    for (unsigned int i=0; i < particles.size(); i++) {
+        myjet += particles[i]*Weights[i][jetindex];
+    }
+    if (mtype == 0) return myjet.pt();
+    return myjet.m();
+}
 
 // has potentially very bad properties, might not conserve pT or mass!
 double
@@ -1306,29 +1318,29 @@ FuzzyTools::MLlpTGaussian(vecPseudoJet const& particles,
                           fastjet::PseudoJet const& jet,
                           TMatrix const& jetParams,
                           double jetWeight, int mtype) {
-    double acc = 0;
-    for (unsigned int i = 0; i < particles.size(); i++) {
+    fastjet::PseudoJet myjet;
+    for(unsigned int i = 0; i < particles.size(); i++) {
         const fastjet::PseudoJet p = particles[i];
         double l = doGaus(p.eta(), p.phi(), jet.eta(), jet.phi(), jetParams);
         l /= doGaus(jet.eta(), jet.phi(), jet.eta(), jet.phi(), jetParams);
-        l *= (mtype == 1) ? p.m() : p.pt();
-        acc += l;
+        myjet += l * p;
     }
-    return acc * jetWeight;
+    if (mtype == 0) return myjet.pt()*jetWeight;
+    return myjet.m() * jetWeight;
 }
 
 double
 FuzzyTools::MLlpTUniform(vecPseudoJet const& particles,
                          fastjet::PseudoJet const& jet,
                          double jetWeight, int mtype) {
-    double acc = 0;
-    for (unsigned int i = 0; i < particles.size(); i++) {
+    fastjet::PseudoJet myjet;
+    for(unsigned int i = 0; i < particles.size(); i++) {
         const fastjet::PseudoJet p = particles[i];
         double l = p.delta_R(jet) <= R ? 1 : 0;
-        l *= (mtype == 1) ? p.m() : p.pt();
-        acc += l;
+        myjet += l * p;
     }
-    return acc * jetWeight;
+    if (mtype == 0) return myjet.pt()*jetWeight;
+    return myjet.m() * jetWeight;
 }
 
 double
@@ -1336,13 +1348,13 @@ FuzzyTools::MLlpTTruncGaus(vecPseudoJet const& particles,
                            fastjet::PseudoJet const& jet,
                            TMatrix const& jetParams,
                            double jetWeight, int mtype) {
-    double acc = 0;
-    for (unsigned int i = 0; i < particles.size(); i++) {
+    fastjet::PseudoJet myjet;
+    for(unsigned int i = 0; i < particles.size(); i++) {
         const fastjet::PseudoJet p = particles[i];
-        double l = doTruncGaus(p.eta(), p.phi(), jet.eta(), jet.phi(), jetParams);
+        double l = doTruncGaus(p.eta(), p.phi(), p.eta(), p.phi(), jetParams);
         l /= doTruncGaus(jet.eta(), jet.phi(), jet.eta(), jet.phi(), jetParams);
-        l *= (mtype == 1) ? p.m() : p.pt();
-        acc += l;
+        myjet += l * p;
     }
-    return acc * jetWeight;
+    if (mtype == 0) return myjet.pt()*jetWeight;
+    return myjet.m() * jetWeight
 }
