@@ -1158,10 +1158,10 @@ FuzzyTools::Qjetmass(vecPseudoJet particles, vector<vector<double> > Weights, in
 
 void
 FuzzyTools::JetContributionDisplay(vecPseudoJet particles,
-                            vector<vector<double> > Weights,
-                            int which,
-                            int mtype,
-                            TString out) {
+                                   vector<vector<double> > Weights,
+                                   int which,
+                                   int mtype,
+                                   TString out) {
     double mineta = -5;
     double maxeta = 5;
     unsigned int k = Weights[0].size();
@@ -1356,5 +1356,5 @@ FuzzyTools::MLlpTTruncGaus(vecPseudoJet const& particles,
         myjet += l * p;
     }
     if (mtype == 0) return myjet.pt()*jetWeight;
-    return myjet.m() * jetWeight
+    return myjet.m() * jetWeight;
 }

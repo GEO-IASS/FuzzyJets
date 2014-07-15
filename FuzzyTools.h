@@ -255,6 +255,12 @@ class FuzzyTools {
                   vector<vector<double> > Weights,
                   int which,
                   TString out);
+
+    double SoftpT(vecPseudoJet const& particles,
+                  vector<vector<double> > const& Weights,
+                  int jetindex,
+                  int mtype);
+
 };
 
 #endif
