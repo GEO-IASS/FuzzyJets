@@ -38,6 +38,11 @@ class FuzzyAnalysis{
     float fTCA_pt;
     float fTtoppt;
 
+    float fTantikt_m;
+    float fTantikt_pt;
+    float fTantikt_m_trimmed;
+    float fTantikt_pt_trimmed;
+
     float fTmUMM_m;
     float fTmUMM_pt;
     float fTdeltatop_mUMM;
@@ -98,6 +103,7 @@ class FuzzyAnalysis{
     float fTmTGMM_ptl;
     float fTmTGMM_ml;
 
+    fastjet::JetDefinition     *m_jet_def_trimming_antikt;
     fastjet::JetDefinition     *m_jet_def;
     fastjet::JetDefinition     *m_jet_def_largeR_antikt;
     fastjet::JetDefinition     *m_jet_def_largeR_ca;
