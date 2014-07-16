@@ -48,6 +48,7 @@ int main(int argc, char* argv[]){
     // agruments
     int nEvents = 0;
     int fDebug  = 0;
+    int NPV = -1;
     string outName = "FuzzyJets.root";
     string pythiaConfigName = "configs/default.pythia";
     string directory = "results/tmp/";
@@ -57,7 +58,8 @@ int main(int argc, char* argv[]){
         ("help", "produce help message")
         ("NEvents", po::value<int>(&nEvents)->default_value(1000) ,    "Number of Events ")
         ("Debug",   po::value<int>(&fDebug) ->default_value(0) ,     "Debug flag")
-        ("OutFile", po::value<string>(&outName)->default_value("test.root"), "output file name")
+        ("OutFile", po::value<string>(&outName)->default_value("test.root"), "Output file name")
+        ("NPV",     po::value<int>(&NPV)->default_value(-1), "Number of primary vertices (pile-up)")
         ("PythiaConfig", po::value<string>(&pythiaConfigName)->default_value("configs/default.pythia"), "Pythia configuration file location")
         ("Directory", po::value<string>(&directory)->default_value("results/tmp/"), "Directory in which to place results (.root files etc.)");
     po::variables_map vm;
@@ -71,6 +73,7 @@ int main(int argc, char* argv[]){
 
     // Configure and initialize pythia
     Pythia8::Pythia* pythia8 = new Pythia8::Pythia();
+    Pythia8::Pythia* pythia_MB = new Pythia8::Pythia();
 
     vector<string> pythiaCommands;
 
@@ -92,28 +95,67 @@ int main(int argc, char* argv[]){
         pythia8->readString(command);
     }
 
+    int seed = 0;
+    stringstream ss;
+    ss.clear();
+    ss.str("");
+    ss << "Random:seed = " << seed;
+    //pythia_MB->readstring("Random:setSeed = on");
+    //pythia_MB->readstring(ss.str());
+    pythia_MB->readString("SoftQCD:nonDiffractive = on");
+    pythia_MB->readString("HardQCD:all = off");
+    pythia_MB->readString("PhaseSpace:pTHatMin = .1");
+    pythia_MB->readString("PhaseSpace:pTHatMax = 20000");
+
+
     if (fDebug == 0) {
         pythia8->readString("Next:numberShowEvent = 0");
+        pythia_MB->readString("Next:numberShowEvent = 0");
     }
+
+
 
     //this has to be the last line!
     pythia8->init(2212 /* p */, 2212 /* p */, 14000. /* GeV */);
+    pythia_MB->init(2212, 2212, 14000.);
 
     // FuzzyAnalysis
     FuzzyAnalysis * analysis = new FuzzyAnalysis();
-    analysis->SetOutName(outName);
-    analysis->SetPrefix(directory);
-    analysis->Begin();
-    analysis->Debug(fDebug);
+    if(NPV == -1) {
+        // compute for NPV = 0, 10, 20, 30
+        int NPVs [4] = {0, 10, 20, 30};
+        for (unsigned int npviter = 0; npviter < 4; npviter++) {
+            int currentNPV = NPVs[npviter];
+            ss.clear();
+            ss.str("");
+            ss << currentNPV << ".root";
+            analysis->SetOutName(ss.str());
+            analysis->SetPrefix(directory);
+            analysis->Begin();
+            analysis->Debug(fDebug);
+            for (int iev = 0; iev < nEvents; iev++) {
+                analysis->AnalyzeEvent(iev, pythia8, pythia_MB, NPV);
+            }
+            analysis->End();
+        }
+    } else {
+        ss.clear();
+        ss.str("");
+        ss << NPV << ".root";
+        analysis->SetOutName(ss.str());
+        analysis->SetPrefix(directory);
+        analysis->Begin();
+        analysis->Debug(fDebug);
 
-    // Event loop
-    cout << "running on " << nEvents << " events " << endl;
-    for (Int_t iev = 0; iev < nEvents; iev++) {
-        if (iev%100==0) cout << iev << " " << nEvents << endl;
-        analysis->AnalyzeEvent(iev, pythia8);
+        // Event loop
+        cout << "running on " << nEvents << " events " << endl;
+        for (Int_t iev = 0; iev < nEvents; iev++) {
+            if (iev%100==0) cout << iev << " " << nEvents << endl;
+            analysis->AnalyzeEvent(iev, pythia8, pythia_MB, NPV);
+        }
+
+        analysis->End();
     }
-
-    analysis->End();
 
     // that was it
     delete pythia8;

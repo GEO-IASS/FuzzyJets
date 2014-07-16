@@ -34,6 +34,7 @@ class FuzzyAnalysis{
 
     // Tree Vars ---------------------------------------
     int   fTEventNumber;
+    int   fTNPV;
     float fTCA_m;
     float fTCA_pt;
     float fTtoppt;
@@ -54,6 +55,8 @@ class FuzzyAnalysis{
     float fTmUMM_pt_skew;
     float fTmUMM_ptl;
     float fTmUMM_ml;
+    float fTmUMM_m_soft;
+    float fTmUMM_pt_soft;
 
     float fTmGMMs_m;
     float fTmGMMs_pt;
@@ -66,6 +69,9 @@ class FuzzyAnalysis{
     float fTmGMMs_pt_skew;
     float fTmGMMs_ptl;
     float fTmGMMs_ml;
+    float fTmGMMs_m_soft;
+    float fTmGMMs_pt_soft;
+
 
     float fTmTGMMs_m;
     float fTmTGMMs_pt;
@@ -78,6 +84,8 @@ class FuzzyAnalysis{
     float fTmTGMMs_pt_skew;
     float fTmTGMMs_ptl;
     float fTmTGMMs_ml;
+    float fTmTGMMs_m_soft;
+    float fTmTGMMs_pt_soft;
 
     float fTmGMM_m;
     float fTmGMM_pt;
@@ -90,6 +98,8 @@ class FuzzyAnalysis{
     float fTmGMM_pt_skew;
     float fTmGMM_ptl;
     float fTmGMM_ml;
+    float fTmGMM_m_soft;
+    float fTmGMM_pt_soft;
 
     float fTmTGMM_m;
     float fTmTGMM_pt;
@@ -102,6 +112,8 @@ class FuzzyAnalysis{
     float fTmTGMM_pt_skew;
     float fTmTGMM_ptl;
     float fTmTGMM_ml;
+    float fTmTGMM_m_soft;
+    float fTmTGMM_pt_soft;
 
     fastjet::JetDefinition     *m_jet_def_trimming_antikt;
     fastjet::JetDefinition     *m_jet_def;
@@ -113,7 +125,7 @@ class FuzzyAnalysis{
     ~FuzzyAnalysis ();
 
     void Begin();
-    void AnalyzeEvent(int iEvt, Pythia8::Pythia *pythia8);
+    void AnalyzeEvent(int iEvt, Pythia8::Pythia *pythia8, Pythia8::Pythia *pythia_MB, int NPV);
     void End();
     void DeclareBranches();
     void ResetBranches();

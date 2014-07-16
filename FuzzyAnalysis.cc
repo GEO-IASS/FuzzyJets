@@ -190,11 +190,12 @@ void FuzzyAnalysis::End(){
 }
 
 // Analyze
-void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
+void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Pythia* pythia_MB, int NPV){
     if(fDebug) cout << "FuzzyAnalysis::AnalyzeEvent Begin " << endl;
 
     // generate a new event
     if (!pythia8->next()) return;
+    if (!pythia_MB->next()) return;
     if(fDebug) cout << "FuzzyAnalysis::AnalyzeEvent Event Number " << ievt << endl;
 
     // reset branches
@@ -209,20 +210,42 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
     fastjet::PseudoJet dl2;
     tops.push_back(dl);
 
+    fTNPV = NPV;
+    // Pileup loop -------------------------------------------------------------
+    double px, py, pz, e;
+    for (int iPU = 0; iPU <= NPV; ++iPU) {
+        for (unsigned int ip = 0; ip < (unsigned) pythia_MB->event.size(); ++ip) {
+            if (!pythia_MB->event[ip].isFinal()) continue;
+            if (fabs(pythia_MB->event[ip].id())==12) continue;
+            if (fabs(pythia_MB->event[ip].id())==14) continue;
+            if (fabs(pythia_MB->event[ip].id())==13) continue;
+            if (fabs(pythia_MB->event[ip].id())==16) continue;
+            //if (pythia_MB->event[ip].pT() < 0.5)     continue;
+            px = pythia_MB->event[ip].px();
+            py = pythia_MB->event[ip].py();
+            pz = pythia_MB->event[ip].pz();
+            e  = pythia_MB->event[ip].e();
+
+            fastjet::PseudoJet p(px, py, pz, e);
+            p.reset_PtYPhiM(p.pt(), p.rapidity(), p.phi(), 0.);
+            // note that we don't really keep the particle number! only store ip, should really store ip and iPU
+            p.set_user_info(new MyUserInfo(pythia_MB->event[ip].id(),ip,pythia_MB->event[ip].charge(),true));
+            particlesForJets.push_back(p);
+        }
+        if (!pythia_MB->next()) continue;
+    }
 
     // Particle loop -----------------------------------------------------------
     // The Pythia event listing contains a lot more than we want to process,
     // we prune out certain particles (muons / neutrinos) and only add final
     // state particles
-
-    double px, py, pz, e;
     for (unsigned int ip=0; ip < (unsigned) pythia8->event.size(); ++ip){
         px = pythia8->event[ip].px();
         py = pythia8->event[ip].py();
         pz = pythia8->event[ip].pz();
         e  = pythia8->event[ip].e();
         fastjet::PseudoJet p(px, py, pz, e);
-        p.set_user_info(new MyUserInfo(pythia8->event[ip].id(),ip,pythia8->event[ip].charge()));
+        p.set_user_info(new MyUserInfo(pythia8->event[ip].id(),ip,pythia8->event[ip].charge(),false));
 
         // In reality we should be more careful about finding tops,
         // but this will do for now. In the future consider refactoring
@@ -480,30 +503,70 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8){
             fTdeltatop_mGMM = tops[1].delta_R(mGMMjets[leadmGMMindex]);
             fTtoppt = tops[1].pt();
         }
+        fTmGMM_m_soft = tool->SoftpT(particlesForJets,
+                                     Weights,
+                                     leadmGMMindex,
+                                     1);
+        fTmGMM_pt_soft = tool->SoftpT(particlesForJets,
+                                      Weights,
+                                      leadmGMMindex,
+                                      0);
     }
     if(mUMMon) {
         fTdeltatop_mUMM = tops[0].delta_R(mUMMjets[leadmUMMindex]);
         if (tops[1].delta_R(mUMMjets[leadmUMMindex]) <  fTdeltatop_mUMM) {
             fTdeltatop_mUMM = tops[1].delta_R(mUMMjets[leadmUMMindex]);
         }
+        fTmUMM_m_soft = tool->SoftpT(particlesForJets,
+                                     mUMMparticleWeights,
+                                     leadmUMMindex,
+                                     1);
+        fTmUMM_pt_soft = tool->SoftpT(particlesForJets,
+                                      mUMMparticleWeights,
+                                      leadmUMMindex,
+                                      0);
     }
     if(mTGMMon) {
         fTdeltatop_mTGMM = tops[0].delta_R(mTGMMjets[leadmTGMMindex]);
         if (tops[1].delta_R(mTGMMjets[leadmTGMMindex]) < fTdeltatop_mTGMM) {
             fTdeltatop_mTGMM = tops[1].delta_R(mTGMMjets[leadmTGMMindex]);
         }
+        fTmTGMM_m_soft = tool->SoftpT(particlesForJets,
+                                      mTGMMparticleWeights,
+                                      leadmTGMMindex,
+                                      1);
+        fTmTGMM_pt_soft = tool->SoftpT(particlesForJets,
+                                       mTGMMparticleWeights,
+                                       leadmTGMMindex,
+                                       0);
     }
     if(mTGMMson) {
         fTdeltatop_mTGMMs = tops[0].delta_R(mTGMMsjets[leadmTGMMsindex]);
         if (tops[1].delta_R(mTGMMsjets[leadmTGMMsindex]) < fTdeltatop_mTGMMs) {
             fTdeltatop_mTGMMs = tops[1].delta_R(mTGMMsjets[leadmTGMMsindex]);
         }
+        fTmTGMMs_m_soft = tool->SoftpT(particlesForJets,
+                                       mTGMMsparticleWeights,
+                                       leadmTGMMsindex,
+                                       1);
+        fTmTGMMs_pt_soft = tool->SoftpT(particlesForJets,
+                                        mTGMMsparticleWeights,
+                                        leadmTGMMsindex,
+                                        0);
     }
     if(mGMMson) {
         fTdeltatop_mGMMs = tops[0].delta_R(mGMMsjets[leadmGMMsindex]);
         if (tops[1].delta_R(mGMMsjets[leadmGMMsindex]) < fTdeltatop_mGMMs) {
             fTdeltatop_mGMMs = tops[1].delta_R(mGMMsjets[leadmGMMsindex]);
         }
+        fTmGMMs_m_soft = tool->SoftpT(particlesForJets,
+                                      mGMMsparticleWeights,
+                                      leadmGMMsindex,
+                                      1);
+        fTmGMMs_pt_soft = tool->SoftpT(particlesForJets,
+                                       mGMMsparticleWeights,
+                                       leadmGMMsindex,
+                                       0);
     }
 
     // Moments
@@ -622,6 +685,7 @@ void FuzzyAnalysis::DeclareBranches(){
 
     // Event Properties
     tT->Branch("EventNumber",    &fTEventNumber,    "EventNumber/I");
+    tT->Branch("NPV",            &fTNPV,            "NPV/I");
     tT->Branch("CA_m",           &fTCA_m,           "CA_m/F");
     tT->Branch("CA_pt",          &fTCA_pt,          "CA_pt/F");
     tT->Branch("toppt",          &fTtoppt,          "toppt/F");
@@ -644,7 +708,8 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mGMMs_pt_skew",  &fTmGMMs_pt_skew,  "mGMMs_pt_skew/F");
     tT->Branch("mGMMs_ptl",      &fTmGMMs_ptl,      "mGMMs_ptl/F");
     tT->Branch("mGMMs_ml",       &fTmGMMs_ml,       "mGMMs_ml/F");
-
+    tT->Branch("mGMMs_m_soft",    &fTmGMMs_m_soft,    "mGMMs_m_soft/F");
+    tT->Branch("mGMMs_pt_soft",   &fTmGMMs_pt_soft,   "mGMMs_pt_soft/F");
 
     tT->Branch("mTGMMs_m",       &fTmTGMMs_m,       "mTGMMs_m/F");
     tT->Branch("mTGMMs_pt",      &fTmTGMMs_pt,      "mTGMMs_pt/F");
@@ -656,6 +721,8 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mTGMMs_pt_var",  &fTmTGMMs_pt_var,  "mTGMMs_pt_var/F");
     tT->Branch("mTGMMs_pt_skew", &fTmTGMMs_pt_skew, "mTGMMs_pt_skew/F");
     tT->Branch("mTGMMs_ptl",     &fTmTGMMs_ptl,     "mTGMMs_ml/F");
+    tT->Branch("mTGMMs_m_soft",    &fTmTGMMs_m_soft,    "mTGMMs_m_soft/F");
+    tT->Branch("mTGMMs_pt_soft",   &fTmTGMMs_pt_soft,   "mTGMMs_pt_soft/F");
 
 
     tT->Branch("mUMM_m",         &fTmUMM_m,         "mUMM_m/F");
@@ -669,6 +736,8 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mUMM_pt_skew",   &fTmUMM_pt_skew,   "mUMM_pt_skew/F");
     tT->Branch("mUMM_ptl",       &fTmUMM_ptl,       "mUMM_ptl/F");
     tT->Branch("mUMM_ml",        &fTmUMM_ml,        "mUMM_ml/F");
+    tT->Branch("mUMM_m_soft",    &fTmUMM_m_soft,    "mUMM_m_soft/F");
+    tT->Branch("mUMM_pt_soft",   &fTmUMM_pt_soft,   "mUMM_pt_soft/F");
 
 
     tT->Branch("mGMM_m",         &fTmGMM_m,         "mGMM_m/F");
@@ -682,6 +751,8 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mGMM_pt_skew",   &fTmGMM_pt_skew,   "mGMM_pt_skew/F");
     tT->Branch("mGMM_ptl",       &fTmGMM_ptl,       "mGMM_ptl/F");
     tT->Branch("mGMM_ml",        &fTmGMM_ml,        "mGMM_ml/F");
+    tT->Branch("mGMM_m_soft",    &fTmUMM_m_soft,    "mGMM_m_soft/F");
+    tT->Branch("mGMM_pt_soft",   &fTmUMM_pt_soft,   "mGMM_pt_soft/F");
 
 
     tT->Branch("mTGMM_m",        &fTmTGMM_m,        "mTGMM_m/F");
@@ -695,6 +766,8 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mTGMM_pt_skew",  &fTmTGMM_pt_skew,  "mTGMM_pt_skew/F");
     tT->Branch("mTGMM_ptl",      &fTmTGMM_ptl,      "mTGMM_ptl/F");
     tT->Branch("mTGMM_ml",       &fTmTGMM_ml,       "mTGMM_ml/F");
+    tT->Branch("mTGMM_m_soft",    &fTmTGMM_m_soft,    "mTGMM_m_soft/F");
+    tT->Branch("mTGMM_pt_soft",   &fTmTGMM_pt_soft,   "mTGMM_pt_soft/F");
 
 
     tT->GetListOfBranches()->ls();
@@ -707,6 +780,7 @@ void FuzzyAnalysis::DeclareBranches(){
 void FuzzyAnalysis::ResetBranches(){
     // reset branches
     fTEventNumber     = -999;
+    fTNPV = -999;
     fTCA_m            = -1.;
     fTCA_pt           = -1.;
     fTtoppt           = -1.;
@@ -727,6 +801,8 @@ void FuzzyAnalysis::ResetBranches(){
     fTmGMMs_pt_skew   = -99999;
     fTmGMMs_ptl       = -1.;
     fTmGMMs_ml        = -1.;
+    fTmGMMs_m_soft = -1;
+    fTmGMMs_pt_soft = -1;
 
     fTmTGMMs_m        = -1.;
     fTmTGMMs_pt       = -1.;
@@ -739,6 +815,8 @@ void FuzzyAnalysis::ResetBranches(){
     fTmTGMMs_pt_skew  = -99999;
     fTmTGMMs_ptl      = -1.;
     fTmTGMMs_ml = -1.;
+    fTmTGMMs_m_soft = -1;
+    fTmTGMMs_pt_soft = -1;
 
     fTmGMM_m         = -1.;
     fTmGMM_pt        = -1.;
@@ -751,6 +829,8 @@ void FuzzyAnalysis::ResetBranches(){
     fTmGMM_pt_skew    = -99999;
     fTmGMM_ptl = -1.;
     fTmGMM_ml = -1.;
+    fTmGMM_m_soft = -1;
+    fTmGMM_pt_soft = -1;
 
     fTmUMM_m         = -1.;
     fTmUMM_pt        = -1.;
@@ -763,6 +843,8 @@ void FuzzyAnalysis::ResetBranches(){
     fTmUMM_pt_skew    = -99999;
     fTmUMM_ptl = -1.;
     fTmUMM_ml = -1.;
+    fTmUMM_m_soft = -1;
+    fTmUMM_pt_soft = -1;
 
     fTmTGMM_m        = -1.;
     fTmTGMM_pt       = -1.;
@@ -775,4 +857,6 @@ void FuzzyAnalysis::ResetBranches(){
     fTmTGMM_pt_skew    = -99999;
     fTmTGMM_ptl = -1.;
     fTmTGMM_ml = -1.;
+    fTmTGMM_m_soft = -1;
+    fTmTGMM_pt_soft = -1;
 }
