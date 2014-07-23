@@ -25,6 +25,7 @@ files/
 *.out
 *.app
 Fuzzy
+runScript
 
 # ROOT Related
 *.root
