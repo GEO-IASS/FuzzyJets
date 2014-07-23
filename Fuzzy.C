@@ -9,6 +9,7 @@
 #include <string>
 #include <iterator>
 #include <algorithm>
+#include <assert.h>
 
 
 #include "TString.h"
@@ -49,6 +50,9 @@ int main(int argc, char* argv[]){
     int nEvents = 0;
     int fDebug  = 0;
     int NPV = -1;
+    double size = -1;
+    bool learnWeights = false;
+    bool isBatch = false;
     string outName = "FuzzyJets.root";
     string pythiaConfigName = "configs/default.pythia";
     string directory = "results/tmp/";
@@ -60,7 +64,10 @@ int main(int argc, char* argv[]){
         ("Debug",   po::value<int>(&fDebug) ->default_value(0) ,     "Debug flag")
         ("OutFile", po::value<string>(&outName)->default_value("test.root"), "Output file name")
         ("NPV",     po::value<int>(&NPV)->default_value(-1), "Number of primary vertices (pile-up)")
+        ("Size",    po::value<double>(&size)->default_value(-1), "Internal size variable for Fuzzy Clustering")
+        ("LearnWeights", po::value<bool>(&learnWeights)->default_value(false), "Whether to learn cluster weights")
         ("PythiaConfig", po::value<string>(&pythiaConfigName)->default_value("configs/default.pythia"), "Pythia configuration file location")
+        ("Batch",   po::value<bool>(&isBatch)->default_value(false), "Is this running on the batch?")
         ("Directory", po::value<string>(&directory)->default_value("results/tmp/"), "Directory in which to place results (.root files etc.)");
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -69,7 +76,16 @@ int main(int argc, char* argv[]){
     if (vm.count("help")>0){
         cout << desc << "\n";
         return 1;
+    } else {
+        cout << "LearnWeights: " << learnWeights << endl;
+        cout << "Size: " << size << endl;
+        cout << "Directory: " << directory << endl;
+        cout << "NPV: " << NPV << endl;
     }
+    if (isBatch) {
+        assert(NPV != -1);
+    }
+    assert(size > 0);
 
     // Configure and initialize pythia
     Pythia8::Pythia* pythia8 = new Pythia8::Pythia();
@@ -131,6 +147,8 @@ int main(int argc, char* argv[]){
             ss << currentNPV << ".root";
             analysis->SetOutName(ss.str());
             analysis->SetPrefix(directory);
+            analysis->SetSize(size);
+            analysis->SetLearnWeights(learnWeights);
             analysis->Begin();
             analysis->Debug(fDebug);
             for (int iev = 0; iev < nEvents; iev++) {
@@ -142,8 +160,15 @@ int main(int argc, char* argv[]){
         ss.clear();
         ss.str("");
         ss << NPV << ".root";
-        analysis->SetOutName(ss.str());
-        analysis->SetPrefix(directory);
+        if(isBatch) {
+            analysis->SetOutName(outName);
+            analysis->SetPrefix("");
+        } else {
+            analysis->SetOutName(ss.str());
+            analysis->SetPrefix(directory);
+        }
+        analysis->SetSize(size);
+        analysis->SetLearnWeights(learnWeights);
         analysis->Begin();
         analysis->Debug(fDebug);
 

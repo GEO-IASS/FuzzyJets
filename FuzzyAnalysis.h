@@ -25,6 +25,9 @@ class FuzzyAnalysis{
  private:
     int  ftest;
     int  fDebug;
+    double  fSize;
+    bool fLearnWeights;
+    bool batched;
     string fOutName;
     string directoryPrefix;
 
@@ -35,14 +38,20 @@ class FuzzyAnalysis{
     // Tree Vars ---------------------------------------
     int   fTEventNumber;
     int   fTNPV;
-    float fTCA_m;
-    float fTCA_pt;
     float fTtoppt;
+
+    float fTCA_pt;
+    float fTCA_m;
+    float fTCA_pufrac;
 
     float fTantikt_m;
     float fTantikt_pt;
-    float fTantikt_m_trimmed;
-    float fTantikt_pt_trimmed;
+    float fTantikt_m_trimmed_two;
+    float fTantikt_pt_trimmed_two;
+    float fTantikt_m_trimmed_three;
+    float fTantikt_pt_trimmed_three;
+    float fTantikt_pufrac_trimmed_two;
+    float fTantikt_pufrac_trimmed_three;
 
     float fTmUMM_m;
     float fTmUMM_pt;
@@ -57,6 +66,10 @@ class FuzzyAnalysis{
     float fTmUMM_ml;
     float fTmUMM_m_soft;
     float fTmUMM_pt_soft;
+    float fTmUMM_ucpu;
+    float fTmUMM_clpu;
+    float fTmUMM_pufrac_soft;
+    float fTmUMM_pufrac_hard;
 
     float fTmGMMs_m;
     float fTmGMMs_pt;
@@ -71,7 +84,10 @@ class FuzzyAnalysis{
     float fTmGMMs_ml;
     float fTmGMMs_m_soft;
     float fTmGMMs_pt_soft;
-
+    float fTmGMMs_ucpu;
+    float fTmGMMs_clpu;
+    float fTmGMMs_pufrac_soft;
+    float fTmGMMs_pufrac_hard;
 
     float fTmTGMMs_m;
     float fTmTGMMs_pt;
@@ -86,6 +102,10 @@ class FuzzyAnalysis{
     float fTmTGMMs_ml;
     float fTmTGMMs_m_soft;
     float fTmTGMMs_pt_soft;
+    float fTmTGMMs_ucpu;
+    float fTmTGMMs_clpu;
+    float fTmTGMMs_pufrac_soft;
+    float fTmTGMMs_pufrac_hard;
 
     float fTmGMM_m;
     float fTmGMM_pt;
@@ -100,6 +120,10 @@ class FuzzyAnalysis{
     float fTmGMM_ml;
     float fTmGMM_m_soft;
     float fTmGMM_pt_soft;
+    float fTmGMM_ucpu;
+    float fTmGMM_clpu;
+    float fTmGMM_pufrac_soft;
+    float fTmGMM_pufrac_hard;
 
     float fTmTGMM_m;
     float fTmTGMM_pt;
@@ -114,8 +138,11 @@ class FuzzyAnalysis{
     float fTmTGMM_ml;
     float fTmTGMM_m_soft;
     float fTmTGMM_pt_soft;
+    float fTmTGMM_ucpu;
+    float fTmTGMM_clpu;
+    float fTmTGMM_pufrac_soft;
+    float fTmTGMM_pufrac_hard;
 
-    fastjet::JetDefinition     *m_jet_def_trimming_antikt;
     fastjet::JetDefinition     *m_jet_def;
     fastjet::JetDefinition     *m_jet_def_largeR_antikt;
     fastjet::JetDefinition     *m_jet_def_largeR_ca;
@@ -138,7 +165,16 @@ class FuzzyAnalysis{
     void SetPrefix(string prefix) {
         directoryPrefix = prefix;
     }
+    void SetSize(double s) {
+        fSize = s;
+    }
+    void SetLearnWeights(bool w) {
+        fLearnWeights = w;
+    }
 
+    void SetBatched(bool b) {
+        batched = b;
+    }
 };
 
 #endif

@@ -30,6 +30,131 @@ using namespace std;
 
 // Privately separate the logic of different analysis modes from using them
 namespace {
+    void WeightDistribution(vector<vector<double> > const& Weights,
+                            int which,
+                            TString out) {
+        TTree aux("WT" + out, "");
+        double w;
+        int pCount = Weights.size();
+        aux.Branch("w", &w, "w/D");
+        for (int pidx = 0; pidx < pCount; pidx++) {
+            w = Weights[pidx][which];
+            aux.Fill();
+        }
+        aux.Write();
+    }
+
+    // is the reference particle given by index pidx clustered at all?
+    bool isClustered(vector<vector<double> > const& Weights,
+                     int pidx) {
+        bool clustered = false;
+        int nClusters = Weights[0].size();
+        for (int j = 0; j < nClusters; j++) {
+            double w = Weights[pidx][j];
+            if (!isnan(w) && w > 0) {
+                clustered = true;
+            }
+        }
+        return clustered;
+    }
+
+    // what is the index of the fuzzy jet that the particle belongs to?
+    int belongsTo(vector<vector<double> > const& Weights,
+                  int pidx) {
+        double wmax = -1;
+        int bestidx = -1;
+        const int nClusters = Weights[0].size();
+        for (int j = 0; j < nClusters; j++) {
+            double w = Weights[pidx][j];
+            if(!isan(w) && w > 0 && w > wmax) {
+                wmax = w;
+                bestidx = j;
+            }
+        }
+        return bestidx;
+    }
+
+    // Compute the fraction of particles in a jet which are pileup
+    double JetPuFracHard(vecPseudoJet const& particles,
+                         vector<vector<double> > const& Weights,
+                         int jetidx) {
+        const int nParticles = particles.size();
+        int clusteredParticles = 0;
+        int clusteredPu = 0;
+        for (unsigned int i = 0; i < nParticles; i++) {
+            if (belongsTo(Weights, i) == jetidx) {
+                clusteredParticles++;
+                if(particles[i].user_info<MyUserInfo>().isPU()) {
+                    clusteredPu++;
+                }
+            }
+        }
+        return (double)clusteredPu / clusteredParticles;
+    }
+
+    // Compute the fraction of particles in a jet which are pileup by soft assignment
+    double JetPuFracSoft(vecPseudoJet const& particles,
+                         vector<vector<double> > const& Weights,
+                         int jetidx) {
+        const int nParticles = particles.size();
+        double clusteredParticles = 0;
+        double clsuteredPu = 0;
+        for (unsigned int i = 0; i < nParticles; i++) {
+            if (isnan(Weights[i][jetidx])) continue;
+            clusteredParticles += Weights[i][jetidx];
+            if (particles[i].user_info<MyUserInfo>().isPU()) {
+                clusteredPu += Weights[i][jetidx];
+            }
+        }
+        return clusteredPu / clusteredParticles;
+    }
+
+    // Compute the fraction of particles in a jet which are pileup for standard jets
+    double JetPuFracFastjet(fastjet::PseudoJet const& jet) {
+        vecPseudoJet c = jet.constituents();
+        const int nParticles = c.size();
+        int pu = 0;
+        for (int i = 0; i < nParticles; i++) {
+            if (c[i].user_info<MyUserInfo>().isPU()) {
+                pu++;
+            }
+        }
+        return (double)pu / nParticles;
+    }
+
+    // Compute (#clustered pileup particles) / (#pileup particles)
+    double ClusteredPileupFrac(vecPseudoJet const& particles,
+                               vector<vector<double> > const& Weights) {
+        int pileup = 0;
+        int clusteredPileup = 0;
+        for(unsigned int i = 0; i < particles.size(); i++) {
+            fastjet::PseudoJet p = particles[i];
+            if (p.user_info<MyUserInfo>().isPU()) {
+                pileup++;
+                if(isClustered(Weights, i))
+                    clusteredPileup++;
+            }
+        }
+        return 1.0*clusteredPileup / pileup;
+    }
+
+    // Compute (#unclustered pileup particles) / (#unclustered particles)
+    double UnclusteredPileupComposition(vecPseudoJet particles,
+                                        vector<vector<double> > const& Weights) {
+        int unclusteredParticles = 0;
+        int unclusteredPileup = 0;
+        for(unsigned int i = 0; i < particles.size(); i++) {
+            if(!isClustered(Weights, i)) {
+                unclusteredParticles++;
+                fastjet::PseudoJet p = particles[i];
+                if(p.user_info<MyUserInfo>().isPU()) {
+                    unclusteredPileup++;
+                }
+            }
+        }
+        return (double)unclusteredPileup / unclusteredParticles;
+    }
+
     void DoFastJetFinding(vecPseudoJet particles,
                           fastjet::JetDefinition *pJetDef,
                           double pTmin,
@@ -143,13 +268,14 @@ FuzzyAnalysis::FuzzyAnalysis(){
     fOutName = "test.root";
     directoryPrefix = "results/";
 
+    batched = false;
+
     tool = new FuzzyTools();
 
     tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
 
 
     // jet def
-    m_jet_def_trimming_antikt = new fastjet::JetDefinition(fastjet::antikt_algorithm, 0.2);
     m_jet_def                = new fastjet::JetDefinition(fastjet::antikt_algorithm, 0.4);
     m_jet_def_largeR_antikt  = new fastjet::JetDefinition(fastjet::antikt_algorithm, 1.0);
     m_jet_def_largeR_ca      = new fastjet::JetDefinition(fastjet::cambridge_algorithm, 1.0);
@@ -160,7 +286,6 @@ FuzzyAnalysis::FuzzyAnalysis(){
 // Destructor
 FuzzyAnalysis::~FuzzyAnalysis(){
     delete tool;
-    delete m_jet_def_trimming_antikt;
     delete m_jet_def;
     delete m_jet_def_largeR_antikt;
     delete m_jet_def_largeR_ca;
@@ -271,23 +396,32 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
     DoFastJetFinding(particlesForJets, m_jet_def_largeR_ca, pTmin, myJetsLargeR_ca);
     fTCA_m = myJetsLargeR_ca[0].m();
     fTCA_pt = myJetsLargeR_ca[0].pt();
+    fTCA_pufrac = JetPuFracFastjet(myJetsLargeR_ca[0]);
 
     // anti-kt R:1.0 trimmed ----------------
     vecPseudoJet myJetsLargeR_antikt;
-    DoFastJetFinding(particlesForJets, m_jet_def_largeR_antikt, pTmin, myJetsLargeR_antikt);
-    fastjet::Filter filter(0.2, fastjet::SelectorPtFractionMin(0.05));
+    fastjet::Filter filter_two(0.2, fastjet::SelectorPtFractionMin(0.05));
+    fastjet::Filter filter_three(0.3, fastjet::SelectorPtFractionMin(0.05));
 
-    fTantikt_m = myJetsLargeR_antikt[0].m();
-    fTantikt_pt = myJetsLargeR_antikt[0].pt();
-    fTantikt_m_trimmed = filter(myJetsLargeR_antikt[0]).m();
-    fTantikt_pt_trimmed = filter(myJetsLargeR_antikt[0]).pt();
+    fastjet::ClusterSequence csLargeR_antikt(particlesForJets, *m_jet_def_largeR_antikt);
+    myJetsLargeR_antikt = fastjet::sorted_by_pt(csLargeR_antikt.inclusive_jets(pTmin));
+
+    fastjet::PseudoJet leadAkt = myJetsLargeR_antikt[0];
+    const fastjet::PseudoJet leadAkt_filter_two = filter_two(leadAkt);
+    const fastjet::PseudoJet leadAkt_filter_three = filter_three(leadAkt);
+    fTantikt_m = leadAkt.m();
+    fTantikt_pt = leadAkt.pt();
+    fTantikt_m_trimmed_two = leadAkt_filter_two.m();
+    fTantikt_pt_trimmed_two = leadAkt_filter_two.pt();
+    fTantikt_m_trimmed_three = leadAkt_filter_three.m();
+    fTantikt_pt_trimmed_three = leadAkt_filter_three.pt();
+    fTantikt_pufrac_trimmed_two = JetPuFracFastjet(leadAkt_filter_two);
+    fTantikt_pufrac_trimmed_three = JetPuFracFastjet(leadAkt_filter_three);
 
     // ======================================
     // Various mixture models ---------------
     // ======================================
     tool->SetMergeDistance(0.05);
-    double size = 0.8;
-    bool learnWeights = true;
 
     // which jets to run
     bool mUMMon = true;
@@ -306,7 +440,7 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
     double maxpTmGMMs;
     if(mGMMson) {
         DoMGMMJetFinding(particlesForJets, myJetsLargeR_ca,
-                         learnWeights, true,
+                         fLearnWeights, true,
                          leadmGMMsindex, maxpTmGMMs,
                          tool, mGMMsjets, mGMMsparticleWeights,
                          mGMMsjetsparams, mGMMsweights);
@@ -321,8 +455,8 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
     double maxpTmTGMMs;
     if(mTGMMson) {
         DoMTGMMJetFinding(particlesForJets, myJetsLargeR_ca,
-                          learnWeights, true,
-                          size, leadmTGMMsindex, maxpTmTGMMs,
+                          fLearnWeights, true,
+                          fSize, leadmTGMMsindex, maxpTmTGMMs,
                           tool, mTGMMsjets, mTGMMsparticleWeights,
                           mTGMMsjetsparams, mTGMMsweights);
     }
@@ -336,7 +470,7 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
     double maxpTmGMM;
     if(mGMMon) {
         DoMGMMJetFinding(particlesForJets, particlesForJets,
-                         learnWeights, false,
+                         fLearnWeights, false,
                          leadmGMMindex, maxpTmGMM,
                          tool, mGMMjets, Weights,
                          mGMMjetsparams, mGMMweights);
@@ -350,7 +484,7 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
     int leadmUMMindex;
     double maxpTmUMM;
     if(mUMMon) {
-        DoMUMMJetFinding(particlesForJets, learnWeights, size,
+        DoMUMMJetFinding(particlesForJets, fLearnWeights, fSize,
                          leadmUMMindex, maxpTmUMM, tool, mUMMjets,
                          mUMMparticleWeights, mUMMweights);
     }
@@ -364,14 +498,39 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
     double maxpTmTGMM;
     if(mTGMMon) {
         DoMTGMMJetFinding(particlesForJets, particlesForJets,
-                          learnWeights, false, size,
+                          fLearnWeights, false, fSize,
                           leadmTGMMindex, maxpTmTGMM, tool, mTGMMjets,
                           mTGMMparticleWeights, mTGMMjetsparams, mTGMMweights);
     }
 
     // Having found jets, now do a bit of data logging and analysis
-    bool doEventDisplays = true;
-    if (doEventDisplays) {
+    bool doWeightDistributions = true;
+    if (doWeightDistributions && ievt < 10 && !batched) {
+
+        if(mGMMon) {
+            WeightDistribution(Weights, leadmGMMindex,
+                               TString::Format("_mGMM_%d", ievt));
+        }
+        if(mTGMMon) {
+            WeightDistribution(mTGMMparticleWeights, leadmTGMMindex,
+                               TString::Format("_mTGMM_%d", ievt));
+        }
+        if(mUMMon) {
+            WeightDistribution(mUMMparticleWeights, leadmUMMindex,
+                               TString::Format("_mUMM_%d", ievt));
+        }
+        if(mGMMson) {
+            WeightDistribution(mGMMsparticleWeights, leadmGMMsindex,
+                               TString::Format("_mGMMs_%d", ievt));
+        }
+        if(mTGMMson) {
+            WeightDistribution(mTGMMsparticleWeights, leadmTGMMsindex,
+                               TString::Format("_mTGMMs_%d", ievt));
+        }
+    }
+
+    bool doEventDisplays = false;
+    if (doEventDisplays && !batched) {
         if(ievt < 10 && mGMMon) {
             tool->EventDisplay(particlesForJets,
                                myJetsLargeR_ca,tops,
@@ -450,7 +609,9 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
                                         mGMMjetsparams[leadmGMMindex], mGMMweights[leadmGMMindex], 1);
         fTmGMM_ptl = tool->MLlpTGaussian(particlesForJets,mGMMjets[leadmGMMindex],
                                          mGMMjetsparams[leadmGMMindex], mGMMweights[leadmGMMindex], 0);
-    }
+        fTmGMM_pufrac_soft = JetPuFracSoft(particlesForJets, Weights, leadmGMMindex);
+        fTmGMM_pufrac_hard = JetPuFracHard(particlesForJets, Weights, leadmGMMindex);
+}
     if(mUMMon) {
         fTmUMM_m = tool->MLpT(particlesForJets, mUMMparticleWeights,
                               leadmUMMindex, mUMMparticleWeights[0].size(), 1);
@@ -459,6 +620,8 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
                                        mUMMweights[leadmUMMindex], 1);
         fTmUMM_ptl = tool->MLlpTUniform(particlesForJets,mUMMjets[leadmUMMindex],
                                         mUMMweights[leadmUMMindex], 0);
+        fTmUMM_pufrac_soft = JetPuFracSoft(particlesForJets, mUMMparticleWeights, leadmUMMindex);
+        fTmUMM_pufrac_hard = JetPuFracHard(particlesForJets, mUMMparticleWeights, leadmUMMindex);
     }
     if(mTGMMon) {
         fTmTGMM_m = tool->MLpT(particlesForJets, mTGMMparticleWeights,
@@ -468,15 +631,19 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
                                           mTGMMjetsparams[leadmTGMMindex], mTGMMweights[leadmTGMMindex],1);
         fTmTGMM_ptl = tool->MLlpTTruncGaus(particlesForJets,mTGMMjets[leadmTGMMindex],
                                            mTGMMjetsparams[leadmTGMMindex], mTGMMweights[leadmTGMMindex],0);
+        fTmTGMM_pufrac_soft = JetPuFracSoft(particlesForJets, mTGMMparticleWeights, leadmTGMMindex);
+        fTmTGMM_pufrac_hard = JetPuFracHard(particlesForJets, mTGMMparticleWeights, leadmTGMMindex);
     }
     if(mTGMMson) {
         fTmTGMMs_m = tool->MLpT(particlesForJets, mTGMMsparticleWeights,
                                 leadmTGMMsindex, mTGMMsparticleWeights[0].size(), 1);
         fTmTGMMs_pt = maxpTmTGMMs;
-        fTmTGMM_ml = tool->MLlpTTruncGaus(particlesForJets,mTGMMjets[leadmTGMMindex],
-                                          mTGMMjetsparams[leadmTGMMindex], mTGMMweights[leadmTGMMindex],1);
-        fTmTGMM_ptl = tool->MLlpTTruncGaus(particlesForJets,mTGMMjets[leadmTGMMindex],
-                                           mTGMMjetsparams[leadmTGMMindex], mTGMMweights[leadmTGMMindex],0);
+        fTmTGMMs_ml = tool->MLlpTTruncGaus(particlesForJets,mTGMMsjets[leadmTGMMsindex],
+                                           mTGMMsjetsparams[leadmTGMMsindex], mTGMMsweights[leadmTGMMsindex],1);
+        fTmTGMMs_ptl = tool->MLlpTTruncGaus(particlesForJets,mTGMMsjets[leadmTGMMsindex],
+                                            mTGMMsjetsparams[leadmTGMMsindex], mTGMMsweights[leadmTGMMsindex],0);
+        fTmTGMMs_pufrac_soft = JetPuFracSoft(particlesForJets, mTGMMsparticleWeights, leadmTGMMsindex);
+        fTmTGMMs_pufrac_hard = JetPuFracHard(particlesForJets, mTGMMsparticleWeights, leadmTGMMsindex);
     }
     if(mGMMson) {
         fTmGMMs_m = tool->MLpT(particlesForJets, mGMMsparticleWeights,
@@ -486,7 +653,8 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
                                          mGMMsjetsparams[leadmGMMsindex], mGMMsweights[leadmGMMsindex],1);
         fTmGMMs_ptl = tool->MLlpTGaussian(particlesForJets,mGMMsjets[leadmGMMsindex],
                                           mGMMsjetsparams[leadmGMMsindex], mGMMsweights[leadmGMMsindex],0);
-
+        fTmGMMs_pufrac_soft = JetPuFracSoft(particlesForJets, mGMMsparticleWeights, leadmGMMsindex);
+        fTmGMMs_pufrac_hard = JetPuFracHard(particlesForJets, mGMMsparticleWeights, leadmGMMsindex);
     }
 
     int mytop=0;
@@ -511,6 +679,10 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
                                       Weights,
                                       leadmGMMindex,
                                       0);
+        fTmGMM_ucpu = UnclusteredPileupComposition(particlesForJets,
+                                                   Weights);
+        fTmGMM_clpu = ClusteredPileupFrac(particlesForJets,
+                                          Weights);
     }
     if(mUMMon) {
         fTdeltatop_mUMM = tops[0].delta_R(mUMMjets[leadmUMMindex]);
@@ -525,6 +697,10 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
                                       mUMMparticleWeights,
                                       leadmUMMindex,
                                       0);
+        fTmUMM_ucpu = UnclusteredPileupComposition(particlesForJets,
+                                                   mUMMparticleWeights);
+        fTmUMM_clpu = ClusteredPileupFrac(particlesForJets,
+                                          mUMMparticleWeights);
     }
     if(mTGMMon) {
         fTdeltatop_mTGMM = tops[0].delta_R(mTGMMjets[leadmTGMMindex]);
@@ -539,6 +715,10 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
                                        mTGMMparticleWeights,
                                        leadmTGMMindex,
                                        0);
+        fTmTGMM_ucpu = UnclusteredPileupComposition(particlesForJets,
+                                                    mTGMMparticleWeights);
+        fTmTGMM_clpu = ClusteredPileupFrac(particlesForJets,
+                                           mTGMMparticleWeights);
     }
     if(mTGMMson) {
         fTdeltatop_mTGMMs = tops[0].delta_R(mTGMMsjets[leadmTGMMsindex]);
@@ -553,6 +733,10 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
                                         mTGMMsparticleWeights,
                                         leadmTGMMsindex,
                                         0);
+        fTmTGMMs_ucpu = UnclusteredPileupComposition(particlesForJets,
+                                                     mTGMMsparticleWeights);
+        fTmTGMMs_clpu = ClusteredPileupFrac(particlesForJets,
+                                            mTGMMsparticleWeights);
     }
     if(mGMMson) {
         fTdeltatop_mGMMs = tops[0].delta_R(mGMMsjets[leadmGMMsindex]);
@@ -567,6 +751,10 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
                                        mGMMsparticleWeights,
                                        leadmGMMsindex,
                                        0);
+        fTmGMMs_ucpu = UnclusteredPileupComposition(particlesForJets,
+                                                    mGMMsparticleWeights);
+        fTmGMMs_clpu = ClusteredPileupFrac(particlesForJets,
+                                           mGMMsparticleWeights);
     }
 
     // Moments
@@ -688,14 +876,19 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("NPV",            &fTNPV,            "NPV/I");
     tT->Branch("CA_m",           &fTCA_m,           "CA_m/F");
     tT->Branch("CA_pt",          &fTCA_pt,          "CA_pt/F");
+    tT->Branch("CA_pufrac",      &fTCA_pufrac,      "CA_pufrac/F");
+
     tT->Branch("toppt",          &fTtoppt,          "toppt/F");
 
 
     tT->Branch("antikt_m",       &fTantikt_m,       "antikt_m/F");
     tT->Branch("antikt_pt",      &fTantikt_pt,      "antikt_pt/F");
-    tT->Branch("antikt_m_trimmed", &fTantikt_m_trimmed, "antikt_m_trimmed/F");
-    tT->Branch("antikt_pt_trimmed", &fTantikt_pt_trimmed, "antikt_pt_trimmed/F");
-
+    tT->Branch("antikt_m_trimmed_two", &fTantikt_m_trimmed_two, "antikt_m_trimmed_two/F");
+    tT->Branch("antikt_pt_trimmed_two", &fTantikt_pt_trimmed_two, "antikt_pt_trimmed_two/F");
+    tT->Branch("antikt_m_trimmed_three", &fTantikt_m_trimmed_three, "antikt_m_trimmed_three/F");
+    tT->Branch("antikt_pt_trimmed_three", &fTantikt_pt_trimmed_three, "antikt_pt_trimmed_three/F");
+    tT->Branch("antikt_pufrac_trimmed_two", &fTantikt_pufrac_trimmed_two, "antikt_pufrac_trimmed_two/F");
+    tT->Branch("antikt_pufrac_trimmed_three", &fTantikt_pufrac_trimmed_three, "antikt_pufrac_trimmed_three/F");
 
     tT->Branch("mGMMs_m",        &fTmGMMs_m,        "mGMMs_m/F");
     tT->Branch("mGMMs_pt",       &fTmGMMs_pt,       "mGMMs_pt/F");
@@ -710,6 +903,10 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mGMMs_ml",       &fTmGMMs_ml,       "mGMMs_ml/F");
     tT->Branch("mGMMs_m_soft",    &fTmGMMs_m_soft,    "mGMMs_m_soft/F");
     tT->Branch("mGMMs_pt_soft",   &fTmGMMs_pt_soft,   "mGMMs_pt_soft/F");
+    tT->Branch("mGMMs_ucpu",     &fTmGMMs_ucpu,      "mGMMs_ucpu/F");
+    tT->Branch("mGMMs_clpu",     &fTmGMMs_clpu,      "mGMMs_clpu/F");
+    tT->Branch("mGMMs_pufrac_soft", &fTmGMMs_pufrac_soft, "mGMMs_pufrac_soft/F");
+    tT->Branch("mGMMs_pufrac_hard", &fTmGMMs_pufrac_hard, "mGMMs_pufrac_hard/F");
 
     tT->Branch("mTGMMs_m",       &fTmTGMMs_m,       "mTGMMs_m/F");
     tT->Branch("mTGMMs_pt",      &fTmTGMMs_pt,      "mTGMMs_pt/F");
@@ -720,10 +917,14 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mTGMMs_pt_mean", &fTmTGMMs_pt_mean, "mTGMMs_pt_mean/F");
     tT->Branch("mTGMMs_pt_var",  &fTmTGMMs_pt_var,  "mTGMMs_pt_var/F");
     tT->Branch("mTGMMs_pt_skew", &fTmTGMMs_pt_skew, "mTGMMs_pt_skew/F");
-    tT->Branch("mTGMMs_ptl",     &fTmTGMMs_ptl,     "mTGMMs_ml/F");
+    tT->Branch("mTGMMs_ptl",     &fTmTGMMs_ptl,     "mTGMMs_ptl/F");
+    tT->Branch("mTGMMs_ml",      &fTmTGMMs_ml,      "mTGMMs_ml/F");
     tT->Branch("mTGMMs_m_soft",    &fTmTGMMs_m_soft,    "mTGMMs_m_soft/F");
     tT->Branch("mTGMMs_pt_soft",   &fTmTGMMs_pt_soft,   "mTGMMs_pt_soft/F");
-
+    tT->Branch("mTGMMs_ucpu",     &fTmTGMMs_ucpu,      "mTGMMs_ucpu/F");
+    tT->Branch("mTGMMs_clpu",     &fTmTGMMs_clpu,      "mTGMMs_clpu/F");
+    tT->Branch("mTGMMs_pufrac_soft", &fTmTGMMs_pufrac_soft, "mTGMMs_pufrac_soft/F");
+    tT->Branch("mTGMMs_pufrac_hard", &fTmTGMMs_pufrac_hard, "mTGMMs_pufrac_hard/F");
 
     tT->Branch("mUMM_m",         &fTmUMM_m,         "mUMM_m/F");
     tT->Branch("mUMM_pt",        &fTmUMM_pt,        "mUMM_pt/F");
@@ -738,7 +939,10 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mUMM_ml",        &fTmUMM_ml,        "mUMM_ml/F");
     tT->Branch("mUMM_m_soft",    &fTmUMM_m_soft,    "mUMM_m_soft/F");
     tT->Branch("mUMM_pt_soft",   &fTmUMM_pt_soft,   "mUMM_pt_soft/F");
-
+    tT->Branch("mUMM_ucpu",     &fTmUMM_ucpu,      "mUMM_ucpu/F");
+    tT->Branch("mUMM_clpu",     &fTmUMM_clpu,      "mUMM_clpu/F");
+    tT->Branch("mUMM_pufrac_soft", &fTmUMM_pufrac_soft, "mUMM_pufrac_soft/F");
+    tT->Branch("mUMM_pufrac_hard", &fTmUMM_pufrac_hard, "mUMM_pufrac_hard/F");
 
     tT->Branch("mGMM_m",         &fTmGMM_m,         "mGMM_m/F");
     tT->Branch("mGMM_pt",        &fTmGMM_pt,        "mGMM_pt/F");
@@ -753,7 +957,10 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mGMM_ml",        &fTmGMM_ml,        "mGMM_ml/F");
     tT->Branch("mGMM_m_soft",    &fTmUMM_m_soft,    "mGMM_m_soft/F");
     tT->Branch("mGMM_pt_soft",   &fTmUMM_pt_soft,   "mGMM_pt_soft/F");
-
+    tT->Branch("mGMM_ucpu",     &fTmGMM_ucpu,      "mGMM_ucpu/F");
+    tT->Branch("mGMM_clpu",     &fTmGMM_clpu,      "mGMM_clpu/F");
+    tT->Branch("mGMM_pufrac_soft", &fTmGMM_pufrac_soft, "mGMM_pufrac_soft/F");
+    tT->Branch("mGMM_pufrac_hard", &fTmGMM_pufrac_hard, "mGMM_pufrac_hard/F");
 
     tT->Branch("mTGMM_m",        &fTmTGMM_m,        "mTGMM_m/F");
     tT->Branch("mTGMM_pt",       &fTmTGMM_pt,       "mTGMM_pt/F");
@@ -768,7 +975,10 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mTGMM_ml",       &fTmTGMM_ml,       "mTGMM_ml/F");
     tT->Branch("mTGMM_m_soft",    &fTmTGMM_m_soft,    "mTGMM_m_soft/F");
     tT->Branch("mTGMM_pt_soft",   &fTmTGMM_pt_soft,   "mTGMM_pt_soft/F");
-
+    tT->Branch("mTGMM_ucpu",     &fTmTGMM_ucpu,      "mTGMM_ucpu/F");
+    tT->Branch("mTGMM_clpu",     &fTmTGMM_clpu,      "mTGMM_clpu/F");
+    tT->Branch("mTGMM_pufrac_soft", &fTmTGMM_pufrac_soft, "mTGMM_pufrac_soft/F");
+    tT->Branch("mTGMM_pufrac_hard", &fTmTGMM_pufrac_hard, "mTGMM_pufrac_hard/F");
 
     tT->GetListOfBranches()->ls();
 
@@ -783,12 +993,18 @@ void FuzzyAnalysis::ResetBranches(){
     fTNPV = -999;
     fTCA_m            = -1.;
     fTCA_pt           = -1.;
+    fTCA_pufrac = -1;
+
     fTtoppt           = -1.;
 
     fTantikt_m = -1;
     fTantikt_pt = -1;
-    fTantikt_m_trimmed = -1;
-    fTantikt_pt_trimmed = -1;
+    fTantikt_m_trimmed_two = -1;
+    fTantikt_pt_trimmed_two = -1;
+    fTantikt_m_trimmed_three = -1;
+    fTantikt_pt_trimmed_three = -1;
+    fTantikt_pufrac_trimmed_two = -1;
+    fTantikt_pufrac_trimmed_three = -1;
 
     fTmGMMs_m         = -1.;
     fTmGMMs_pt        = -1.;
@@ -803,6 +1019,10 @@ void FuzzyAnalysis::ResetBranches(){
     fTmGMMs_ml        = -1.;
     fTmGMMs_m_soft = -1;
     fTmGMMs_pt_soft = -1;
+    fTmGMMs_ucpu = -1;
+    fTmGMMs_clpu = -1;
+    fTmGMMs_pufrac_soft = -1;
+    fTmGMMs_pufrac_hard = -1;
 
     fTmTGMMs_m        = -1.;
     fTmTGMMs_pt       = -1.;
@@ -817,6 +1037,10 @@ void FuzzyAnalysis::ResetBranches(){
     fTmTGMMs_ml = -1.;
     fTmTGMMs_m_soft = -1;
     fTmTGMMs_pt_soft = -1;
+    fTmTGMMs_ucpu = -1;
+    fTmTGMMs_clpu = -1;
+    fTmTGMMs_pufrac_soft = -1;
+    fTmTGMMs_pufrac_hard = -1;
 
     fTmGMM_m         = -1.;
     fTmGMM_pt        = -1.;
@@ -831,6 +1055,10 @@ void FuzzyAnalysis::ResetBranches(){
     fTmGMM_ml = -1.;
     fTmGMM_m_soft = -1;
     fTmGMM_pt_soft = -1;
+    fTmGMM_ucpu = -1;
+    fTmGMM_clpu = -1;
+    fTmGMM_pufrac_soft = -1;
+    fTmGMM_pufrac_hard = -1;
 
     fTmUMM_m         = -1.;
     fTmUMM_pt        = -1.;
@@ -845,6 +1073,10 @@ void FuzzyAnalysis::ResetBranches(){
     fTmUMM_ml = -1.;
     fTmUMM_m_soft = -1;
     fTmUMM_pt_soft = -1;
+    fTmUMM_ucpu = -1;
+    fTmUMM_clpu = -1;
+    fTmUMM_pufrac_soft = -1;
+    fTmUMM_pufrac_hard = -1;
 
     fTmTGMM_m        = -1.;
     fTmTGMM_pt       = -1.;
@@ -859,4 +1091,8 @@ void FuzzyAnalysis::ResetBranches(){
     fTmTGMM_ml = -1.;
     fTmTGMM_m_soft = -1;
     fTmTGMM_pt_soft = -1;
+    fTmTGMM_ucpu = -1;
+    fTmTGMM_clpu = -1;
+    fTmTGMM_pufrac_soft = -1;
+    fTmTGMM_pufrac_hard = -1;
 }
