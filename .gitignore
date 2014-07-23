@@ -17,6 +17,8 @@
 
 # Plots and results
 results/
+logs/
+files/
 
 # Executables
 *.exe
