@@ -74,6 +74,37 @@ namespace {
         return bestidx;
     }
 
+    // Compute the mass of a Fuzzy Jet which comes from pileup
+    // Please note that this is somewhat ill defined, due to how particles add
+    double JetPuMassHard(vecPseudoJet const& particles,
+                             vector<vector<double> > const& Weights,
+                             int jetidx) {
+        fastjet::PseudoJet pujet;
+        const int nParticles = particles.size();
+        for (int i = 0; i < nParticles; i++) {
+            if (belongsTo(Weights, i) == jetidx &&
+                particles[i].user_info<MyUserInfo>().isPU()) {
+                pujet += particles[i];
+            }
+        }
+        return pujet.m();
+    }
+
+    // Compute the soft mass due to pileup
+    // Please note that this is somewhat ill defined, due to how particles add
+    double JetPuMassSoft(vecPseudoJet const& particles,
+                             vector<vector<double> > const& Weights,
+                             int jetidx) {
+        fastjet::PseudoJet pujet;
+        const int nParticles = particles.size();
+        for (int i = 0; i < nParticles; i++) {
+            if (particles[i].user_info<MyUserInfo>().isPU()) {
+                pujet += particles[i] * Weights[i][jetidx];
+            }
+        }
+        return pujet.m();
+    }
+
     // Compute the fraction of particles in a jet which are pileup
     double JetPuFracHard(vecPseudoJet const& particles,
                          vector<vector<double> > const& Weights,
@@ -611,6 +642,8 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
                                          mGMMjetsparams[leadmGMMindex], mGMMweights[leadmGMMindex], 0);
         fTmGMM_pufrac_soft = JetPuFracSoft(particlesForJets, Weights, leadmGMMindex);
         fTmGMM_pufrac_hard = JetPuFracHard(particlesForJets, Weights, leadmGMMindex);
+        fTmGMM_m_pu_soft = JetPuMassSoft(particlesForJets, Weights, leadmGMMindex);
+        fTmGMM_m_pu_hard = JetPuMassHard(particlesForJets, Weights, leadmGMMindex);
 }
     if(mUMMon) {
         fTmUMM_m = tool->MLpT(particlesForJets, mUMMparticleWeights,
@@ -622,6 +655,8 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
                                         mUMMweights[leadmUMMindex], 0);
         fTmUMM_pufrac_soft = JetPuFracSoft(particlesForJets, mUMMparticleWeights, leadmUMMindex);
         fTmUMM_pufrac_hard = JetPuFracHard(particlesForJets, mUMMparticleWeights, leadmUMMindex);
+        fTmUMM_m_pu_soft = JetPuMassSoft(particlesForJets, mUMMparticleWeights, leadmUMMindex);
+        fTmUMM_m_pu_hard = JetPuMassHard(particlesForJets, mUMMparticleWeights, leadmUMMindex);
     }
     if(mTGMMon) {
         fTmTGMM_m = tool->MLpT(particlesForJets, mTGMMparticleWeights,
@@ -633,6 +668,8 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
                                            mTGMMjetsparams[leadmTGMMindex], mTGMMweights[leadmTGMMindex],0);
         fTmTGMM_pufrac_soft = JetPuFracSoft(particlesForJets, mTGMMparticleWeights, leadmTGMMindex);
         fTmTGMM_pufrac_hard = JetPuFracHard(particlesForJets, mTGMMparticleWeights, leadmTGMMindex);
+        fTmTGMM_m_pu_soft = JetPuMassSoft(particlesForJets, mTGMMparticleWeights, leadmTGMMindex);
+        fTmTGMM_m_pu_hard = JetPuMassHard(particlesForJets, mTGMMparticleWeights, leadmTGMMindex);
     }
     if(mTGMMson) {
         fTmTGMMs_m = tool->MLpT(particlesForJets, mTGMMsparticleWeights,
@@ -644,6 +681,8 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
                                             mTGMMsjetsparams[leadmTGMMsindex], mTGMMsweights[leadmTGMMsindex],0);
         fTmTGMMs_pufrac_soft = JetPuFracSoft(particlesForJets, mTGMMsparticleWeights, leadmTGMMsindex);
         fTmTGMMs_pufrac_hard = JetPuFracHard(particlesForJets, mTGMMsparticleWeights, leadmTGMMsindex);
+        fTmTGMMs_m_pu_soft = JetPuMassSoft(particlesForJets, mTGMMsparticleWeights, leadmTGMMsindex);
+        fTmTGMMs_m_pu_hard = JetPuMassHard(particlesForJets, mTGMMsparticleWeights, leadmTGMMsindex);
     }
     if(mGMMson) {
         fTmGMMs_m = tool->MLpT(particlesForJets, mGMMsparticleWeights,
@@ -655,6 +694,8 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
                                           mGMMsjetsparams[leadmGMMsindex], mGMMsweights[leadmGMMsindex],0);
         fTmGMMs_pufrac_soft = JetPuFracSoft(particlesForJets, mGMMsparticleWeights, leadmGMMsindex);
         fTmGMMs_pufrac_hard = JetPuFracHard(particlesForJets, mGMMsparticleWeights, leadmGMMsindex);
+        fTmGMMs_m_pu_soft = JetPuMassSoft(particlesForJets, mGMMsparticleWeights, leadmGMMsindex);
+        fTmGMMs_m_pu_hard = JetPuMassHard(particlesForJets, mGMMsparticleWeights, leadmGMMsindex);
     }
 
     int mytop=0;
@@ -907,6 +948,8 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mGMMs_clpu",     &fTmGMMs_clpu,      "mGMMs_clpu/F");
     tT->Branch("mGMMs_pufrac_soft", &fTmGMMs_pufrac_soft, "mGMMs_pufrac_soft/F");
     tT->Branch("mGMMs_pufrac_hard", &fTmGMMs_pufrac_hard, "mGMMs_pufrac_hard/F");
+    tT->Branch("mGMMs_m_pu_soft", &fTmGMMs_m_pu_soft, "mGMMs_m_pu_soft/F");
+    tT->Branch("mGMMs_m_pu_hard", &fTmGMMs_m_pu_hard, "mGMMs_m_pu_hard/F");
 
     tT->Branch("mTGMMs_m",       &fTmTGMMs_m,       "mTGMMs_m/F");
     tT->Branch("mTGMMs_pt",      &fTmTGMMs_pt,      "mTGMMs_pt/F");
@@ -925,6 +968,8 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mTGMMs_clpu",     &fTmTGMMs_clpu,      "mTGMMs_clpu/F");
     tT->Branch("mTGMMs_pufrac_soft", &fTmTGMMs_pufrac_soft, "mTGMMs_pufrac_soft/F");
     tT->Branch("mTGMMs_pufrac_hard", &fTmTGMMs_pufrac_hard, "mTGMMs_pufrac_hard/F");
+    tT->Branch("mTGMMs_m_pu_soft", &fTmTGMMs_m_pu_soft, "mTGMMs_m_pu_soft/F");
+    tT->Branch("mTGMMs_m_pu_hard", &fTmTGMMs_m_pu_hard, "mTGMMs_m_pu_hard/F");
 
     tT->Branch("mUMM_m",         &fTmUMM_m,         "mUMM_m/F");
     tT->Branch("mUMM_pt",        &fTmUMM_pt,        "mUMM_pt/F");
@@ -943,6 +988,8 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mUMM_clpu",     &fTmUMM_clpu,      "mUMM_clpu/F");
     tT->Branch("mUMM_pufrac_soft", &fTmUMM_pufrac_soft, "mUMM_pufrac_soft/F");
     tT->Branch("mUMM_pufrac_hard", &fTmUMM_pufrac_hard, "mUMM_pufrac_hard/F");
+    tT->Branch("mUMM_m_pu_soft", &fTmUMM_m_pu_soft, "mUMM_m_pu_soft/F");
+    tT->Branch("mUMM_m_pu_hard", &fTmUMM_m_pu_hard, "mUMM_m_pu_hard/F");
 
     tT->Branch("mGMM_m",         &fTmGMM_m,         "mGMM_m/F");
     tT->Branch("mGMM_pt",        &fTmGMM_pt,        "mGMM_pt/F");
@@ -961,6 +1008,8 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mGMM_clpu",     &fTmGMM_clpu,      "mGMM_clpu/F");
     tT->Branch("mGMM_pufrac_soft", &fTmGMM_pufrac_soft, "mGMM_pufrac_soft/F");
     tT->Branch("mGMM_pufrac_hard", &fTmGMM_pufrac_hard, "mGMM_pufrac_hard/F");
+    tT->Branch("mGMM_m_pu_soft", &fTmGMM_m_pu_soft, "mGMM_m_pu_soft/F");
+    tT->Branch("mGMM_m_pu_hard", &fTmGMM_m_pu_hard, "mGMM_m_pu_hard/F");
 
     tT->Branch("mTGMM_m",        &fTmTGMM_m,        "mTGMM_m/F");
     tT->Branch("mTGMM_pt",       &fTmTGMM_pt,       "mTGMM_pt/F");
@@ -979,6 +1028,9 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("mTGMM_clpu",     &fTmTGMM_clpu,      "mTGMM_clpu/F");
     tT->Branch("mTGMM_pufrac_soft", &fTmTGMM_pufrac_soft, "mTGMM_pufrac_soft/F");
     tT->Branch("mTGMM_pufrac_hard", &fTmTGMM_pufrac_hard, "mTGMM_pufrac_hard/F");
+    tT->Branch("mTGMM_m_pu_soft", &fTmTGMM_m_pu_soft, "mTGMM_m_pu_soft/F");
+    tT->Branch("mTGMM_m_pu_hard", &fTmTGMM_m_pu_hard, "mTGMM_m_pu_hard/F");
+
 
     tT->GetListOfBranches()->ls();
 
@@ -1023,6 +1075,8 @@ void FuzzyAnalysis::ResetBranches(){
     fTmGMMs_clpu = -1;
     fTmGMMs_pufrac_soft = -1;
     fTmGMMs_pufrac_hard = -1;
+    fTmGMMs_m_pu_soft = -1;
+    fTmGMMs_m_pu_hard = -1;
 
     fTmTGMMs_m        = -1.;
     fTmTGMMs_pt       = -1.;
@@ -1041,6 +1095,8 @@ void FuzzyAnalysis::ResetBranches(){
     fTmTGMMs_clpu = -1;
     fTmTGMMs_pufrac_soft = -1;
     fTmTGMMs_pufrac_hard = -1;
+    fTmTGMMs_m_pu_soft = -1;
+    fTmTGMMs_m_pu_hard = -1;
 
     fTmGMM_m         = -1.;
     fTmGMM_pt        = -1.;
@@ -1059,6 +1115,8 @@ void FuzzyAnalysis::ResetBranches(){
     fTmGMM_clpu = -1;
     fTmGMM_pufrac_soft = -1;
     fTmGMM_pufrac_hard = -1;
+    fTmGMM_m_pu_soft = -1;
+    fTmGMM_m_pu_hard = -1;
 
     fTmUMM_m         = -1.;
     fTmUMM_pt        = -1.;
@@ -1077,6 +1135,8 @@ void FuzzyAnalysis::ResetBranches(){
     fTmUMM_clpu = -1;
     fTmUMM_pufrac_soft = -1;
     fTmUMM_pufrac_hard = -1;
+    fTmUMM_m_pu_soft = -1;
+    fTmUMM_m_pu_hard = -1;
 
     fTmTGMM_m        = -1.;
     fTmTGMM_pt       = -1.;
@@ -1095,4 +1155,6 @@ void FuzzyAnalysis::ResetBranches(){
     fTmTGMM_clpu = -1;
     fTmTGMM_pufrac_soft = -1;
     fTmTGMM_pufrac_hard = -1;
+    fTmTGMM_m_pu_soft = -1;
+    fTmTGMM_m_pu_hard = -1;
 }

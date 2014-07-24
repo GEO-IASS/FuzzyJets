@@ -70,6 +70,8 @@ class FuzzyAnalysis{
     float fTmUMM_clpu;
     float fTmUMM_pufrac_soft;
     float fTmUMM_pufrac_hard;
+    float fTmUMM_m_pu_soft;
+    float fTmUMM_m_pu_hard;
 
     float fTmGMMs_m;
     float fTmGMMs_pt;
@@ -88,6 +90,8 @@ class FuzzyAnalysis{
     float fTmGMMs_clpu;
     float fTmGMMs_pufrac_soft;
     float fTmGMMs_pufrac_hard;
+    float fTmGMMs_m_pu_soft;
+    float fTmGMMs_m_pu_hard;
 
     float fTmTGMMs_m;
     float fTmTGMMs_pt;
@@ -106,6 +110,8 @@ class FuzzyAnalysis{
     float fTmTGMMs_clpu;
     float fTmTGMMs_pufrac_soft;
     float fTmTGMMs_pufrac_hard;
+    float fTmTGMMs_m_pu_soft;
+    float fTmTGMMs_m_pu_hard;
 
     float fTmGMM_m;
     float fTmGMM_pt;
@@ -124,6 +130,8 @@ class FuzzyAnalysis{
     float fTmGMM_clpu;
     float fTmGMM_pufrac_soft;
     float fTmGMM_pufrac_hard;
+    float fTmGMM_m_pu_soft;
+    float fTmGMM_m_pu_hard;
 
     float fTmTGMM_m;
     float fTmTGMM_pt;
@@ -142,6 +150,8 @@ class FuzzyAnalysis{
     float fTmTGMM_clpu;
     float fTmTGMM_pufrac_soft;
     float fTmTGMM_pufrac_hard;
+    float fTmTGMM_m_pu_soft;
+    float fTmTGMM_m_pu_hard;
 
     fastjet::JetDefinition     *m_jet_def;
     fastjet::JetDefinition     *m_jet_def_largeR_antikt;
