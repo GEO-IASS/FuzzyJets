@@ -66,7 +66,7 @@ namespace {
         const int nClusters = Weights[0].size();
         for (int j = 0; j < nClusters; j++) {
             double w = Weights[pidx][j];
-            if(!isan(w) && w > 0 && w > wmax) {
+            if(!isnan(w) && w > 0 && w > wmax) {
                 wmax = w;
                 bestidx = j;
             }
@@ -105,6 +105,20 @@ namespace {
         return pujet.m();
     }
 
+    // Compute the mass of a fastjet jet which is due to pileup
+    // Please note that this is somewhat ill defined, due to how particles add
+    double JetPuMassFastjet(fastjet::PseudoJet const& jet) {
+        const vecPseudoJet c = jet.constituents();
+        const int nParticles = c.size();
+        fastjet::PseudoJet myjet;
+        for (int i = 0; i < nParticles; i++) {
+            if(c[i].user_info<MyUserInfo>().isPU()) {
+                myjet += c[i];
+            }
+        }
+        return myjet.m();
+    }
+
     // Compute the fraction of particles in a jet which are pileup
     double JetPuFracHard(vecPseudoJet const& particles,
                          vector<vector<double> > const& Weights,
@@ -112,7 +126,7 @@ namespace {
         const int nParticles = particles.size();
         int clusteredParticles = 0;
         int clusteredPu = 0;
-        for (unsigned int i = 0; i < nParticles; i++) {
+        for (int i = 0; i < nParticles; i++) {
             if (belongsTo(Weights, i) == jetidx) {
                 clusteredParticles++;
                 if(particles[i].user_info<MyUserInfo>().isPU()) {
@@ -129,8 +143,8 @@ namespace {
                          int jetidx) {
         const int nParticles = particles.size();
         double clusteredParticles = 0;
-        double clsuteredPu = 0;
-        for (unsigned int i = 0; i < nParticles; i++) {
+        double clusteredPu = 0;
+        for (int i = 0; i < nParticles; i++) {
             if (isnan(Weights[i][jetidx])) continue;
             clusteredParticles += Weights[i][jetidx];
             if (particles[i].user_info<MyUserInfo>().isPU()) {
@@ -142,7 +156,7 @@ namespace {
 
     // Compute the fraction of particles in a jet which are pileup for standard jets
     double JetPuFracFastjet(fastjet::PseudoJet const& jet) {
-        vecPseudoJet c = jet.constituents();
+        const vecPseudoJet c = jet.constituents();
         const int nParticles = c.size();
         int pu = 0;
         for (int i = 0; i < nParticles; i++) {
@@ -423,19 +437,20 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
 
     // large-R jets: C/A --------------------
     double pTmin = 50;
-    vecPseudoJet myJetsLargeR_ca;
-    DoFastJetFinding(particlesForJets, m_jet_def_largeR_ca, pTmin, myJetsLargeR_ca);
+    fastjet::ClusterSequence csLargeR_ca(particlesForJets, *m_jet_def_largeR_ca);
+    vecPseudoJet myJetsLargeR_ca = fastjet::sorted_by_pt(csLargeR_ca.inclusive_jets(pTmin));
+
     fTCA_m = myJetsLargeR_ca[0].m();
     fTCA_pt = myJetsLargeR_ca[0].pt();
     fTCA_pufrac = JetPuFracFastjet(myJetsLargeR_ca[0]);
+    fTCA_m_pu = JetPuMassFastjet(myJetsLargeR_ca[0]);
 
     // anti-kt R:1.0 trimmed ----------------
-    vecPseudoJet myJetsLargeR_antikt;
     fastjet::Filter filter_two(0.2, fastjet::SelectorPtFractionMin(0.05));
     fastjet::Filter filter_three(0.3, fastjet::SelectorPtFractionMin(0.05));
 
     fastjet::ClusterSequence csLargeR_antikt(particlesForJets, *m_jet_def_largeR_antikt);
-    myJetsLargeR_antikt = fastjet::sorted_by_pt(csLargeR_antikt.inclusive_jets(pTmin));
+    vecPseudoJet myJetsLargeR_antikt = fastjet::sorted_by_pt(csLargeR_antikt.inclusive_jets(pTmin));
 
     fastjet::PseudoJet leadAkt = myJetsLargeR_antikt[0];
     const fastjet::PseudoJet leadAkt_filter_two = filter_two(leadAkt);
@@ -448,6 +463,9 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
     fTantikt_pt_trimmed_three = leadAkt_filter_three.pt();
     fTantikt_pufrac_trimmed_two = JetPuFracFastjet(leadAkt_filter_two);
     fTantikt_pufrac_trimmed_three = JetPuFracFastjet(leadAkt_filter_three);
+    fTantikt_m_pu = JetPuMassFastjet(leadAkt);
+    fTantikt_m_pu_trimmed_two = JetPuMassFastjet(leadAkt_filter_two);
+    fTantikt_m_pu_trimmed_three = JetPuMassFastjet(leadAkt_filter_three);
 
     // ======================================
     // Various mixture models ---------------
@@ -918,9 +936,9 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("CA_m",           &fTCA_m,           "CA_m/F");
     tT->Branch("CA_pt",          &fTCA_pt,          "CA_pt/F");
     tT->Branch("CA_pufrac",      &fTCA_pufrac,      "CA_pufrac/F");
+    tT->Branch("CA_m_pu",        &fTCA_m_pu,        "CA_m_pu/F");
 
     tT->Branch("toppt",          &fTtoppt,          "toppt/F");
-
 
     tT->Branch("antikt_m",       &fTantikt_m,       "antikt_m/F");
     tT->Branch("antikt_pt",      &fTantikt_pt,      "antikt_pt/F");
@@ -930,6 +948,9 @@ void FuzzyAnalysis::DeclareBranches(){
     tT->Branch("antikt_pt_trimmed_three", &fTantikt_pt_trimmed_three, "antikt_pt_trimmed_three/F");
     tT->Branch("antikt_pufrac_trimmed_two", &fTantikt_pufrac_trimmed_two, "antikt_pufrac_trimmed_two/F");
     tT->Branch("antikt_pufrac_trimmed_three", &fTantikt_pufrac_trimmed_three, "antikt_pufrac_trimmed_three/F");
+    tT->Branch("antikt_m_pu", &fTantikt_m_pu, "antikt_m_pu/F");
+    tT->Branch("antikt_m_pu_trimmed_two", &fTantikt_m_pu_trimmed_two, "antikt_m_pu_trimmed_two/F");
+    tT->Branch("antikt_m_pu_trimmed_three", &fTantikt_m_pu_trimmed_three, "antikt_m_pu_trimmed_three/F");
 
     tT->Branch("mGMMs_m",        &fTmGMMs_m,        "mGMMs_m/F");
     tT->Branch("mGMMs_pt",       &fTmGMMs_pt,       "mGMMs_pt/F");
@@ -1046,6 +1067,7 @@ void FuzzyAnalysis::ResetBranches(){
     fTCA_m            = -1.;
     fTCA_pt           = -1.;
     fTCA_pufrac = -1;
+    fTCA_m_pu = -1;
 
     fTtoppt           = -1.;
 
@@ -1057,6 +1079,9 @@ void FuzzyAnalysis::ResetBranches(){
     fTantikt_pt_trimmed_three = -1;
     fTantikt_pufrac_trimmed_two = -1;
     fTantikt_pufrac_trimmed_three = -1;
+    fTantikt_m_pu = -1;
+    fTantikt_m_pu_trimmed_two = -1;
+    fTantikt_m_pu_trimmed_three = -1;
 
     fTmGMMs_m         = -1.;
     fTmGMMs_pt        = -1.;

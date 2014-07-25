@@ -43,6 +43,7 @@ class FuzzyAnalysis{
     float fTCA_pt;
     float fTCA_m;
     float fTCA_pufrac;
+    float fTCA_m_pu;
 
     float fTantikt_m;
     float fTantikt_pt;
@@ -52,6 +53,9 @@ class FuzzyAnalysis{
     float fTantikt_pt_trimmed_three;
     float fTantikt_pufrac_trimmed_two;
     float fTantikt_pufrac_trimmed_three;
+    float fTantikt_m_pu;
+    float fTantikt_m_pu_trimmed_two;
+    float fTantikt_m_pu_trimmed_three;
 
     float fTmUMM_m;
     float fTmUMM_pt;
