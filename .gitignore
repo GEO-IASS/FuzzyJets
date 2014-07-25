@@ -27,9 +27,13 @@ clean_scripts/
 *.app
 Fuzzy
 runScript
+Histogrammer
 
 # ROOT Related
 *.root
+
+# Core files
+core.*
 
 # Emacs
 \#*\#
