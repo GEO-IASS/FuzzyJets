@@ -8,7 +8,7 @@ cmd=$4
 
 echo MAKING TEMP DIR $2
 JOBFILEDIR=$2
-mkdir $JOBFILEDIR
+mkdir -p $JOBFILEDIR
 REALOUT=$3
 echo MADE TEMP DIR $JOBFILEDIR
 echo WILL COPY TO $REALOUT
@@ -20,4 +20,3 @@ $cmd $*
 cp -r $JOBFILEDIR/*.root $REALOUT
 echo COPYING to $REALOUT
 rm -rf $JOBFILEDIR
-
