@@ -9,6 +9,7 @@
 
 namespace StyleTypes {
     enum HistOptions {
+        NONE = 0,
         LINE = 1,
         FILL = 2,
         DASHED = 4,
@@ -21,15 +22,18 @@ public:
     std::string xLabel;
     std::string yLabel;
     std::string title;
+    std::string base;
 
     size_t width;
     size_t height;
 
     CanvasHelper(std::string xLabel, std::string yLabel, std::string title,
-                 size_t width, size_t height) {
+                 std::string base, size_t width, size_t height) {
         this->xLabel = xLabel;
         this->yLabel = yLabel;
         this->title = title;
+        this->base = base;
+
         this->width = width;
         this->height = height;
     }

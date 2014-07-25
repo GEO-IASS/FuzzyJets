@@ -124,7 +124,7 @@ void DrawAtlasLabel(std::string title) {
 template<typename T>
 void prettyHist(std::vector<HistHelper> const& histdecs,
                 CanvasHelper const& cdec) {
-    std::vector<TH1D *> vHists;
+std::vector<TH1D *> vHists;
     std::vector<std::vector<double> > vVals;
     const size_t nHists = histdecs.size();
     for (size_t iHist = 0; iHist < nHists; iHist++) {
@@ -180,8 +180,12 @@ void prettyHist(std::vector<HistHelper> const& histdecs,
     leggaa->Draw();
     DrawAtlasLabel(cdec.title);
 
-    std::string outfilename = fileify(cdec.title);
-    canv->Print(outfilename.c_str());
+    std::string outfilenamebase = fileify(cdec.title);
+    std::stringstream ss;
+    ss << cdec.base << outfilenamebase << ".pdf";
+    std::string fullfilename = ss.str();
+
+    canv->Print(fullfilename.c_str());
 
     delete leggaa;
     delete canv;
