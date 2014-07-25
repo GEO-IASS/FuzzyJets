@@ -148,6 +148,7 @@ int main(int argc, char* argv[]){
             analysis->SetOutName(ss.str());
             analysis->SetPrefix(directory);
             analysis->SetSize(size);
+            analysis->SetBatched(false);
             analysis->SetLearnWeights(learnWeights);
             analysis->Begin();
             analysis->Debug(fDebug);
@@ -163,9 +164,11 @@ int main(int argc, char* argv[]){
         if(isBatch) {
             analysis->SetOutName(outName);
             analysis->SetPrefix("");
+            analysis->SetBatched(true);
         } else {
             analysis->SetOutName(ss.str());
             analysis->SetPrefix(directory);
+            analysis->SetBatched(false);
         }
         analysis->SetSize(size);
         analysis->SetLearnWeights(learnWeights);
