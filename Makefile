@@ -6,16 +6,34 @@
 # Note: source setup.sh before make             #
 # --------------------------------------------- #
 
-CXXFLAGS =   -O2 -Wall -Wextra -equal -Wshadow -Werror
+CXXFLAGS =   -O2 -Wall -Wextra -equal -Wshadow -Werror -Wno-shadow
 CXX = g++
 
 .PHONY: clean debug all clear
 
-all: Fuzzy
+all: Fuzzy Histogrammer
+
+Histogrammer: Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so
+	$(CXX) Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so -o $@ \
+	$(CXXFLAGS) `root-config --glibs` \
+	-L$(BOOSTLIBLOCATION) -lboost_program_options
+
+Histogrammer.so: Histogrammer.cc AnalyzeFuzzyTools.so AtlasUtils.so
+	$(CXX) -o $@ -c $< \
+	$(CXXFLAGS) -fPIC -shared `root-config --cflags` \
+	-isystem $(BOOSTINCDIR)
+
+AnalyzeFuzzyTools.so: AnalyzeFuzzyTools.cc AnalyzeFuzzyTools.h
+	$(CXX) -o $@ -c $<  \
+	$(CXXFLAGS) -fPIC -shared `root-config --cflags`
+
+AtlasUtils.so: AtlasUtils.cc AtlasUtils.h
+	$(CXX) -o $@ -c $<  \
+	$(CXXFLAGS) -fPIC -shared `root-config --cflags`
 
 Fuzzy:  Fuzzy.so FuzzyTools.so FuzzyAnalysis.so
 	$(CXX) Fuzzy.so FuzzyTools.so FuzzyAnalysis.so -o $@ \
-	$(CXXFLAGS) -Wno-shadow  \
+	$(CXXFLAGS)  \
 	`root-config --glibs`  \
 	-L$(FASTJETLOCATION)/lib `$(FASTJETLOCATION)/bin/fastjet-config --libs --plugins ` \
 	-L$(PYTHIA8LOCATION)/lib -lpythia8 -llhapdfdummy \
@@ -23,7 +41,7 @@ Fuzzy:  Fuzzy.so FuzzyTools.so FuzzyAnalysis.so
 
 Fuzzy.so: Fuzzy.C    FuzzyTools.so FuzzyAnalysis.so
 	$(CXX) -o $@ -c $<  \
-	$(CXXFLAGS) -Wno-shadow -fPIC -shared \
+	$(CXXFLAGS) -fPIC -shared \
 	`$(FASTJETLOCATION)/bin/fastjet-config --cxxflags --plugins` \
 	-isystem $(PYTHIA8LOCATION)/include \
 	-isystem $(BOOSTINCDIR) \
@@ -31,14 +49,14 @@ Fuzzy.so: Fuzzy.C    FuzzyTools.so FuzzyAnalysis.so
 
 FuzzyTools.so : FuzzyTools.cc FuzzyTools.h
 	$(CXX) -o $@ -c $<  \
-	$(CXXFLAGS) -Wno-shadow -fPIC -shared \
+	$(CXXFLAGS) -fPIC -shared \
 	`$(FASTJETLOCATION)/bin/fastjet-config --cxxflags --plugins` \
 	-isystem $(PYTHIA8LOCATION)/include \
 	`root-config --cflags`
 
 FuzzyAnalysis.so : FuzzyAnalysis.cc FuzzyAnalysis.h
 	$(CXX) -o $@ -c $<  \
-	$(CXXFLAGS) -Wno-shadow -fPIC -shared \
+	$(CXXFLAGS) -fPIC -shared \
 	`$(FASTJETLOCATION)/bin/fastjet-config --cxxflags --plugins`  \
 	-isystem $(PYTHIA8LOCATION)/include \
 	`root-config --cflags`
