@@ -1,19 +1,24 @@
 #!/usr/bin/python
 
-import os, time, subprocess
+import os, time, subprocess, pickle
 
 def safe_mkdir(p):
     if not os.path.isdir(p):
         os.makedirs(p)
 
-def submit_fuzzy(mu, size, lw, n_events, i):
-    logdir = cwd + 'logs/' + time_postfix + "_bsub_" + str(mu)
+def file_name(prefix, is_intermediate, size, lw, mu):
+    lw_flag = "1" if lw else "0"
+    div = "/temp_" if is_intermediate else "/"
+    return prefix + div + str(size) + "s_" + str(mu) + "mu_" + lw_flag
+
+def submit_fuzzy(mu, size, lw, n_events, i, unique_id):
+    logdir = cwd + 'logs/' + time_postfix + "_bsub_" + str(mu) + "_" + str(i)
     safe_mkdir(logdir)
 
-    scratchdir = "/scratch/" + time_postfix + "_" + str(i)
+    scratchdir = "/scratch/chstan/" + time_postfix + "_" + str(unique_id)
     safe_mkdir(scratchdir)
     lw_flag = "1" if lw else "0"
-    outfile_name = scratchdir + "/temp_" + str(size) + "s_" + lw_flag + "_" + str(i) + ".root"
+    outfile_name = file_name(scratchdir, True, size, lw, mu) + "_" + str(i) + ".root"
     size_s = str(1.0*size / 10)
     submit = ['bsub', '-q', queue,
               '-R', 'select[(!preempt&&rhel60&&cvmfs&&inet)]',
@@ -24,27 +29,38 @@ def submit_fuzzy(mu, size, lw, n_events, i):
               "--LearnWeights", lw_flag, "--Batch", "1"]
     subprocess.call(submit)
 
-user = "chstan"
 workdir = "/u/at/chstan/nfs/summer_2014/ForConrad/"
 
 cwd = os.getcwd() + "/"
 subfile = cwd + "_batchSingleSub.sh"
 
-time_postfix = time.strftime('%Y_%m_%d_%Hh%Mm')
+time_postfix = time.strftime('%Y_%m_%d_%Hh%Mm%Ss')
 
-events_per_job = 500
-n_jobs = 20
+events_per_job = 400
+n_jobs = 5
 queue = 'xlong'
 
 outdir = cwd + 'files/' + time_postfix
 safe_mkdir(outdir)
 
 NPVs = [0, 10, 20, 30]
-sizes = [7, 8, 9, 10]
+sizes = [7, 9]
 learnWeights = [True, False]
 
+j = 0
+cleanup_commands = []
 for current_mu in NPVs:
     for current_size in sizes:
         for current_lw in learnWeights:
+            cleanup_base = file_name(outdir, False, current_size, current_lw, current_mu)
+            cleanup_command = "hadd " + cleanup_base + ".root" + " " \
+                              + cleanup_base + "_{0.." + str(n_jobs-1) + "}.root"
+            cleanup_commands.append(cleanup_command)
             for current_job in range(n_jobs):
-                submit_fuzzy(current_mu, current_size, current_lw, events_per_job, current_job)
+                submit_fuzzy(current_mu, current_size, current_lw, events_per_job, current_job, j)
+                j += 1
+
+with open('clean_scripts/' + time_postfix + '.clscr', 'wb') as outf:
+    pickle.dump(cleanup_commands, outf)
+
+print "SUBMITTED " + str(len(NPVs) * len(learnWeights) * len(sizes) * n_jobs) + " JOBS TO THE QUEUE " + queue

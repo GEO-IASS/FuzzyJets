@@ -33,9 +33,9 @@ AtlasUtils.so: AtlasUtils.cc AtlasUtils.h
 
 Fuzzy:  Fuzzy.so FuzzyTools.so FuzzyAnalysis.so
 	$(CXX) Fuzzy.so FuzzyTools.so FuzzyAnalysis.so -o $@ \
-	$(CXXFLAGS)  \
-	`root-config --glibs`  \
-	-L$(FASTJETLOCATION)/lib `$(FASTJETLOCATION)/bin/fastjet-config --libs --plugins ` \
+	$(CXXFLAGS) `root-config --glibs`  \
+	-L$(FASTJETLOCATION)/lib \
+	`$(FASTJETLOCATION)/bin/fastjet-config --libs --plugins ` \
 	-L$(PYTHIA8LOCATION)/lib -lpythia8 -llhapdfdummy \
 	-L$(BOOSTLIBLOCATION) -lboost_program_options
 
