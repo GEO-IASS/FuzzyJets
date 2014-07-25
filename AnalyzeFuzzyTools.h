@@ -188,9 +188,13 @@ std::vector<TH1D *> vHists;
         currentHist->GetXaxis()->SetTitleOffset(1.4);
 
         // draw options
+        if (histdec.options & StyleTypes::DASHED) {
+            currentHist->SetLineStyle(7); // dashed style
+        }
         currentHist->SetLineColor(histdec.color);
+
         if (iHist == 0) {
-            currentHist->GetYaxis()->SetRangeUser(0, RoundDoubleUp(allMax, 10));
+            currentHist->GetYaxis()->SetRangeUser(0, RoundDoubleUp(allMax*1.2, 10));
             currentHist->GetXaxis()->SetTitle(cdec.xLabel.c_str());
             currentHist->Draw();
         } else {

@@ -5,6 +5,7 @@
 #include <TColor.h>
 
 #include "AnalyzeFuzzyTools.h"
+#include "AtlasStyle.h"
 
 #include "boost/program_options.hpp"
 
@@ -36,5 +37,25 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    CanvasHelper cdec_default("Mass [GeV]", "", "Test Title", 600, 600);
+    SetAtlasStyle();
+
+    string zero_loc = "/u/at/chstan/nfs/summer_2014/ForConrad/results/with_pu/wno_s10/0.root";
+    string ten_loc = "/u/at/chstan/nfs/summer_2014/ForConrad/results/with_pu/wno_s10/10.root";
+    string twenty_loc = "/u/at/chstan/nfs/summer_2014/ForConrad/results/with_pu/wno_s10/20.root";
+    string thirty_loc = "/u/at/chstan/nfs/summer_2014/ForConrad/results/with_pu/wno_s10/30.root";
+
+    string outdir = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/";
+
+    CanvasHelper cdec_test("Mass [GeV]", "", "Test Title", outdir, 800, 800);
+
+    HistHelper hh_one(zero_loc, "CA_m", "CA Mass", 510, 0, 400, 50,
+                      StyleTypes::NONE, kBlue);
+    HistHelper hh_two(zero_loc, "antikt_m", "Anti-kt Mass", 510, 0, 400, 50,
+                      StyleTypes::DASHED, kBlack);
+
+    vector<HistHelper> histdecs_test;
+    histdecs_test.push_back(hh_one);
+    histdecs_test.push_back(hh_two);
+
+    prettyHist<float>(histdecs_test, cdec_test);
 }
