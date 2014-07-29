@@ -8,6 +8,12 @@
 
 CXXFLAGS =   -O2 -Wall -Wextra -equal -Wshadow -Werror -Wno-shadow
 CXX = g++
+PROFILER = -pg
+
+ROOTLIBS = `root-config --glibs`
+ROOTFLAGS = `root-config --cflags`
+FASTJETLIBS = `$(FASTJETLOCATION)/bin/fastjet-config --libs --plugins`
+FASTJETFLAGS = `$(FASTJETLOCATION)/bin/fastjet-config --cxxflags --plugins`
 
 .PHONY: clean debug all clear
 
@@ -15,51 +21,44 @@ all: Fuzzy Histogrammer
 
 Histogrammer: Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so
 	$(CXX) Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so -o $@ \
-	$(CXXFLAGS) `root-config --glibs` \
+	$(CXXFLAGS) $(ROOTLIBS) \
 	-L$(BOOSTLIBLOCATION) -lboost_program_options
 
 Histogrammer.so: Histogrammer.cc AnalyzeFuzzyTools.so AtlasUtils.so
 	$(CXX) -o $@ -c $< \
-	$(CXXFLAGS) -fPIC -shared `root-config --cflags` \
+	$(CXXFLAGS) -fPIC -shared $(ROOTFLAGS) \
 	-isystem $(BOOSTINCDIR)
 
 AnalyzeFuzzyTools.so: AnalyzeFuzzyTools.cc AnalyzeFuzzyTools.h
 	$(CXX) -o $@ -c $<  \
-	$(CXXFLAGS) -fPIC -shared `root-config --cflags`
+	$(CXXFLAGS) -fPIC -shared $(ROOTFLAGS) \
 
 AtlasUtils.so: AtlasUtils.cc AtlasUtils.h
 	$(CXX) -o $@ -c $<  \
-	$(CXXFLAGS) -fPIC -shared `root-config --cflags`
+	$(CXXFLAGS) -fPIC -shared $(ROOTFLAGS)
 
 Fuzzy:  Fuzzy.so FuzzyTools.so FuzzyAnalysis.so
-	$(CXX) Fuzzy.so FuzzyTools.so FuzzyAnalysis.so -o $@ \
-	$(CXXFLAGS) `root-config --glibs`  \
-	-L$(FASTJETLOCATION)/lib \
-	`$(FASTJETLOCATION)/bin/fastjet-config --libs --plugins ` \
+	$(CXX) Fuzzy.so FuzzyTools.so FuzzyAnalysis.so -o $@ $(PROFILER) \
+	$(CXXFLAGS) $(ROOTLIBS) \
+	-L$(FASTJETLOCATION)/lib $(FASTJETLIBS) \
 	-L$(PYTHIA8LOCATION)/lib -lpythia8 -llhapdfdummy \
 	-L$(BOOSTLIBLOCATION) -lboost_program_options
 
 Fuzzy.so: Fuzzy.C    FuzzyTools.so FuzzyAnalysis.so
-	$(CXX) -o $@ -c $<  \
-	$(CXXFLAGS) -fPIC -shared \
-	`$(FASTJETLOCATION)/bin/fastjet-config --cxxflags --plugins` \
+	$(CXX) -o $@ -c $< $(PROFILER)  \
+	$(CXXFLAGS) -fPIC -shared $(FASTJETFLAGS) \
 	-isystem $(PYTHIA8LOCATION)/include \
-	-isystem $(BOOSTINCDIR) \
-	`root-config --cflags`
+	-isystem $(BOOSTINCDIR) $(ROOTFLAGS)
 
 FuzzyTools.so : FuzzyTools.cc FuzzyTools.h
-	$(CXX) -o $@ -c $<  \
-	$(CXXFLAGS) -fPIC -shared \
-	`$(FASTJETLOCATION)/bin/fastjet-config --cxxflags --plugins` \
-	-isystem $(PYTHIA8LOCATION)/include \
-	`root-config --cflags`
+	$(CXX) -o $@ -c $< $(PROFILER) \
+	$(CXXFLAGS) -fPIC -shared $(FASTJETFLAGS) \
+	-isystem $(PYTHIA8LOCATION)/include $(ROOTFLAGS)
 
 FuzzyAnalysis.so : FuzzyAnalysis.cc FuzzyAnalysis.h
-	$(CXX) -o $@ -c $<  \
-	$(CXXFLAGS) -fPIC -shared \
-	`$(FASTJETLOCATION)/bin/fastjet-config --cxxflags --plugins`  \
-	-isystem $(PYTHIA8LOCATION)/include \
-	`root-config --cflags`
+	$(CXX) -o $@ -c $< $(PROFILER) \
+	$(CXXFLAGS) -fPIC -shared $(FASTJETFLAGS) \
+	-isystem $(PYTHIA8LOCATION)/include $(ROOTFLAGS)
 
 clean:
 	rm -rf *.exe
