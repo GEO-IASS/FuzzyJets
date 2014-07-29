@@ -77,8 +77,8 @@ namespace {
     // Compute the mass of a Fuzzy Jet which comes from pileup
     // Please note that this is somewhat ill defined, due to how particles add
     double JetPuMassHard(vecPseudoJet const& particles,
-                             vector<vector<double> > const& Weights,
-                             int jetidx) {
+                         vector<vector<double> > const& Weights,
+                         int jetidx) {
         fastjet::PseudoJet pujet;
         const int nParticles = particles.size();
         for (int i = 0; i < nParticles; i++) {
@@ -93,8 +93,8 @@ namespace {
     // Compute the soft mass due to pileup
     // Please note that this is somewhat ill defined, due to how particles add
     double JetPuMassSoft(vecPseudoJet const& particles,
-                             vector<vector<double> > const& Weights,
-                             int jetidx) {
+                         vector<vector<double> > const& Weights,
+                         int jetidx) {
         fastjet::PseudoJet pujet;
         const int nParticles = particles.size();
         for (int i = 0; i < nParticles; i++) {
@@ -142,6 +142,12 @@ namespace {
                          vector<vector<double> > const& Weights,
                          int jetidx) {
         const int nParticles = particles.size();
+        const int nClusters = Weights[0].size();
+
+        assert(nParticles == (int) Weights.size());
+        assert(jetidx >= 0);
+        assert(jetidx < nClusters);
+
         double clusteredParticles = 0;
         double clusteredPu = 0;
         for (int i = 0; i < nParticles; i++) {
@@ -662,7 +668,7 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
         fTmGMM_pufrac_hard = JetPuFracHard(particlesForJets, Weights, leadmGMMindex);
         fTmGMM_m_pu_soft = JetPuMassSoft(particlesForJets, Weights, leadmGMMindex);
         fTmGMM_m_pu_hard = JetPuMassHard(particlesForJets, Weights, leadmGMMindex);
-}
+    }
     if(mUMMon) {
         fTmUMM_m = tool->MLpT(particlesForJets, mUMMparticleWeights,
                               leadmUMMindex, mUMMparticleWeights[0].size(), 1);
@@ -921,6 +927,13 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
 
     tT->Fill();
 
+    if (!batched) {
+        map<string, float*>::const_iterator iter;
+        for (iter = treeVars.begin(); iter != treeVars.end(); iter++) {
+            cout << iter->first << ": " << *(iter->second) << endl;
+        }
+    }
+
     if(fDebug) cout << "FuzzyAnalysis::AnalyzeEvent End " << endl;
     return;
 }
@@ -929,131 +942,139 @@ void FuzzyAnalysis::AnalyzeEvent(int ievt, Pythia8::Pythia* pythia8, Pythia8::Py
 
 // declate branches
 void FuzzyAnalysis::DeclareBranches(){
+    treeVars["CA_m"] = &fTCA_m;
+    treeVars["CA_pt"] = &fTCA_pt;
+    treeVars["CA_pufrac"] = &fTCA_pufrac;
+    treeVars["CA_m_pu"] = &fTCA_m_pu;
+
+    treeVars["toppt"] = &fTtoppt;
+
+    treeVars["antikt_m"] = &fTantikt_m;
+    treeVars["antikt_pt"] = &fTantikt_pt;
+    treeVars["antikt_m_trimmed_two"] = &fTantikt_m_trimmed_two;
+    treeVars["antikt_pt_trimmed_two"] = &fTantikt_pt_trimmed_two;
+    treeVars["antikt_m_trimmed_three"] = &fTantikt_m_trimmed_three;
+    treeVars["antikt_pt_trimmed_three"] = &fTantikt_pt_trimmed_three;
+    treeVars["antikt_pufrac_trimmed_two"] = &fTantikt_pufrac_trimmed_two;
+    treeVars["antikt_pufrac_trimmed_three"] = &fTantikt_pufrac_trimmed_three;
+    treeVars["antikt_m_pu"] = &fTantikt_m_pu;
+    treeVars["antikt_m_pu_trimmed_two"] = &fTantikt_m_pu_trimmed_two;
+    treeVars["antikt_m_pu_trimmed_three"] = &fTantikt_m_pu_trimmed_three;
+
+    treeVars["mGMMs_m"] = &fTmGMMs_m;
+    treeVars["mGMMs_pt"] = &fTmGMMs_pt;
+    treeVars["deltatop_mGMMs"] = &fTdeltatop_mGMMs;
+    treeVars["mGMMs_m_mean"] = &fTmGMMs_m_mean;
+    treeVars["mGMMs_m_var"] = &fTmGMMs_m_var;
+    treeVars["mGMMs_m_skew"] = &fTmGMMs_m_skew;
+    treeVars["mGMMs_pt_mean"] = &fTmGMMs_pt_mean;
+    treeVars["mGMMs_pt_var"] = &fTmGMMs_pt_var;
+    treeVars["mGMMs_pt_skew"] = &fTmGMMs_pt_skew;
+    treeVars["mGMMs_ptl"] = &fTmGMMs_ptl;
+    treeVars["mGMMs_ml"] = &fTmGMMs_ml;
+    treeVars["mGMMs_m_soft"] = &fTmGMMs_m_soft;
+    treeVars["mGMMs_pt_soft"] = &fTmGMMs_pt_soft;
+    treeVars["mGMMs_ucpu"] = &fTmGMMs_ucpu;
+    treeVars["mGMMs_clpu"] = &fTmGMMs_clpu;
+    treeVars["mGMMs_pufrac_soft"] = &fTmGMMs_pufrac_soft;
+    treeVars["mGMMs_pufrac_hard"] = &fTmGMMs_pufrac_hard;
+    treeVars["mGMMs_m_pu_soft"] = &fTmGMMs_m_pu_soft;
+    treeVars["mGMMs_m_pu_hard"] = &fTmGMMs_m_pu_hard;
+
+    treeVars["mTGMMs_m"] = &fTmTGMMs_m;
+    treeVars["mTGMMs_pt"] = &fTmTGMMs_pt;
+    treeVars["deltatop_mTGMMs"] = &fTdeltatop_mTGMMs;
+    treeVars["mTGMMs_m_mean"] = &fTmTGMMs_m_mean;
+    treeVars["mTGMMs_m_var"] = &fTmTGMMs_m_var;
+    treeVars["mTGMMs_m_skew"] = &fTmTGMMs_m_skew;
+    treeVars["mTGMMs_pt_mean"] = &fTmTGMMs_pt_mean;
+    treeVars["mTGMMs_pt_var"] = &fTmTGMMs_pt_var;
+    treeVars["mTGMMs_pt_skew"] = &fTmTGMMs_pt_skew;
+    treeVars["mTGMMs_ptl"] = &fTmTGMMs_ptl;
+    treeVars["mTGMMs_ml"] = &fTmTGMMs_ml;
+    treeVars["mTGMMs_m_soft"] = &fTmTGMMs_m_soft;
+    treeVars["mTGMMs_pt_soft"] = &fTmTGMMs_pt_soft;
+    treeVars["mTGMMs_ucpu"] = &fTmTGMMs_ucpu;
+    treeVars["mTGMMs_clpu"] = &fTmTGMMs_clpu;
+    treeVars["mTGMMs_pufrac_soft"] = &fTmTGMMs_pufrac_soft;
+    treeVars["mTGMMs_pufrac_hard"] = &fTmTGMMs_pufrac_hard;
+    treeVars["mTGMMs_m_pu_soft"] = &fTmTGMMs_m_pu_soft;
+    treeVars["mTGMMs_m_pu_hard"] = &fTmTGMMs_m_pu_hard;
+
+    treeVars["mUMM_m"] = &fTmUMM_m;
+    treeVars["mUMM_pt"] = &fTmUMM_pt;
+    treeVars["deltatop_mUMM"] = &fTdeltatop_mUMM;
+    treeVars["mUMM_m_mean"] = &fTmUMM_m_mean;
+    treeVars["mUMM_m_var"] = &fTmUMM_m_var;
+    treeVars["mUMM_m_skew"] = &fTmUMM_m_skew;
+    treeVars["mUMM_pt_mean"] = &fTmUMM_pt_mean;
+    treeVars["mUMM_pt_var"] = &fTmUMM_pt_var;
+    treeVars["mUMM_pt_skew"] = &fTmUMM_pt_skew;
+    treeVars["mUMM_ptl"] = &fTmUMM_ptl;
+    treeVars["mUMM_ml"] = &fTmUMM_ml;
+    treeVars["mUMM_m_soft"] = &fTmUMM_m_soft;
+    treeVars["mUMM_pt_soft"] = &fTmUMM_pt_soft;
+    treeVars["mUMM_ucpu"] = &fTmUMM_ucpu;
+    treeVars["mUMM_clpu"] = &fTmUMM_clpu;
+    treeVars["mUMM_pufrac_soft"] = &fTmUMM_pufrac_soft;
+    treeVars["mUMM_pufrac_hard"] = &fTmUMM_pufrac_hard;
+    treeVars["mUMM_m_pu_soft"] = &fTmUMM_m_pu_soft;
+    treeVars["mUMM_m_pu_hard"] = &fTmUMM_m_pu_hard;
+
+    treeVars["mGMM_m"] = &fTmGMM_m;
+    treeVars["mGMM_pt"] = &fTmGMM_pt;
+    treeVars["deltatop_mGMM"] = &fTdeltatop_mGMM;
+    treeVars["mGMM_m_mean"] = &fTmGMM_m_mean;
+    treeVars["mGMM_m_var"] = &fTmGMM_m_var;
+    treeVars["mGMM_m_skew"] = &fTmGMM_m_skew;
+    treeVars["mGMM_pt_mean"] = &fTmGMM_pt_mean;
+    treeVars["mGMM_pt_var"] = &fTmGMM_pt_var;
+    treeVars["mGMM_pt_skew"] = &fTmGMM_pt_skew;
+    treeVars["mGMM_ptl"] = &fTmGMM_ptl;
+    treeVars["mGMM_ml"] = &fTmGMM_ml;
+    treeVars["mGMM_m_soft"] = &fTmUMM_m_soft;
+    treeVars["mGMM_pt_soft"] = &fTmUMM_pt_soft;
+    treeVars["mGMM_ucpu"] = &fTmGMM_ucpu;
+    treeVars["mGMM_clpu"] = &fTmGMM_clpu;
+    treeVars["mGMM_pufrac_soft"] = &fTmGMM_pufrac_soft;
+    treeVars["mGMM_pufrac_hard"] = &fTmGMM_pufrac_hard;
+    treeVars["mGMM_m_pu_soft"] = &fTmGMM_m_pu_soft;
+    treeVars["mGMM_m_pu_hard"] = &fTmGMM_m_pu_hard;
+
+    treeVars["mTGMM_m"] = &fTmTGMM_m;
+    treeVars["mTGMM_pt"] = &fTmTGMM_pt;
+    treeVars["deltatop_mTGMM"] = &fTdeltatop_mTGMM;
+    treeVars["mTGMM_m_mean"] = &fTmTGMM_m_mean;
+    treeVars["mTGMM_m_var"] = &fTmTGMM_m_var;
+    treeVars["mTGMM_m_skew"] = &fTmTGMM_m_skew;
+    treeVars["mTGMM_pt_mean"] = &fTmTGMM_pt_mean;
+    treeVars["mTGMM_pt_var"] = &fTmTGMM_pt_var;
+    treeVars["mTGMM_pt_skew"] = &fTmTGMM_pt_skew;
+    treeVars["mTGMM_ptl"] = &fTmTGMM_ptl;
+    treeVars["mTGMM_ml"] = &fTmTGMM_ml;
+    treeVars["mTGMM_m_soft"] = &fTmTGMM_m_soft;
+    treeVars["mTGMM_pt_soft"] = &fTmTGMM_pt_soft;
+    treeVars["mTGMM_ucpu"] = &fTmTGMM_ucpu;
+    treeVars["mTGMM_clpu"] = &fTmTGMM_clpu;
+    treeVars["mTGMM_pufrac_soft"] = &fTmTGMM_pufrac_soft;
+    treeVars["mTGMM_pufrac_hard"] = &fTmTGMM_pufrac_hard;
+    treeVars["mTGMM_m_pu_soft"] = &fTmTGMM_m_pu_soft;
+    treeVars["mTGMM_m_pu_hard"] = &fTmTGMM_m_pu_hard;
 
     // Event Properties
     tT->Branch("EventNumber",    &fTEventNumber,    "EventNumber/I");
     tT->Branch("NPV",            &fTNPV,            "NPV/I");
-    tT->Branch("CA_m",           &fTCA_m,           "CA_m/F");
-    tT->Branch("CA_pt",          &fTCA_pt,          "CA_pt/F");
-    tT->Branch("CA_pufrac",      &fTCA_pufrac,      "CA_pufrac/F");
-    tT->Branch("CA_m_pu",        &fTCA_m_pu,        "CA_m_pu/F");
 
-    tT->Branch("toppt",          &fTtoppt,          "toppt/F");
-
-    tT->Branch("antikt_m",       &fTantikt_m,       "antikt_m/F");
-    tT->Branch("antikt_pt",      &fTantikt_pt,      "antikt_pt/F");
-    tT->Branch("antikt_m_trimmed_two", &fTantikt_m_trimmed_two, "antikt_m_trimmed_two/F");
-    tT->Branch("antikt_pt_trimmed_two", &fTantikt_pt_trimmed_two, "antikt_pt_trimmed_two/F");
-    tT->Branch("antikt_m_trimmed_three", &fTantikt_m_trimmed_three, "antikt_m_trimmed_three/F");
-    tT->Branch("antikt_pt_trimmed_three", &fTantikt_pt_trimmed_three, "antikt_pt_trimmed_three/F");
-    tT->Branch("antikt_pufrac_trimmed_two", &fTantikt_pufrac_trimmed_two, "antikt_pufrac_trimmed_two/F");
-    tT->Branch("antikt_pufrac_trimmed_three", &fTantikt_pufrac_trimmed_three, "antikt_pufrac_trimmed_three/F");
-    tT->Branch("antikt_m_pu", &fTantikt_m_pu, "antikt_m_pu/F");
-    tT->Branch("antikt_m_pu_trimmed_two", &fTantikt_m_pu_trimmed_two, "antikt_m_pu_trimmed_two/F");
-    tT->Branch("antikt_m_pu_trimmed_three", &fTantikt_m_pu_trimmed_three, "antikt_m_pu_trimmed_three/F");
-
-    tT->Branch("mGMMs_m",        &fTmGMMs_m,        "mGMMs_m/F");
-    tT->Branch("mGMMs_pt",       &fTmGMMs_pt,       "mGMMs_pt/F");
-    tT->Branch("deltatop_mGMMs", &fTdeltatop_mGMMs, "deltatop_mGMMs/F");
-    tT->Branch("mGMMs_m_mean",   &fTmGMMs_m_mean,   "mGMMs_m_mean/F");
-    tT->Branch("mGMMs_m_var",    &fTmGMMs_m_var,    "mGMMs_m_var/F");
-    tT->Branch("mGMMs_m_skew",   &fTmGMMs_m_skew,   "mGMMs_m_skew/F");
-    tT->Branch("mGMMs_pt_mean",  &fTmGMMs_pt_mean,  "mGMMs_pt_mean/F");
-    tT->Branch("mGMMs_pt_var",   &fTmGMMs_pt_var,   "mGMMs_pt_var/F");
-    tT->Branch("mGMMs_pt_skew",  &fTmGMMs_pt_skew,  "mGMMs_pt_skew/F");
-    tT->Branch("mGMMs_ptl",      &fTmGMMs_ptl,      "mGMMs_ptl/F");
-    tT->Branch("mGMMs_ml",       &fTmGMMs_ml,       "mGMMs_ml/F");
-    tT->Branch("mGMMs_m_soft",    &fTmGMMs_m_soft,    "mGMMs_m_soft/F");
-    tT->Branch("mGMMs_pt_soft",   &fTmGMMs_pt_soft,   "mGMMs_pt_soft/F");
-    tT->Branch("mGMMs_ucpu",     &fTmGMMs_ucpu,      "mGMMs_ucpu/F");
-    tT->Branch("mGMMs_clpu",     &fTmGMMs_clpu,      "mGMMs_clpu/F");
-    tT->Branch("mGMMs_pufrac_soft", &fTmGMMs_pufrac_soft, "mGMMs_pufrac_soft/F");
-    tT->Branch("mGMMs_pufrac_hard", &fTmGMMs_pufrac_hard, "mGMMs_pufrac_hard/F");
-    tT->Branch("mGMMs_m_pu_soft", &fTmGMMs_m_pu_soft, "mGMMs_m_pu_soft/F");
-    tT->Branch("mGMMs_m_pu_hard", &fTmGMMs_m_pu_hard, "mGMMs_m_pu_hard/F");
-
-    tT->Branch("mTGMMs_m",       &fTmTGMMs_m,       "mTGMMs_m/F");
-    tT->Branch("mTGMMs_pt",      &fTmTGMMs_pt,      "mTGMMs_pt/F");
-    tT->Branch("deltatop_mTGMMs",&fTdeltatop_mTGMMs,"deltatop_mTGMMs/F");
-    tT->Branch("mTGMMs_m_mean",  &fTmTGMMs_m_mean,  "mTGMMs_m_mean/F");
-    tT->Branch("mTGMMs_m_var",   &fTmTGMMs_m_var,   "mTGMMs_m_var/F");
-    tT->Branch("mTGMMs_m_skew",  &fTmTGMMs_m_skew,  "mTGMMs_m_skew/F");
-    tT->Branch("mTGMMs_pt_mean", &fTmTGMMs_pt_mean, "mTGMMs_pt_mean/F");
-    tT->Branch("mTGMMs_pt_var",  &fTmTGMMs_pt_var,  "mTGMMs_pt_var/F");
-    tT->Branch("mTGMMs_pt_skew", &fTmTGMMs_pt_skew, "mTGMMs_pt_skew/F");
-    tT->Branch("mTGMMs_ptl",     &fTmTGMMs_ptl,     "mTGMMs_ptl/F");
-    tT->Branch("mTGMMs_ml",      &fTmTGMMs_ml,      "mTGMMs_ml/F");
-    tT->Branch("mTGMMs_m_soft",    &fTmTGMMs_m_soft,    "mTGMMs_m_soft/F");
-    tT->Branch("mTGMMs_pt_soft",   &fTmTGMMs_pt_soft,   "mTGMMs_pt_soft/F");
-    tT->Branch("mTGMMs_ucpu",     &fTmTGMMs_ucpu,      "mTGMMs_ucpu/F");
-    tT->Branch("mTGMMs_clpu",     &fTmTGMMs_clpu,      "mTGMMs_clpu/F");
-    tT->Branch("mTGMMs_pufrac_soft", &fTmTGMMs_pufrac_soft, "mTGMMs_pufrac_soft/F");
-    tT->Branch("mTGMMs_pufrac_hard", &fTmTGMMs_pufrac_hard, "mTGMMs_pufrac_hard/F");
-    tT->Branch("mTGMMs_m_pu_soft", &fTmTGMMs_m_pu_soft, "mTGMMs_m_pu_soft/F");
-    tT->Branch("mTGMMs_m_pu_hard", &fTmTGMMs_m_pu_hard, "mTGMMs_m_pu_hard/F");
-
-    tT->Branch("mUMM_m",         &fTmUMM_m,         "mUMM_m/F");
-    tT->Branch("mUMM_pt",        &fTmUMM_pt,        "mUMM_pt/F");
-    tT->Branch("deltatop_mUMM",  &fTdeltatop_mUMM,  "deltatop_mUMM/F");
-    tT->Branch("mUMM_m_mean",    &fTmUMM_m_mean,    "mUMM_m_mean/F");
-    tT->Branch("mUMM_m_var",     &fTmUMM_m_var,     "mUMM_m_var/F");
-    tT->Branch("mUMM_m_skew",    &fTmUMM_m_skew,    "mUMM_m_skew/F");
-    tT->Branch("mUMM_pt_mean",   &fTmUMM_pt_mean,   "mUMM_pt_mean/F");
-    tT->Branch("mUMM_pt_var",    &fTmUMM_pt_var,    "mUMM_pt_var/F");
-    tT->Branch("mUMM_pt_skew",   &fTmUMM_pt_skew,   "mUMM_pt_skew/F");
-    tT->Branch("mUMM_ptl",       &fTmUMM_ptl,       "mUMM_ptl/F");
-    tT->Branch("mUMM_ml",        &fTmUMM_ml,        "mUMM_ml/F");
-    tT->Branch("mUMM_m_soft",    &fTmUMM_m_soft,    "mUMM_m_soft/F");
-    tT->Branch("mUMM_pt_soft",   &fTmUMM_pt_soft,   "mUMM_pt_soft/F");
-    tT->Branch("mUMM_ucpu",     &fTmUMM_ucpu,      "mUMM_ucpu/F");
-    tT->Branch("mUMM_clpu",     &fTmUMM_clpu,      "mUMM_clpu/F");
-    tT->Branch("mUMM_pufrac_soft", &fTmUMM_pufrac_soft, "mUMM_pufrac_soft/F");
-    tT->Branch("mUMM_pufrac_hard", &fTmUMM_pufrac_hard, "mUMM_pufrac_hard/F");
-    tT->Branch("mUMM_m_pu_soft", &fTmUMM_m_pu_soft, "mUMM_m_pu_soft/F");
-    tT->Branch("mUMM_m_pu_hard", &fTmUMM_m_pu_hard, "mUMM_m_pu_hard/F");
-
-    tT->Branch("mGMM_m",         &fTmGMM_m,         "mGMM_m/F");
-    tT->Branch("mGMM_pt",        &fTmGMM_pt,        "mGMM_pt/F");
-    tT->Branch("deltatop_mGMM",  &fTdeltatop_mGMM,  "deltatop_mGMM/F");
-    tT->Branch("mGMM_m_mean",    &fTmGMM_m_mean,    "mGMM_m_mean/F");
-    tT->Branch("mGMM_m_var",     &fTmGMM_m_var,     "mGMM_m_var/F");
-    tT->Branch("mGMM_m_skew",    &fTmGMM_m_skew,    "mGMM_m_skew/F");
-    tT->Branch("mGMM_pt_mean",   &fTmGMM_pt_mean,   "mGMM_pt_mean/F");
-    tT->Branch("mGMM_pt_var",    &fTmGMM_pt_var,    "mGMM_pt_var/F");
-    tT->Branch("mGMM_pt_skew",   &fTmGMM_pt_skew,   "mGMM_pt_skew/F");
-    tT->Branch("mGMM_ptl",       &fTmGMM_ptl,       "mGMM_ptl/F");
-    tT->Branch("mGMM_ml",        &fTmGMM_ml,        "mGMM_ml/F");
-    tT->Branch("mGMM_m_soft",    &fTmUMM_m_soft,    "mGMM_m_soft/F");
-    tT->Branch("mGMM_pt_soft",   &fTmUMM_pt_soft,   "mGMM_pt_soft/F");
-    tT->Branch("mGMM_ucpu",     &fTmGMM_ucpu,      "mGMM_ucpu/F");
-    tT->Branch("mGMM_clpu",     &fTmGMM_clpu,      "mGMM_clpu/F");
-    tT->Branch("mGMM_pufrac_soft", &fTmGMM_pufrac_soft, "mGMM_pufrac_soft/F");
-    tT->Branch("mGMM_pufrac_hard", &fTmGMM_pufrac_hard, "mGMM_pufrac_hard/F");
-    tT->Branch("mGMM_m_pu_soft", &fTmGMM_m_pu_soft, "mGMM_m_pu_soft/F");
-    tT->Branch("mGMM_m_pu_hard", &fTmGMM_m_pu_hard, "mGMM_m_pu_hard/F");
-
-    tT->Branch("mTGMM_m",        &fTmTGMM_m,        "mTGMM_m/F");
-    tT->Branch("mTGMM_pt",       &fTmTGMM_pt,       "mTGMM_pt/F");
-    tT->Branch("deltatop_mTGMM", &fTdeltatop_mTGMM, "deltatop_mTGMM/F");
-    tT->Branch("mTGMM_m_mean",   &fTmTGMM_m_mean,   "mTGMM_m_mean/F");
-    tT->Branch("mTGMM_m_var",    &fTmTGMM_m_var,    "mTGMM_m_var/F");
-    tT->Branch("mTGMM_m_skew",   &fTmTGMM_m_skew,   "mTGMM_m_skew/F");
-    tT->Branch("mTGMM_pt_mean",  &fTmTGMM_pt_mean,  "mTGMM_pt_mean/F");
-    tT->Branch("mTGMM_pt_var",   &fTmTGMM_pt_var,   "mTGMM_pt_var/F");
-    tT->Branch("mTGMM_pt_skew",  &fTmTGMM_pt_skew,  "mTGMM_pt_skew/F");
-    tT->Branch("mTGMM_ptl",      &fTmTGMM_ptl,      "mTGMM_ptl/F");
-    tT->Branch("mTGMM_ml",       &fTmTGMM_ml,       "mTGMM_ml/F");
-    tT->Branch("mTGMM_m_soft",    &fTmTGMM_m_soft,    "mTGMM_m_soft/F");
-    tT->Branch("mTGMM_pt_soft",   &fTmTGMM_pt_soft,   "mTGMM_pt_soft/F");
-    tT->Branch("mTGMM_ucpu",     &fTmTGMM_ucpu,      "mTGMM_ucpu/F");
-    tT->Branch("mTGMM_clpu",     &fTmTGMM_clpu,      "mTGMM_clpu/F");
-    tT->Branch("mTGMM_pufrac_soft", &fTmTGMM_pufrac_soft, "mTGMM_pufrac_soft/F");
-    tT->Branch("mTGMM_pufrac_hard", &fTmTGMM_pufrac_hard, "mTGMM_pufrac_hard/F");
-    tT->Branch("mTGMM_m_pu_soft", &fTmTGMM_m_pu_soft, "mTGMM_m_pu_soft/F");
-    tT->Branch("mTGMM_m_pu_hard", &fTmTGMM_m_pu_hard, "mTGMM_m_pu_hard/F");
-
-
-    tT->GetListOfBranches()->ls();
+    stringstream ss;
+    map<string, float*>::const_iterator iter;
+    for (iter = treeVars.begin(); iter != treeVars.end(); iter++) {
+        string branchName = iter->first;
+        ss.clear();
+        ss.str("");
+        ss << branchName << "/F";
+        string branchTypename = ss.str();
+        tT->Branch(branchName.c_str(), iter->second, branchTypename.c_str());
+    }
 
     return;
 }
@@ -1062,124 +1083,10 @@ void FuzzyAnalysis::DeclareBranches(){
 // resets vars
 void FuzzyAnalysis::ResetBranches(){
     // reset branches
-    fTEventNumber     = -999;
-    fTNPV = -999;
-    fTCA_m            = -1.;
-    fTCA_pt           = -1.;
-    fTCA_pufrac = -1;
-    fTCA_m_pu = -1;
-
-    fTtoppt           = -1.;
-
-    fTantikt_m = -1;
-    fTantikt_pt = -1;
-    fTantikt_m_trimmed_two = -1;
-    fTantikt_pt_trimmed_two = -1;
-    fTantikt_m_trimmed_three = -1;
-    fTantikt_pt_trimmed_three = -1;
-    fTantikt_pufrac_trimmed_two = -1;
-    fTantikt_pufrac_trimmed_three = -1;
-    fTantikt_m_pu = -1;
-    fTantikt_m_pu_trimmed_two = -1;
-    fTantikt_m_pu_trimmed_three = -1;
-
-    fTmGMMs_m         = -1.;
-    fTmGMMs_pt        = -1.;
-    fTdeltatop_mGMMs  = -1.;
-    fTmGMMs_m_mean    = -1.;
-    fTmGMMs_m_var     = -1.;
-    fTmGMMs_m_skew    = -99999;
-    fTmGMMs_pt_mean   = -1.;
-    fTmGMMs_pt_var    = -1.;
-    fTmGMMs_pt_skew   = -99999;
-    fTmGMMs_ptl       = -1.;
-    fTmGMMs_ml        = -1.;
-    fTmGMMs_m_soft = -1;
-    fTmGMMs_pt_soft = -1;
-    fTmGMMs_ucpu = -1;
-    fTmGMMs_clpu = -1;
-    fTmGMMs_pufrac_soft = -1;
-    fTmGMMs_pufrac_hard = -1;
-    fTmGMMs_m_pu_soft = -1;
-    fTmGMMs_m_pu_hard = -1;
-
-    fTmTGMMs_m        = -1.;
-    fTmTGMMs_pt       = -1.;
-    fTdeltatop_mTGMMs = -1.;
-    fTmTGMMs_m_mean   = -1.;
-    fTmTGMMs_m_var    = -1.;
-    fTmTGMMs_m_skew   = -99999;
-    fTmTGMMs_pt_mean  = -1.;
-    fTmTGMMs_pt_var   = -1.;
-    fTmTGMMs_pt_skew  = -99999;
-    fTmTGMMs_ptl      = -1.;
-    fTmTGMMs_ml = -1.;
-    fTmTGMMs_m_soft = -1;
-    fTmTGMMs_pt_soft = -1;
-    fTmTGMMs_ucpu = -1;
-    fTmTGMMs_clpu = -1;
-    fTmTGMMs_pufrac_soft = -1;
-    fTmTGMMs_pufrac_hard = -1;
-    fTmTGMMs_m_pu_soft = -1;
-    fTmTGMMs_m_pu_hard = -1;
-
-    fTmGMM_m         = -1.;
-    fTmGMM_pt        = -1.;
-    fTdeltatop_mGMM  = -1.;
-    fTmGMM_m_mean    = -1.;
-    fTmGMM_m_var     = -1.;
-    fTmGMM_m_skew    = -99999;
-    fTmGMM_pt_mean    = -1.;
-    fTmGMM_pt_var     = -1.;
-    fTmGMM_pt_skew    = -99999;
-    fTmGMM_ptl = -1.;
-    fTmGMM_ml = -1.;
-    fTmGMM_m_soft = -1;
-    fTmGMM_pt_soft = -1;
-    fTmGMM_ucpu = -1;
-    fTmGMM_clpu = -1;
-    fTmGMM_pufrac_soft = -1;
-    fTmGMM_pufrac_hard = -1;
-    fTmGMM_m_pu_soft = -1;
-    fTmGMM_m_pu_hard = -1;
-
-    fTmUMM_m         = -1.;
-    fTmUMM_pt        = -1.;
-    fTdeltatop_mUMM  = -1.;
-    fTmUMM_m_mean    = -1.;
-    fTmUMM_m_var     = -1.;
-    fTmUMM_m_skew    = -99999;
-    fTmUMM_pt_mean    = -1.;
-    fTmUMM_pt_var     = -1.;
-    fTmUMM_pt_skew    = -99999;
-    fTmUMM_ptl = -1.;
-    fTmUMM_ml = -1.;
-    fTmUMM_m_soft = -1;
-    fTmUMM_pt_soft = -1;
-    fTmUMM_ucpu = -1;
-    fTmUMM_clpu = -1;
-    fTmUMM_pufrac_soft = -1;
-    fTmUMM_pufrac_hard = -1;
-    fTmUMM_m_pu_soft = -1;
-    fTmUMM_m_pu_hard = -1;
-
-    fTmTGMM_m        = -1.;
-    fTmTGMM_pt       = -1.;
-    fTdeltatop_mTGMM = -1.;
-    fTmTGMM_m_mean    = -1.;
-    fTmTGMM_m_var     = -1.;
-    fTmTGMM_m_skew    = -99999;
-    fTmTGMM_pt_mean    = -1.;
-    fTmTGMM_pt_var     = -1.;
-    fTmTGMM_pt_skew    = -99999;
-    fTmTGMM_ptl = -1.;
-    fTmTGMM_ml = -1.;
-    fTmTGMM_m_soft = -1;
-    fTmTGMM_pt_soft = -1;
-    fTmTGMM_ucpu = -1;
-    fTmTGMM_clpu = -1;
-    fTmTGMM_pufrac_soft = -1;
-    fTmTGMM_pufrac_hard = -1;
-    fTmTGMM_m_pu_soft = -1;
-    fTmTGMM_m_pu_hard = -1;
+    fTEventNumber = -999;
+    fTNPV         = -999;
+    map<string, float*>::const_iterator iter;
+    for (iter = treeVars.begin(); iter != treeVars.end(); iter++) {
+        *(iter->second) = -999999;
+    }
 }

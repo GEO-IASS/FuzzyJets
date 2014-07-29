@@ -31,6 +31,8 @@ class FuzzyAnalysis{
     string fOutName;
     string directoryPrefix;
 
+    map<string, float*> treeVars;
+
     TFile *tF;
     TTree *tT;
     FuzzyTools *tool;
