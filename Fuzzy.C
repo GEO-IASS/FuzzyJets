@@ -30,13 +30,7 @@
 
 #include "boost/program_options.hpp"
 
-using std::cout;
-using std::endl;
-using std::string;
-using std::map;
-using namespace std;
 namespace po = boost::program_options;
-
 
 int main(int argc, char* argv[]){
     // argument parsing  ------------------------

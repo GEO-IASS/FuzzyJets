@@ -2,8 +2,9 @@
 #define  FuzzyAnalysis_H
 
 #include <vector>
-#include <math.h>
 #include <string>
+#include <map>
+#include <math.h>
 
 #include "fastjet/ClusterSequence.hh"
 #include "fastjet/PseudoJet.hh"
@@ -19,8 +20,6 @@
 #include "myFastJetBase.h"
 #include "Pythia8/Pythia.h"
 
-using namespace std;
-
 class FuzzyAnalysis{
  private:
     int  ftest;
@@ -31,7 +30,7 @@ class FuzzyAnalysis{
     string fOutName;
     string directoryPrefix;
 
-    map<string, float*> treeVars;
+    std::map<string, float*> treeVars;
 
     TFile *tF;
     TTree *tT;

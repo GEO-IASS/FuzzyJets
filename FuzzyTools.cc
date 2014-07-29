@@ -31,8 +31,6 @@
 #include "TLegend.h"
 #include "TLine.h"
 
-using namespace std;
-
 // Makes debugging a little easier, pretty print vectors
 template<typename T>
 ostream& operator<< (ostream& out, const vector<T> v) {

@@ -25,9 +25,6 @@
 
 #include "Pythia8/Pythia.h"
 
-using namespace std;
-
-
 // Privately separate the logic of different analysis modes from using them
 namespace {
     void WeightDistribution(vector<vector<double> > const& Weights,

@@ -14,8 +14,6 @@
 
 #include "myFastJetBase.h"
 
-using namespace std;
-
 typedef std::vector<fastjet::PseudoJet> vecPseudoJet;
 
 
