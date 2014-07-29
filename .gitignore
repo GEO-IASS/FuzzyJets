@@ -38,3 +38,8 @@ core.*
 # Emacs
 \#*\#
 *~
+
+# MISC
+# gprof outputs
+*.out
+*.prof
