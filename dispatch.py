@@ -26,10 +26,13 @@ def submit_fuzzy(mu, size, lw, n_events, i, unique_id):
               subfile, workdir, scratchdir, outdir,
               "./Fuzzy", "--NEvents", str(n_events), "--OutFile", outfile_name,
               "--NPV", str(mu),  "--Size", str(size_s),
+              "--PythiaConfig", pythia_conf,
               "--LearnWeights", lw_flag, "--Batch", "1"]
     subprocess.call(submit)
 
 workdir = "/u/at/chstan/nfs/summer_2014/ForConrad/"
+
+pythia_conf = workdir + "configs/default_bat"
 
 cwd = os.getcwd() + "/"
 subfile = cwd + "_batchSingleSub.sh"
