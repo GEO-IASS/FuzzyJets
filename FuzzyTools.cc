@@ -78,7 +78,7 @@ FuzzyTools::Initialize(__attribute__((unused)) vecPseudoJet particles,
 }
 
 vector<vector<double> >
-FuzzyTools::InitWeights(vecPseudoJet particles,
+FuzzyTools::InitWeights(vecPseudoJet const& particles,
                         int k){
     vector<vector<double> > out;
     for (unsigned int i=0; i<particles.size(); i++){
@@ -97,7 +97,7 @@ FuzzyTools::InitWeights(vecPseudoJet particles,
 //  the value of the Gaussian distribution with covariance Sigma
 double
 FuzzyTools::doGaus(double x1, double x2, double mu1, double mu2,
-                   TMatrix sigma){
+                   TMatrix const& sigma){
     TMatrix summT(1,2); // (x-mu) tranpose
     TMatrix summ(2,1);  // (x-mu)
     summT(0,0) = x1-mu1;
@@ -127,7 +127,7 @@ FuzzyTools::doGaus(double x1, double x2, double mu1, double mu2,
 // return the *square* of the Mahalanobis distance
 double
 FuzzyTools::MDist(double x1, double x2, double mu1, double mu2,
-                  TMatrix sigma) {
+                  TMatrix const& sigma) {
     TMatrix summT(1,2); // (x-mu) tranpose
     TMatrix summ(2,1);  // (x-mu)
     summT(0,0) = x1-mu1;
@@ -153,7 +153,7 @@ FuzzyTools::MDist(double x1, double x2, double mu1, double mu2,
 
 double
 FuzzyTools::doTruncGaus(double x1, double x2, double mu1, double mu2,
-                        TMatrix sigma) {
+                        TMatrix const& sigma) {
     double dist = MDist(x1, x2, mu1, mu2, sigma);
     if (dist > R*R) {
         return 0;
@@ -163,7 +163,7 @@ FuzzyTools::doTruncGaus(double x1, double x2, double mu1, double mu2,
 }
 
 vector<TMatrix>
-FuzzyTools::Initializeparams(__attribute__((unused)) vecPseudoJet particles,
+FuzzyTools::Initializeparams(__attribute__((unused)) vecPseudoJet const& particles,
                              int k){
     vector<TMatrix> outparams;
     for (int i=0; i<k;i++){
@@ -189,12 +189,12 @@ FuzzyTools::Initializeparams(__attribute__((unused)) vecPseudoJet particles,
 // ProbabilityDistribution so that subtype polymorphism can stand in for the
 // higher function. Unfortunately, all this adds complexity.
 void
-FuzzyTools::ComputeWeightsGaussian(vecPseudoJet particles,
+FuzzyTools::ComputeWeightsGaussian(vecPseudoJet const& particles,
                                    vector<vector<double> >* Weights,
                                    __attribute__((unused)) int k,
-                                   vecPseudoJet mGMMjets,
-                                   vector<TMatrix> mGMMjetsparams,
-                                   vector<double> mGMMweights){
+                                   vecPseudoJet const& mGMMjets,
+                                   vector<TMatrix> const& mGMMjetsparams,
+                                   vector<double> const& mGMMweights){
     double li = 0;
     for (unsigned int i=0; i<particles.size(); i++){
         double denom=0.;
@@ -221,12 +221,12 @@ FuzzyTools::ComputeWeightsGaussian(vecPseudoJet particles,
 }
 
 void
-FuzzyTools::ComputeWeightsTruncGaus(vecPseudoJet particles,
+FuzzyTools::ComputeWeightsTruncGaus(vecPseudoJet const& particles,
                                     vector<vector<double> >* Weights,
                                     __attribute__((unused)) int k,
-                                    vecPseudoJet mTGMMjets,
-                                    vector<TMatrix> mTGMMjetsparams,
-                                    vector<double> mTGMMweights) {
+                                    vecPseudoJet const& mTGMMjets,
+                                    vector<TMatrix> const& mTGMMjetsparams,
+                                    vector<double> const& mTGMMweights) {
     for (unsigned int i=0; i < particles.size(); i++) {
         double denom = 0;
         for (unsigned int j = 0; j < mTGMMjets.size(); j++) {
@@ -253,11 +253,11 @@ FuzzyTools::ComputeWeightsTruncGaus(vecPseudoJet particles,
 }
 
 void
-FuzzyTools::ComputeWeightsUniform(vecPseudoJet particles,
+FuzzyTools::ComputeWeightsUniform(vecPseudoJet const& particles,
                                   vector<vector<double> >* Weights,
                                   __attribute__((unused)) int k,
-                                  vecPseudoJet mUMMjets,
-                                  vector<double> mUMMweights) {
+                                  vecPseudoJet const& mUMMjets,
+                                  vector<double> const& mUMMweights) {
     for (unsigned int i=0; i<particles.size(); i++) {
         double denom=0.;
         double dist;
@@ -282,8 +282,8 @@ FuzzyTools::ComputeWeightsUniform(vecPseudoJet particles,
 }
 
 vecPseudoJet
-FuzzyTools::UpdateJetsUniform(vecPseudoJet particles,
-                              vector<vector<double> > Weights,
+FuzzyTools::UpdateJetsUniform(vecPseudoJet const& particles,
+                              vector<vector<double> > const& Weights,
                               int clusterCount,
                               vector<double>* mUMMweights) {
     vecPseudoJet outjets;
@@ -332,8 +332,8 @@ FuzzyTools::UpdateJetsUniform(vecPseudoJet particles,
 }
 
 vecPseudoJet
-FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet particles,
-                                vector<vector<double> > Weights,
+FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet const& particles,
+                                vector<vector<double> > const& Weights,
                                 int clusterCount,
                                 vector<TMatrix>* mTGMMjetsparams,
                                 vector<double>* mTGMMweights) {
@@ -426,8 +426,8 @@ FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet particles,
 }
 
 vecPseudoJet
-FuzzyTools::UpdateJetsGaussian(vecPseudoJet particles,
-                               vector<vector<double> > Weights,
+FuzzyTools::UpdateJetsGaussian(vecPseudoJet const& particles,
+                               vector<vector<double> > const& Weights,
                                int clusterCount,
                                vector<TMatrix>* mGMMjetsparams,
                                vector<double>* mGMMweights){
@@ -522,9 +522,9 @@ FuzzyTools::UpdateJetsGaussian(vecPseudoJet particles,
 
 
 set<unsigned int>
-FuzzyTools::ClustersForRemovalGaussian(vecPseudoJet& mGMMjets,
-                                       vector<TMatrix>& mGMMjetsparams,
-                                       vector<double>& mGMMweights) {
+FuzzyTools::ClustersForRemovalGaussian(vecPseudoJet const& mGMMjets,
+                                       vector<TMatrix> const& mGMMjetsparams,
+                                       vector<double> const& mGMMweights) {
     set<unsigned int>removalIndices;
     // remove any jets which are candidates for mergers
     for (unsigned int j=0; j<mGMMjets.size(); j++){
@@ -561,8 +561,8 @@ FuzzyTools::ClustersForRemovalGaussian(vecPseudoJet& mGMMjets,
 }
 
 set<unsigned int>
-FuzzyTools::ClustersForRemovalUniform(vecPseudoJet& mUMMjets,
-                                      vector<double>& mUMMweights) {
+FuzzyTools::ClustersForRemovalUniform(vecPseudoJet const& mUMMjets,
+                                      vector<double> const& mUMMweights) {
     set<unsigned int> removalIndices;
     // remove any jets which are candidates for mergers
     for (unsigned int j=0; j<mUMMjets.size(); j++){
@@ -589,7 +589,7 @@ FuzzyTools::ClustersForRemovalUniform(vecPseudoJet& mUMMjets,
 }
 
 vecPseudoJet
-FuzzyTools::ClusterFuzzyUniform(vecPseudoJet particles,
+FuzzyTools::ClusterFuzzyUniform(vecPseudoJet const& particles,
                                 vector<vector<double> >* Weightsout,
                                 vector<double>* mUMMweightsout) {
     assert(kernelType == FuzzyTools::UNIFORM);
@@ -654,7 +654,7 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet particles,
 }
 
 vecPseudoJet
-FuzzyTools::ClusterFuzzyTruncGaus(vecPseudoJet particles,
+FuzzyTools::ClusterFuzzyTruncGaus(vecPseudoJet const& particles,
                                   vector<vector<double> >* Weightsout,
                                   vector<TMatrix>* mTGMMjetsparamsout,
                                   vector<double>* mTGMMweightsout){
@@ -737,7 +737,7 @@ FuzzyTools::ClusterFuzzyTruncGaus(vecPseudoJet particles,
 
 
 vecPseudoJet
-FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet particles,
+FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet const& particles,
                                  vector<vector<double> >* Weightsout,
                                  vector<TMatrix>* mGMMjetsparamsout,
                                  vector<double>* mGMMweightsout){
@@ -819,15 +819,15 @@ FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet particles,
 }
 
 void
-FuzzyTools::NewEventDisplay(vecPseudoJet particles,
-                            __attribute__((unused)) vecPseudoJet CAjets,
-                            __attribute__((unused)) vecPseudoJet tops,
-                            __attribute__((unused)) vecPseudoJet mGMMjets,
-                            __attribute__((unused)) vector<vector<double> > Weights,
+FuzzyTools::NewEventDisplay(vecPseudoJet const& particles,
+                            __attribute__((unused)) vecPseudoJet const& CAjets,
+                            __attribute__((unused)) vecPseudoJet const& tops,
+                            __attribute__((unused)) vecPseudoJet const& mGMMjets,
+                            __attribute__((unused)) vector<vector<double> > const& Weights,
                             __attribute__((unused)) int which,
-                            __attribute__((unused)) vector<TMatrix> mGMMjetsparams,
-                            __attribute__((unused)) vector<double> mGMMweights,
-                            TString out) {
+                            __attribute__((unused)) vector<TMatrix> const& mGMMjetsparams,
+                            __attribute__((unused)) vector<double> const& mGMMweights,
+                            TString const& out) {
     double mineta = -5;
     double maxeta = 5;
     TCanvas canv("NEVC" + out, "", 1200, 600);
@@ -908,14 +908,14 @@ FuzzyTools::NewEventDisplay(vecPseudoJet particles,
 }
 
 void
-FuzzyTools::NewEventDisplayUniform(vecPseudoJet particles,
-                                   __attribute__((unused)) vecPseudoJet CAjets,
-                                   __attribute__((unused)) vecPseudoJet tops,
-                                   __attribute__((unused)) vecPseudoJet mUMMjets,
-                                   __attribute__((unused)) vector<vector<double> > Weights,
+FuzzyTools::NewEventDisplayUniform(vecPseudoJet const& particles,
+                                   __attribute__((unused)) vecPseudoJet const& CAjets,
+                                   __attribute__((unused)) vecPseudoJet const& tops,
+                                   __attribute__((unused)) vecPseudoJet const& mUMMjets,
+                                   __attribute__((unused)) vector<vector<double> > const& Weights,
                                    __attribute__((unused)) int which,
-                                   __attribute__((unused)) vector<double> mUMMweights,
-                                   TString out) {
+                                   __attribute__((unused)) vector<double> const& mUMMweights,
+                                   TString const& out) {
     double mineta = -5;
     double maxeta = 5;
     TCanvas canv("NEVC" + out, "", 1200, 600);
@@ -992,13 +992,13 @@ FuzzyTools::NewEventDisplayUniform(vecPseudoJet particles,
 }
 
 void
-FuzzyTools::EventDisplay(vecPseudoJet particles,
-                         vecPseudoJet CAjets,
-                         vecPseudoJet tops,
-                         vecPseudoJet mGMMjets,
-                         vector<vector<double> > Weights,
+FuzzyTools::EventDisplay(vecPseudoJet const& particles,
+                         vecPseudoJet const& CAjets,
+                         vecPseudoJet const& tops,
+                         vecPseudoJet const& mGMMjets,
+                         vector<vector<double> > const& Weights,
                          int which,
-                         vector<TMatrix> mGMMjetsparams,
+                         vector<TMatrix> const& mGMMjetsparams,
                          TString out){
 
     gStyle->SetOptStat(0);
@@ -1217,12 +1217,12 @@ double totalpT(vecPseudoJet particles, vector<unsigned int> indices) {
 // of the random number generator's seed so it can guarantee
 // it will use the same samples when computing higher moments.
 vector<double>
-FuzzyTools::CentralMoments(vecPseudoJet particles,
-                           vector<vector<double> >Weights,
+FuzzyTools::CentralMoments(vecPseudoJet const& particles,
+                           vector<vector<double> > const& Weights,
                            unsigned int clusterID,
                            unsigned int momentCount,
                            double (*f)(vecPseudoJet, vector<unsigned int>)) {
-    unsigned int nTrials = 10000;
+    unsigned int nTrials = 1000;
 
     vector<unsigned int> particleIndices;
     particleIndices.reserve(particles.size());
