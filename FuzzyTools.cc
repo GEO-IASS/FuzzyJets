@@ -1,6 +1,5 @@
-#include <math.h>
-#include <assert.h>
 #include <vector>
+#include <map>
 #include <numeric>
 #include <functional>
 #include <string>
@@ -8,6 +7,8 @@
 #include <ostream>
 #include <set>
 #include <time.h>
+#include <math.h>
+#include <assert.h>
 
 #include "fastjet/ClusterSequence.hh"
 #include "fastjet/PseudoJet.hh"
@@ -21,7 +22,6 @@
 #include "TVector3.h"
 #include "TMath.h"
 #include "TMatrix.h"
-#include <map>
 #include "TEllipse.h"
 #include "TH1F.h"
 #include "TH2F.h"

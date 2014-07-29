@@ -5,7 +5,6 @@
 #include <set>
 #include <math.h>
 #include <string>
-#include "TMatrix.h"
 
 #include "fastjet/ClusterSequence.hh"
 #include "fastjet/PseudoJet.hh"
@@ -13,6 +12,8 @@
 #include "Pythia8/Pythia.h"
 
 #include "myFastJetBase.h"
+
+#include "TMatrix.h"
 
 typedef std::vector<fastjet::PseudoJet> vecPseudoJet;
 
