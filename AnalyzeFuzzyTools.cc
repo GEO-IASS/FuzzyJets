@@ -13,11 +13,11 @@
 double HistMaximum(std::vector<TH1D *> const& hists) {
     double max = -1;
 
-    const size_t nHists = hists.size();
-    for (size_t iHist = 0; iHist < nHists; iHist++) {
-        double nmax = hists[iHist]->GetMaximum();
-        if (nmax > max) {
-            max = nmax;
+    const size_t n_hists = hists.size();
+    for (size_t hist_iter = 0; hist_iter < n_hists; hist_iter++) {
+        double n_max = hists[hist_iter]->GetMaximum();
+        if (n_max > max) {
+            max = n_max;
         }
     }
     return max;

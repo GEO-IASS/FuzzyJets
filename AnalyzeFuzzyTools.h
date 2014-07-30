@@ -33,18 +33,18 @@ namespace StyleTypes {
 
 class CanvasHelper {
 public:
-    std::string xLabel;
-    std::string yLabel;
+    std::string x_label;
+    std::string y_label;
     std::string title;
     std::string base;
 
     size_t width;
     size_t height;
 
-    CanvasHelper(std::string xLabel, std::string yLabel, std::string title,
+    CanvasHelper(std::string x_label, std::string y_label, std::string title,
                  std::string base, size_t width, size_t height) {
-        this->xLabel = xLabel;
-        this->yLabel = yLabel;
+        this->x_label = x_label;
+        this->y_label = y_label;
         this->title = title;
         this->base = base;
 
@@ -55,31 +55,31 @@ public:
 
 class HistHelper {
 public:
-    std::string fileName;
-    std::string branchName;
-    std::string legendLabel;
+    std::string file_name;
+    std::string branch_name;
+    std::string legend_label;
 
     size_t      ticks;
 
-    double      minEdge, maxEdge;
-    size_t      nBins;
+    double      min_edge, max_edge;
+    size_t      n_bins;
 
     Color_t color;
 
     StyleTypes::HistOptions options;
 
-    HistHelper(std::string fileName, std::string branchName,
-               std::string legendLabel, size_t ticks, double minEdge,
-               double maxEdge, size_t nBins, StyleTypes::HistOptions options,
+    HistHelper(std::string file_name, std::string branch_name,
+               std::string legend_label, size_t ticks, double min_edge,
+               double max_edge, size_t n_bins, StyleTypes::HistOptions options,
                Color_t color) {
-        this->fileName = fileName;
-        this->branchName = branchName;
-        this->legendLabel = legendLabel;
+        this->file_name = file_name;
+        this->branch_name = branch_name;
+        this->legend_label = legend_label;
         this->ticks = ticks;
         this->options = options;
-        this->minEdge = minEdge;
-        this->maxEdge = maxEdge;
-        this->nBins = nBins;
+        this->min_edge = min_edge;
+        this->max_edge = max_edge;
+        this->n_bins = n_bins;
         this->color = color;
     }
 };
@@ -94,16 +94,16 @@ loadSingleBranch(std::string const& file, std::string const& branch) {
     TTree *t = (TTree *) (f->Get("EventTree"));
     assert(t && "File contains no TTree by the name 'EventTree'");
 
-    T branchTarget;
+    T branch_target;
     TBranch *b = t->GetBranch(TString(branch));
-    b->SetAddress(&branchTarget);
+    b->SetAddress(&branch_target);
 
     std::vector<T> out;
 
-    size_t nEntries = t->GetEntries();
-    for (size_t iEntry = 0; iEntry < nEntries; iEntry++) {
-        b->GetEvent(iEntry);
-        out.push_back(branchTarget);
+    size_t n_entries = t->GetEntries();
+    for (size_t entry_iter = 0; entry_iter < n_entries; entry_iter++) {
+        b->GetEvent(entry_iter);
+        out.push_back(branch_target);
     }
     //delete b;
     //delete f;
@@ -121,16 +121,16 @@ loadBranches(std::vector<std::string> const& files,
     assert(files.size() == branches.size());
 
     std::vector<std::vector<T> > out;
-    const size_t nBranches = branches.size();
+    const size_t n_branches = branches.size();
 
-    for (size_t iBranch = 0; iBranch < nBranches; iBranch++) {
-        out.push_back(loadSingleBranch<T>(files[iBranch], branches[iBranch]));
+    for (size_t branch_iter = 0; branch_iter < n_branches; branch_iter++) {
+        out.push_back(loadSingleBranch<T>(files[branch_iter], branches[branch_iter]));
     }
 
     // want to make sure that we don't run into any issues with different
     // numbers of events, this might invalidate any results!
-    for (size_t iBranch = 0; iBranch < nBranches; iBranch++) {
-        assert(out[iBranch].size() == out[0].size());
+    for (size_t branch_iter = 0; branch_iter < n_branches; branch_iter++) {
+        assert(out[branch_iter].size() == out[0].size());
     }
     return out;
 }
@@ -149,81 +149,81 @@ void DrawAtlasLabel(std::string title);
 
 // pretty mass histograms
 template<typename T>
-void prettyHist(std::vector<HistHelper> const& histdecs,
-                CanvasHelper const& cdec) {
-std::vector<TH1D *> vHists;
-    std::vector<std::vector<T> > vVals;
-    const size_t nHists = histdecs.size();
-    for (size_t iHist = 0; iHist < nHists; iHist++) {
-        HistHelper histdec = histdecs[iHist];
-        TH1D *h = new TH1D(TString(histdec.branchName), TString(histdec.branchName),
-                           histdec.nBins, histdec.minEdge, histdec.maxEdge);
-        vHists.push_back(h);
-        std::cout << histdec.fileName << std::endl;
-        std::cout << histdec.branchName << std::endl;
-        vVals.push_back(loadSingleBranch<T>(histdec.fileName, histdec.branchName));
+void prettyHist(std::vector<HistHelper> const& hist_decs,
+                CanvasHelper const& c_dec) {
+std::vector<TH1D *> v_hists;
+    std::vector<std::vector<T> > v_vals;
+    const size_t n_hists = hist_decs.size();
+    for (size_t hist_iter = 0; hist_iter < n_hists; hist_iter++) {
+        HistHelper hist_dec = hist_decs[hist_iter];
+        TH1D *h = new TH1D(TString(hist_dec.branch_name), TString(hist_dec.branch_name),
+                           hist_dec.n_bins, hist_dec.min_edge, hist_dec.max_edge);
+        v_hists.push_back(h);
+        std::cout << hist_dec.file_name << std::endl;
+        std::cout << hist_dec.branch_name << std::endl;
+        v_vals.push_back(loadSingleBranch<T>(hist_dec.file_name, hist_dec.branch_name));
     }
-    const size_t nEvents = vVals[0].size();
-    for (size_t iEvent = 0; iEvent < nEvents; iEvent++) {
+    const size_t n_events = v_vals[0].size();
+    for (size_t event_iter = 0; event_iter < n_events; event_iter++) {
         // fill each histogram with its next value
-        for (size_t iHist = 0; iHist < nHists; iHist++) {
-            const double v = vVals[iHist][iEvent];
-            if(histdecs[iHist].minEdge <= v && v <= histdecs[iHist].maxEdge) {
-                vHists[iHist]->Fill(v);
+        for (size_t hist_iter = 0; hist_iter < n_hists; hist_iter++) {
+            const double v = v_vals[hist_iter][event_iter];
+            if(hist_decs[hist_iter].min_edge <= v && v <= hist_decs[hist_iter].max_edge) {
+                v_hists[hist_iter]->Fill(v);
             }
         }
     }
 
     // Now that we have filled histograms, time to draw them
     SetupATLASStyle();
-    TCanvas *canv = new TCanvas("c", cdec.title.c_str(), 0, 0, cdec.width, cdec.height);
-    double allMax = HistMaximum(vHists);
+    TCanvas *canv = new TCanvas("c", c_dec.title.c_str(), 0, 0, c_dec.width, c_dec.height);
+    double all_max = HistMaximum(v_hists);
 
-    for (size_t iHist = 0; iHist < nHists; iHist++) {
-        TH1D *currentHist = vHists[iHist];
-        HistHelper histdec = histdecs[iHist];
+    for (size_t hist_iter = 0; hist_iter < n_hists; hist_iter++) {
+        TH1D *current_hist = v_hists[hist_iter];
+        HistHelper hist_dec = hist_decs[hist_iter];
 
         // axes and labels
-        currentHist->GetXaxis()->SetNdivisions(histdec.ticks);
-        currentHist->GetXaxis()->SetTitleOffset(1.4);
+        current_hist->GetXaxis()->SetNdivisions(hist_dec.ticks);
+        current_hist->GetXaxis()->SetTitleOffset(1.4);
 
         // draw options
-        if (histdec.options & StyleTypes::DASHED) {
-            currentHist->SetLineStyle(7); // dashed style
+        if (hist_dec.options & StyleTypes::DASHED) {
+            current_hist->SetLineStyle(7); // dashed style
         }
-        currentHist->SetLineColor(histdec.color);
+        current_hist->SetLineColor(hist_dec.color);
 
-        if (iHist == 0) {
-            currentHist->GetYaxis()->SetRangeUser(0, RoundDoubleUp(allMax*1.2, 10));
-            currentHist->GetXaxis()->SetTitle(cdec.xLabel.c_str());
-            currentHist->Draw();
+        if (hist_iter == 0) {
+            current_hist->GetYaxis()->SetRangeUser(0, RoundDoubleUp(all_max*1.2, 10));
+            current_hist->GetXaxis()->SetTitle(c_dec.x_label.c_str());
+            current_hist->Draw();
         } else {
-            currentHist->Draw("same");
+            current_hist->Draw("same");
         }
     }
 
     TLegend *leggaa = new TLegend(0.6, 0.7, 0.9, 0.8);
     leggaa->SetTextFont(42);
-    for (size_t iHist = 0; iHist < nHists; iHist++) {
-        leggaa->AddEntry(vHists[iHist], histdecs[iHist].legendLabel.c_str(), "f");
+    for (size_t hist_iter = 0; hist_iter < n_hists; hist_iter++) {
+        leggaa->AddEntry(v_hists[hist_iter], hist_decs[hist_iter].legend_label.c_str(), "f");
     }
     leggaa->SetFillStyle(0);
     leggaa->SetFillColor(0);
     leggaa->SetBorderSize(0);
     leggaa->Draw();
-    DrawAtlasLabel(cdec.title);
+    DrawAtlasLabel(c_dec.title);
 
-    std::string outfilenamebase = fileify(cdec.title);
+    std::string out_file_name_base = fileify(c_dec.title);
     std::stringstream ss;
-    ss << cdec.base << outfilenamebase << ".pdf";
-    std::string fullfilename = ss.str();
+    ss << c_dec.base << out_file_name_base << ".pdf";
+    std::string full_file_name = ss.str();
 
-    canv->Print(fullfilename.c_str());
+    canv->Print(full_file_name.c_str());
 
     delete leggaa;
     delete canv;
-    for (size_t iHist = 0; iHist < nHists; iHist++) {
-        delete vHists[iHist];
+    for (size_t hist_iter = 0; hist_iter < n_hists; hist_iter++) {
+        delete v_hists[hist_iter];
     }
 }
 

@@ -41,27 +41,27 @@ int main(int argc, char* argv[]){
     cout << endl;
 
     // agruments
-    int nEvents = 0;
-    int fDebug  = 0;
+    int n_events = 0;
+    int f_debug  = 0;
     int NPV = -1;
     double size = -1;
-    bool learnWeights = false;
-    bool isBatch = false;
-    string outName = "FuzzyJets.root";
-    string pythiaConfigName = "configs/default.pythia";
+    bool learn_weights = false;
+    bool is_batch = false;
+    string out_name = "FuzzyJets.root";
+    string pythia_config_name = "configs/default.pythia";
     string directory = "results/tmp/";
 
     po::options_description desc("Allowed options");
     desc.add_options()
         ("help", "produce help message")
-        ("NEvents", po::value<int>(&nEvents)->default_value(1000) ,    "Number of Events ")
-        ("Debug",   po::value<int>(&fDebug) ->default_value(0) ,     "Debug flag")
-        ("OutFile", po::value<string>(&outName)->default_value("test.root"), "Output file name")
+        ("NEvents", po::value<int>(&n_events)->default_value(1000) ,    "Number of Events ")
+        ("Debug",   po::value<int>(&f_debug) ->default_value(0) ,     "Debug flag")
+        ("OutFile", po::value<string>(&out_name)->default_value("test.root"), "Output file name")
         ("NPV",     po::value<int>(&NPV)->default_value(-1), "Number of primary vertices (pile-up)")
         ("Size",    po::value<double>(&size)->default_value(-1), "Internal size variable for Fuzzy Clustering")
-        ("LearnWeights", po::value<bool>(&learnWeights)->default_value(false), "Whether to learn cluster weights")
-        ("PythiaConfig", po::value<string>(&pythiaConfigName)->default_value("configs/default.pythia"), "Pythia configuration file location")
-        ("Batch",   po::value<bool>(&isBatch)->default_value(false), "Is this running on the batch?")
+        ("LearnWeights", po::value<bool>(&learn_weights)->default_value(false), "Whether to learn cluster weights")
+        ("PythiaConfig", po::value<string>(&pythia_config_name)->default_value("configs/default.pythia"), "Pythia configuration file location")
+        ("Batch",   po::value<bool>(&is_batch)->default_value(false), "Is this running on the batch?")
         ("Directory", po::value<string>(&directory)->default_value("results/tmp/"), "Directory in which to place results (.root files etc.)");
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -71,12 +71,12 @@ int main(int argc, char* argv[]){
         cout << desc << "\n";
         return 1;
     } else {
-        cout << "LearnWeights: " << learnWeights << endl;
+        cout << "LearnWeights: " << learn_weights << endl;
         cout << "Size: " << size << endl;
         cout << "Directory: " << directory << endl;
         cout << "NPV: " << NPV << endl;
     }
-    if (isBatch) {
+    if (is_batch) {
         assert(NPV != -1);
     }
     assert(size > 0);
@@ -85,17 +85,17 @@ int main(int argc, char* argv[]){
     Pythia8::Pythia* pythia8 = new Pythia8::Pythia();
     Pythia8::Pythia* pythia_MB = new Pythia8::Pythia();
 
-    vector<string> pythiaCommands;
+    vector<string> pythia_commands;
 
-    ifstream pythiaConfigFile(pythiaConfigName.c_str());
+    ifstream pythia_config_file(pythia_config_name.c_str());
     string line;
-    while (getline(pythiaConfigFile, line, '\n')) {
-        pythiaCommands.push_back(line);
+    while (getline(pythia_config_file, line, '\n')) {
+        pythia_commands.push_back(line);
     }
 
     string command;
-    for(unsigned int i = 0; i < pythiaCommands.size(); i++) {
-        command = pythiaCommands[i];
+    for(unsigned int i = 0; i < pythia_commands.size(); i++) {
+        command = pythia_commands[i];
         if (command.size() == 0) continue;
         if (command[0] == '#') {
             // its a comment
@@ -118,7 +118,7 @@ int main(int argc, char* argv[]){
     pythia_MB->readString("PhaseSpace:pTHatMax = 20000");
 
 
-    if (fDebug == 0) {
+    if (f_debug == 0) {
         pythia8->readString("Next:numberShowEvent = 0");
         pythia_MB->readString("Next:numberShowEvent = 0");
     }
@@ -130,24 +130,24 @@ int main(int argc, char* argv[]){
     pythia_MB->init(2212, 2212, 14000.);
 
     // FuzzyAnalysis
-    FuzzyAnalysis * analysis = new FuzzyAnalysis();
+    FuzzyAnalysis *analysis = new FuzzyAnalysis();
     if(NPV == -1) {
         // compute for NPV = 0, 10, 20, 30
         int NPVs [4] = {0, 10, 20, 30};
-        for (unsigned int npviter = 0; npviter < 4; npviter++) {
-            int currentNPV = NPVs[npviter];
+        for (unsigned int npv_iter = 0; npv_iter < 4; npv_iter++) {
+            int current_npv = NPVs[npv_iter];
             ss.clear();
             ss.str("");
-            ss << currentNPV << ".root";
+            ss << current_npv << ".root";
             analysis->SetOutName(ss.str());
             analysis->SetPrefix(directory);
             analysis->SetSize(size);
             analysis->SetBatched(false);
-            analysis->SetLearnWeights(learnWeights);
+            analysis->SetLearnWeights(learn_weights);
             analysis->Begin();
-            analysis->Debug(fDebug);
-            for (int iev = 0; iev < nEvents; iev++) {
-                analysis->AnalyzeEvent(iev, pythia8, pythia_MB, NPV);
+            analysis->Debug(f_debug);
+            for (int event_iter = 0; event_iter < n_events; event_iter++) {
+                analysis->AnalyzeEvent(event_iter, pythia8, pythia_MB, current_npv);
             }
             analysis->End();
         }
@@ -155,8 +155,8 @@ int main(int argc, char* argv[]){
         ss.clear();
         ss.str("");
         ss << NPV << ".root";
-        if(isBatch) {
-            analysis->SetOutName(outName);
+        if(is_batch) {
+            analysis->SetOutName(out_name);
             analysis->SetPrefix("");
             analysis->SetBatched(true);
         } else {
@@ -165,15 +165,15 @@ int main(int argc, char* argv[]){
             analysis->SetBatched(false);
         }
         analysis->SetSize(size);
-        analysis->SetLearnWeights(learnWeights);
+        analysis->SetLearnWeights(learn_weights);
         analysis->Begin();
-        analysis->Debug(fDebug);
+        analysis->Debug(f_debug);
 
         // Event loop
-        cout << "running on " << nEvents << " events " << endl;
-        for (Int_t iev = 0; iev < nEvents; iev++) {
-            if (iev%100==0) cout << iev << " " << nEvents << endl;
-            analysis->AnalyzeEvent(iev, pythia8, pythia_MB, NPV);
+        cout << "running on " << n_events << " events " << endl;
+        for (Int_t event_iter = 0; event_iter < n_events; event_iter++) {
+            if (event_iter%100==0) cout << event_iter << " " << n_events << endl;
+            analysis->AnalyzeEvent(event_iter, pythia8, pythia_MB, NPV);
         }
 
         analysis->End();

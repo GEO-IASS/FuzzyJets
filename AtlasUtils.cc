@@ -11,7 +11,7 @@
 
 void ATLAS_LABEL(Double_t x,Double_t y,Color_t color)
 {
-    TLatex l; //l.SetTextAlign(12); l.SetTextSize(tsize);
+    TLatex l; //l.SetTextAlign(12); l.SetTextSize(t_size);
     l.SetNDC();
     l.SetTextFont(72);
     l.SetTextColor(color);
@@ -269,56 +269,56 @@ TGraphErrors* TH1TOTGraph(TH1 *h1){
 
 void myText(Double_t x,Double_t y,Color_t color, const char *text) {
 
-    //Double_t tsize=0.05;
-    TLatex l; //l.SetTextAlign(12); l.SetTextSize(tsize);
+    //Double_t t_size=0.05;
+    TLatex l; //l.SetTextAlign(12); l.SetTextSize(t_size);
     l.SetNDC();
     l.SetTextColor(color);
     l.DrawLatex(x,y,text);
 }
 
 
-void myBoxText(Double_t x, Double_t y,Double_t boxsize,Int_t mcolor,const char *text)
+void myBoxText(Double_t x, Double_t y,Double_t box_size,Int_t m_color,const char *text)
 {
 
-    Double_t tsize=0.06;
+    Double_t t_size=0.06;
 
-    TLatex l; l.SetTextAlign(12); //l.SetTextSize(tsize);
+    TLatex l; l.SetTextAlign(12); //l.SetTextSize(t_size);
     l.SetNDC();
     l.DrawLatex(x,y,text);
 
-    Double_t y1=y-0.25*tsize;
-    Double_t y2=y+0.25*tsize;
-    Double_t x2=x-0.3*tsize;
-    Double_t x1=x2-boxsize;
+    Double_t y1=y-0.25*t_size;
+    Double_t y2=y+0.25*t_size;
+    Double_t x2=x-0.3*t_size;
+    Double_t x1=x2-box_size;
 
     printf("x1= %f x2= %f y1= %f y2= %f \n",x1,x2,y1,y2);
 
-    TPave *mbox= new TPave(x1,y1,x2,y2,0,"NDC");
+    TPave *m_box= new TPave(x1,y1,x2,y2,0,"NDC");
 
-    mbox->SetFillColor(mcolor);
-    mbox->SetFillStyle(1001);
-    mbox->Draw();
+    m_box->SetFillColor(m_color);
+    m_box->SetFillStyle(1001);
+    m_box->Draw();
 
-    TLine mline;
-    mline.SetLineWidth(4);
-    mline.SetLineColor(2);
-    mline.SetLineStyle(1);
+    TLine m_line;
+    m_line.SetLineWidth(4);
+    m_line.SetLineColor(2);
+    m_line.SetLineStyle(1);
     Double_t y_new=(y1+y2)/2.;
-    mline.DrawLineNDC(x1,y_new,x2,y_new);
+    m_line.DrawLineNDC(x1,y_new,x2,y_new);
 
 }
 
 
-void myMarkerText(Double_t x,Double_t y,Int_t color,Int_t mstyle, const char *text,Float_t msize)
+void myMarkerText(Double_t x,Double_t y,Int_t color,Int_t m_style, const char *text,Float_t msize)
 {
-    Double_t tsize=0.06;
-    TMarker *marker = new TMarker(x-(0.4*tsize),y,8);
+    Double_t t_size=0.06;
+    TMarker *marker = new TMarker(x-(0.4*t_size),y,8);
     marker->SetMarkerColor(color);  marker->SetNDC();
-    marker->SetMarkerStyle(mstyle);
+    marker->SetMarkerStyle(m_style);
     marker->SetMarkerSize(msize);
     marker->Draw();
 
-    TLatex l; l.SetTextAlign(12); //l.SetTextSize(tsize);
+    TLatex l; l.SetTextAlign(12); //l.SetTextSize(t_size);
     l.SetNDC();
     l.DrawLatex(x,y,text);
 }

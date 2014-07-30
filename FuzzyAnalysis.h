@@ -22,18 +22,18 @@
 
 class FuzzyAnalysis{
  private:
-    int  ftest;
-    int  fDebug;
-    double  fSize;
-    bool fLearnWeights;
+    int  f_test;
+    int  f_debug;
+    double  f_size;
+    bool f_learn_weights;
     bool batched;
-    string fOutName;
-    string directoryPrefix;
+    string f_out_name;
+    string directory_prefix;
 
-    std::map<string, float*> treeVars;
+    std::map<string, float*> tree_vars;
 
-    TFile *tF;
-    TTree *tT;
+    TFile *t_f;
+    TTree *t_t;
     FuzzyTools *tool;
 
     // Tree Vars ---------------------------------------
@@ -159,32 +159,32 @@ class FuzzyAnalysis{
     float fTmTGMM_m_pu_hard;
 
     fastjet::JetDefinition     *m_jet_def;
-    fastjet::JetDefinition     *m_jet_def_largeR_antikt;
-    fastjet::JetDefinition     *m_jet_def_largeR_ca;
+    fastjet::JetDefinition     *m_jet_def_large_r_antikt;
+    fastjet::JetDefinition     *m_jet_def_large_r_ca;
 
  public:
     FuzzyAnalysis ();
     ~FuzzyAnalysis ();
 
     void Begin();
-    void AnalyzeEvent(int iEvt, Pythia8::Pythia *pythia8, Pythia8::Pythia *pythia_MB, int NPV);
+    void AnalyzeEvent(int i_evt, Pythia8::Pythia *pythia8, Pythia8::Pythia *pythia_MB, int NPV);
     void End();
     void DeclareBranches();
     void ResetBranches();
     void Debug(int debug){
-        fDebug = debug;
+        f_debug = debug;
     }
     void SetOutName(string outname){
-        fOutName = outname;
+        f_out_name = outname;
     }
     void SetPrefix(string prefix) {
-        directoryPrefix = prefix;
+        directory_prefix = prefix;
     }
     void SetSize(double s) {
-        fSize = s;
+        f_size = s;
     }
     void SetLearnWeights(bool w) {
-        fLearnWeights = w;
+        f_learn_weights = w;
     }
 
     void SetBatched(bool b) {

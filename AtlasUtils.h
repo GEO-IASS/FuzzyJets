@@ -29,8 +29,8 @@ TGraphErrors* TH1TOTGraph(TH1 *h1);
 
 void myText(Double_t x,Double_t y,Color_t color,const char *text);
 
-void myBoxText(Double_t x, Double_t y,Double_t boxsize,Int_t mcolor,const char *text);
+void myBoxText(Double_t x, Double_t y,Double_t box_size,Int_t m_color,const char *text);
 
-void myMarkerText(Double_t x,Double_t y,Int_t color,Int_t mstyle,const char *text,Float_t msize=2.);
+void myMarkerText(Double_t x,Double_t y,Int_t color,Int_t m_style,const char *text,Float_t m_size=2.);
 
 #endif // __ATLASUTILS_H

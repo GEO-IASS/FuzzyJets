@@ -50,20 +50,20 @@ class FuzzyTools {
     int m_test;
     double alpha;
     double R;
-    int maxiters;
+    int max_iters;
 
-    string directoryPrefix;
+    string directory_prefix;
 
-    bool learnWeights;
-    bool learnShape;
+    bool learn_weights;
+    bool learn_shape;
 
-    double mergeDist;
-    double minWeight;
-    double minSigma;
+    double merge_dist;
+    double min_weight;
+    double min_sigma;
 
-    int clusterCount;
-    Mode clusteringMode;
-    Kernel kernelType;
+    int cluster_count;
+    Mode clustering_mode;
+    Kernel kernel_type;
     vecPseudoJet seeds;
 
  public:
@@ -75,7 +75,7 @@ class FuzzyTools {
                             vecPseudoJet jets);
 
     void SetLearnWeights(bool b) {
-        learnWeights = b;
+        learn_weights = b;
     }
 
     void SetR(double r) {
@@ -83,49 +83,49 @@ class FuzzyTools {
     }
 
     void SetKernelType(Kernel k) {
-        kernelType = k;
+        kernel_type = k;
     }
 
     void SetMergeDistance(double d) {
-        mergeDist = d;
+        merge_dist = d;
     }
 
     void SetMinimumWeight(double m) {
-        minWeight = m;
+        min_weight = m;
     }
 
     void SetLearnShape(bool s) {
-        learnShape = s;
+        learn_shape = s;
     }
 
     void SetMinimumSigma(double s) {
-        minSigma = s;
+        min_sigma = s;
     }
 
     void SetPrefix(string p) {
-        directoryPrefix = p;
+        directory_prefix = p;
     }
 
     vector<double> CentralMoments(vecPseudoJet const& particles,
-                                  vector<vector<double> > const& Weights,
-                                  unsigned int clusterID,
-                                  unsigned int momentCount,
+                                  vector<vector<double> > const& weights,
+                                  unsigned int cluster_id,
+                                  unsigned int moment_count,
                                   double (*f) (vecPseudoJet, vector<unsigned int>));
 
     void SetClusteringMode(Mode m) {
-        clusteringMode = m;
+        clustering_mode = m;
     }
 
     void SetAlpha(double a) {
         alpha = a;
     }
 
-    set<unsigned int> ClustersForRemovalGaussian(vecPseudoJet const& mGMMjets,
-                                                 vector<TMatrix> const& mGMMjetsparams,
-                                                 vector<double> const& mGMMweights);
+    set<unsigned int> ClustersForRemovalGaussian(vecPseudoJet const& mGMM_jets,
+                                                 vector<TMatrix> const& mGMM_jets_params,
+                                                 vector<double> const& mGMM_weights);
 
-    set<unsigned int> ClustersForRemovalUniform(vecPseudoJet const& mUMMjets,
-                                                vector<double> const& mUMMweights);
+    set<unsigned int> ClustersForRemovalUniform(vecPseudoJet const& mUMM_jets,
+                                                vector<double> const& mUMM_weights);
 
     void SetSeeds(vecPseudoJet s) {
         seeds = s;
@@ -143,122 +143,122 @@ class FuzzyTools {
                                      int k);
 
     void ComputeWeightsGaussian(vecPseudoJet const& particles,
-                                vector<vector<double> >* Weights,
+                                vector<vector<double> >* weights,
                                 int k,
-                                vecPseudoJet const& mGMMjets,
-                                vector<TMatrix> const& mGMMjetsparams,
-                                vector<double> const& mGMMweights);
+                                vecPseudoJet const& mGMM_jets,
+                                vector<TMatrix> const& mGMM_jets_params,
+                                vector<double> const& mGMM_weights);
 
     vecPseudoJet UpdateJetsGaussian(vecPseudoJet const& particles,
-                                    vector<vector<double> > const& Weights,
+                                    vector<vector<double> > const& weights,
                                     int k,
-                                    vector<TMatrix>* mGMMjetsparams,
-                                    vector<double>* mGMMweights);
+                                    vector<TMatrix>* mGMM_jets_params,
+                                    vector<double>* mGMM_weights);
 
     vecPseudoJet ClusterFuzzyGaussian(vecPseudoJet const& particles,
-                                      vector<vector<double> >* Weights,
-                                      vector<TMatrix>* mGMMjetsparamsout,
-                                      vector<double>* mGMMweightsout);
+                                      vector<vector<double> >* weights,
+                                      vector<TMatrix>* mGMM_jets_params_out,
+                                      vector<double>* mGMM_weights_out);
 
     void ComputeWeightsUniform(vecPseudoJet const& particles,
-                               vector<vector<double> >* Weights,
+                               vector<vector<double> >* weights,
                                int k,
-                               vecPseudoJet const& mUMMjets,
-                               vector<double> const& mUMMweights);
+                               vecPseudoJet const& mUMM_jets,
+                               vector<double> const& mUMM_weights);
 
     vecPseudoJet UpdateJetsUniform(vecPseudoJet const& particles,
-                                   vector<vector<double> > const& Weights,
+                                   vector<vector<double> > const& weights,
                                    int k,
-                                   vector<double>* mUMMweights);
+                                   vector<double>* mUMM_weights);
 
     vecPseudoJet ClusterFuzzyUniform(vecPseudoJet const& particles,
-                                     vector<vector<double> >* Weights,
-                                     vector<double>* mUMMweightsout);
+                                     vector<vector<double> >* weights,
+                                     vector<double>* mUMM_weights_out);
 
     void ComputeWeightsTruncGaus(vecPseudoJet const& particles,
-                                 vector<vector<double> >* Weights,
+                                 vector<vector<double> >* weights,
                                  int k,
-                                 vecPseudoJet const& mTGMMjets,
-                                 vector<TMatrix> const& mTGMMjetsparams,
-                                 vector<double> const& mTGMMweights);
+                                 vecPseudoJet const& mTGMM_jets,
+                                 vector<TMatrix> const& mTGMM_jets_params,
+                                 vector<double> const& mTGMM_weights);
 
     vecPseudoJet UpdateJetsTruncGaus(vecPseudoJet const& particles,
-                                     vector<vector<double> > const& Weights,
+                                     vector<vector<double> > const& weights,
                                      int k,
-                                     vector<TMatrix>* mTGMMjetsparams,
-                                     vector<double>* mTGMMweights);
+                                     vector<TMatrix>* mTGMM_jets_params,
+                                     vector<double>* mTGMM_weights);
 
     vecPseudoJet ClusterFuzzyTruncGaus(vecPseudoJet const& particles,
-                                       vector<vector<double> >* Weights,
-                                       vector<TMatrix>* mTGMMjetsparamsout,
-                                       vector<double>* mTGMMweights);
+                                       vector<vector<double> >* weights,
+                                       vector<TMatrix>* mTGMM_jets_params_out,
+                                       vector<double>* mTGMM_weights);
 
     void EventDisplay(vecPseudoJet const& particles,
-                      vecPseudoJet const& CAjets,
+                      vecPseudoJet const& ca_jets,
                       vecPseudoJet const& tops,
-                      vecPseudoJet const& mGMMjets,
-                      vector<vector<double> > const& Weights,
+                      vecPseudoJet const& mGMM_jets,
+                      vector<vector<double> > const& weights,
                       int which,
-                      vector<TMatrix> const& mGMMjetsparams,
+                      vector<TMatrix> const& mGMM_jets_params,
                       TString out);
 
     void NewEventDisplay(vecPseudoJet const& particles,
-                         vecPseudoJet const& CAjets,
+                         vecPseudoJet const& ca_jets,
                          vecPseudoJet const& tops,
-                         vecPseudoJet const& mGMMjets,
-                         vector<vector<double> > const& Weights,
+                         vecPseudoJet const& mGMM_jets,
+                         vector<vector<double> > const& weights,
                          int which,
-                         vector<TMatrix> const& mGMMjetsparams,
-                         vector<double> const& mGMMweights,
+                         vector<TMatrix> const& mGMM_jets_params,
+                         vector<double> const& mGMM_weights,
                          TString const& out);
 
     void NewEventDisplayUniform(vecPseudoJet const& particles,
-                                vecPseudoJet const& CAjets,
+                                vecPseudoJet const& ca_jets,
                                 vecPseudoJet const& tops,
-                                vecPseudoJet const& mUMMjets,
-                                vector<vector<double> > const& Weights,
+                                vecPseudoJet const& mUMM_jets,
+                                vector<vector<double> > const& weights,
                                 int which,
-                                vector<double> const& mUMMweights,
+                                vector<double> const& mUMM_weights,
                                 TString const& out);
 
     void JetContributionDisplay(vecPseudoJet particles,
-                                vector<vector<double> > Weights,
+                                vector<vector<double> > weights,
                                 int which,
-                                int mtype,
+                                int m_type,
                                 TString out);
 
     double MLpT(vecPseudoJet particles,
-                vector<vector<double> > Weights,
-                int jetindex,
+                vector<vector<double> > weights,
+                int jet_index,
                 int k,
-                int mtype);
+                int m_type);
 
     double MLlpTGaussian(vecPseudoJet const& particles,
                          fastjet::PseudoJet const& jet,
-                         TMatrix const& jetParams,
-                         double jetWeight,
-                         int mtype);
+                         TMatrix const& jet_params,
+                         double jet_weight,
+                         int m_type);
 
     double MLlpTUniform(vecPseudoJet const& particles,
                         fastjet::PseudoJet const& jet,
-                        double jetWeight,
-                        int mtype);
+                        double jet_weight,
+                        int m_type);
 
     double MLlpTTruncGaus(vecPseudoJet const& particles,
                           fastjet::PseudoJet const& jet,
-                          TMatrix const& jetParams,
-                          double jetWeight,
-                          int mtype);
+                          TMatrix const& jet_params,
+                          double jet_weight,
+                          int m_type);
 
     void Qjetmass(vecPseudoJet particles,
-                  vector<vector<double> > Weights,
+                  vector<vector<double> > weights,
                   int which,
                   TString out);
 
     double SoftpT(vecPseudoJet const& particles,
-                  vector<vector<double> > const& Weights,
-                  int jetindex,
-                  int mtype);
+                  vector<vector<double> > const& weights,
+                  int jet_index,
+                  int m_type);
 
 };
 
