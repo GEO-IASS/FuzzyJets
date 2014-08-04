@@ -8,7 +8,7 @@
 
 CXXFLAGS =   -O2 -Wall -Wextra -equal -Wshadow -Werror -Wno-shadow
 CXX = g++
-PROFILER = -pg
+PROFILER = 
 
 ROOTLIBS = `root-config --glibs`
 ROOTFLAGS = `root-config --cflags`

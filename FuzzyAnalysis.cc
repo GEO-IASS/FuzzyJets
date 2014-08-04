@@ -261,7 +261,7 @@ namespace {
                            FuzzyTools *tool,
                            vecPseudoJet& jets,
                            vector<vector<double> >& particle_weights,
-                           vector<TMatrix>& parameters,
+                           vector<MatTwo>& parameters,
                            vector<double>& jet_weights) {
         tool->SetKernelType(FuzzyTools::TRUNCGAUSSIAN);
         tool->SetSeeds(seeds);
@@ -289,7 +289,7 @@ namespace {
                           FuzzyTools *tool,
                           vecPseudoJet& jets,
                           vector<vector<double> >& particle_weights,
-                          vector<TMatrix>& parameters,
+                          vector<MatTwo>& parameters,
                           vector<double>& jet_weights) {
         tool->SetKernelType(FuzzyTools::GAUSSIAN);
         tool->SetSeeds(seeds);
@@ -488,7 +488,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
 
     // Fuzzy Jets: mGMMs --------------------
     vector<vector<double> > mGMMs_particle_weights;
-    vector<TMatrix> mGMMs_jets_params;
+    vector<MatTwo> mGMMs_jets_params;
     vector<double> mGMMs_weights;
     vecPseudoJet mGMMs_jets;
     int lead_mGMMs_index;
@@ -503,7 +503,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
 
     // Fuzzy Jets: mTGMMs -------------------
     vector<vector<double > > mTGMMs_particle_weights;
-    vector<TMatrix> mTGMMs_jets_params;
+    vector<MatTwo> mTGMMs_jets_params;
     vector<double> mTGMMs_weights;
     vecPseudoJet mTGMMs_jets;
     int lead_mTGMMs_index;
@@ -518,7 +518,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
 
     // Fuzzy Jets: mGMM ---------------------
     vector<vector<double> >mGMM_particle_weights;
-    vector<TMatrix> mGMM_jets_params;
+    vector<MatTwo> mGMM_jets_params;
     vector<double> mGMM_weights;
     vector<fastjet::PseudoJet> mGMM_jets;
     int lead_mGMM_index;
@@ -548,7 +548,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     vector<vector<double> > mTGMM_particle_weights;
     vector<double> mTGMM_weights;
     vecPseudoJet mTGMM_jets;
-    vector<TMatrix> mTGMM_jets_params;
+    vector<MatTwo> mTGMM_jets_params;
     int lead_mTGMM_index;
     double max_pT_mTGMM;
     if(mTGMM_on) {

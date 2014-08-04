@@ -97,63 +97,68 @@ FuzzyTools::InitWeights(vecPseudoJet const& particles,
 //  the value of the Gaussian distribution with covariance Sigma
 double
 FuzzyTools::doGaus(double x1, double x2, double mu1, double mu2,
-                   TMatrix const& sigma){
-    TMatrix summ_t(1,2); // (x-mu) tranpose
-    TMatrix summ(2,1);  // (x-mu)
-    summ_t(0,0) = x1-mu1;
-    summ_t(0,1) = x2-mu2;
-    summ(0,0) = x1-mu1;
-    summ(1,0) = x2-mu2;
-    TMatrix sigma_inverse(2,2);
-    Double_t det;
+                   MatTwo const& sigma){
+    const double limit = 0.001 * 0.001;
+    double det = sigma.determinant();
+    
+    double invdet;
+    double ixx, iyx, iyy;
 
-    // check for singularity in Sigma
-    sigma_inverse(0,0)=sigma(0,0);
-    sigma_inverse(0,1)=sigma(0,1);
-    sigma_inverse(1,0)=sigma(1,0);
-    sigma_inverse(1,1)=sigma(1,1);
-    if (sigma(0,0)*sigma(1,1)-sigma(1,0)*sigma(0,1) < 0.001*0.001){
-        sigma_inverse(0,0)=0.01;
-        sigma_inverse(1,1)=0.01;
+    if (fabs(det) < limit) {
+      const double sigmasubsx = 0.01;
+      const double sigmasubsy = 0.01;
+      det = sigmasubsx * sigmasubsy - sigma.xy * sigma.yx;
+      invdet = 1.0/det;
+      ixx = sigmasubsy * invdet;
+      iyy = sigmasubsx * invdet;
+      iyx = -sigma.yx * invdet;
+    } else {
+      invdet = 1.0/det;
+      ixx = sigma.yy * invdet;
+      iyy = sigma.xx * invdet;
+      iyx = -sigma.yx * invdet;
     }
-    sigma_inverse.Invert(&det);
 
-    // compute the value of the pdf at (x1, x2)
-    TMatrix hold = summ_t*sigma_inverse*summ;
-    double exp_arg = -0.5*hold(0, 0);
-    return exp(exp_arg)/(sqrt(fabs(det))*2*TMath::Pi());
+    const double mxmu1 = x1 - mu1;
+    const double mxmu2 = x2 - mu2;
+    const double expval = exp(-0.5 * (ixx * mxmu1 * mxmu1 + iyy * mxmu2 * mxmu2) - iyx * mxmu1 * mxmu2);
+
+    return expval / (2 * M_PI * sqrt(fabs(det)));
 }
 
 // return the *square* of the Mahalanobis distance
 double
 FuzzyTools::MDist(double x1, double x2, double mu1, double mu2,
-                  TMatrix const& sigma) {
-    TMatrix summ_t(1,2); // (x-mu) tranpose
-    TMatrix summ(2,1);  // (x-mu)
-    summ_t(0,0) = x1-mu1;
-    summ_t(0,1) = x2-mu2;
-    summ(0,0) = x1-mu1;
-    summ(1,0) = x2-mu2;
-    TMatrix sigma_inverse(2,2);
-    Double_t det;
+                  MatTwo const& sigma) {
+    const double limit = 0.001 * 0.001;
+    double det = sigma.determinant();
 
-    // check for singularity in Sigma
-    sigma_inverse(0,0)=sigma(0,0);
-    sigma_inverse(0,1)=sigma(0,1);
-    sigma_inverse(1,0)=sigma(1,0);
-    sigma_inverse(1,1)=sigma(1,1);
-    if (sigma(0,0)*sigma(1,1)-sigma(1,0)*sigma(0,1) < 0.001*0.001){
-        sigma_inverse(0,0)=0.01;
-        sigma_inverse(1,1)=0.01;
+    double invdet;
+    double ixx, iyx, iyy;
+
+    if (fabs(det) < limit) {
+      const double sigmasubsx = 0.01;
+      const double sigmasubsy = 0.01;
+      det = sigmasubsx * sigmasubsy - sigma.xy * sigma.yx;
+      invdet = 1.0/det;
+      ixx = sigmasubsy * invdet;
+      iyy = sigmasubsx * invdet;
+      iyx = -sigma.yx * invdet;
+    } else {
+      invdet = 1.0/det;
+      ixx = sigma.yy * invdet;
+      iyy = sigma.xx * invdet;
+      iyx = -sigma.yx * invdet;
     }
-    sigma_inverse.Invert(&det);
-    TMatrix hold = summ_t*sigma_inverse*summ;
-    return hold(0, 0);
+
+    const double mxmu1 = x1 - mu1;
+    const double mxmu2 = x2 - mu2;
+    return (ixx * mxmu1 * mxmu1 + iyy * mxmu2 * mxmu2 + 2 * iyx * mxmu1 * mxmu2);
 }
 
 double
 FuzzyTools::doTruncGaus(double x1, double x2, double mu1, double mu2,
-                        TMatrix const& sigma) {
+                        MatTwo const& sigma) {
     double dist = MDist(x1, x2, mu1, mu2, sigma);
     if (dist > R*R) {
         return 0;
@@ -162,17 +167,13 @@ FuzzyTools::doTruncGaus(double x1, double x2, double mu1, double mu2,
     return doGaus(x1, x2, mu1, mu2, sigma) / scale;
 }
 
-vector<TMatrix>
+vector<MatTwo>
 FuzzyTools::Initializeparams(__attribute__((unused)) vecPseudoJet const& particles,
                              int k){
-    vector<TMatrix> out_params;
+    vector<MatTwo> out_params;
+    double sigma_sq = 0.5;
     for (int i=0; i<k;i++){
-        TMatrix hold(2,2);
-        hold(0,0) = 0.5;
-        hold(1,1) = 0.5;
-        hold(0,1) = 0.0;
-        hold(1,0) = 0.0;
-        out_params.push_back(hold);
+        out_params.push_back(MatTwo(sigma_sq, 0, 0, sigma_sq));
     }
     return out_params;
 }
@@ -193,7 +194,7 @@ FuzzyTools::ComputeWeightsGaussian(vecPseudoJet const& particles,
                                    vector<vector<double> >* weights,
                                    __attribute__((unused)) int k,
                                    vecPseudoJet const& mGMM_jets,
-                                   vector<TMatrix> const& mGMM_jets_params,
+                                   vector<MatTwo> const& mGMM_jets_params,
                                    vector<double> const& mGMM_weights){
     for (unsigned int i=0; i<particles.size(); i++){
         double denom=0.;
@@ -221,7 +222,7 @@ FuzzyTools::ComputeWeightsTruncGaus(vecPseudoJet const& particles,
                                     vector<vector<double> >* weights,
                                     __attribute__((unused)) int k,
                                     vecPseudoJet const& mTGMM_jets,
-                                    vector<TMatrix> const& mTGMM_jets_params,
+                                    vector<MatTwo> const& mTGMM_jets_params,
                                     vector<double> const& mTGMM_weights) {
     for (unsigned int i=0; i < particles.size(); i++) {
         double denom = 0;
@@ -235,10 +236,10 @@ FuzzyTools::ComputeWeightsTruncGaus(vecPseudoJet const& particles,
         }
         for (unsigned int j = 0; j < mTGMM_jets.size(); j++) {
             double new_weight = doTruncGaus(particles[i].rapidity(),
-                                           particles[i].phi(),
-                                           mTGMM_jets[j].rapidity(),
-                                           mTGMM_jets[j].phi(),
-                                           mTGMM_jets_params[j])
+                                            particles[i].phi(),
+                                            mTGMM_jets[j].rapidity(),
+                                            mTGMM_jets[j].phi(),
+                                            mTGMM_jets_params[j])
                 * mTGMM_weights[j] / denom;
             if(new_weight < 0 || new_weight > 1 || isnan(new_weight)) {
                 new_weight = 0.;
@@ -331,7 +332,7 @@ vecPseudoJet
 FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet const& particles,
                                 vector<vector<double> > const& weights,
                                 int cluster_count,
-                                vector<TMatrix>* mTGMM_jets_params,
+                                vector<MatTwo>* mTGMM_jets_params,
                                 vector<double>* mTGMM_weights) {
     vecPseudoJet out_jets;
 
@@ -373,49 +374,44 @@ FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet const& particles,
         my_jet.reset_PtYPhiM(1.,jet_y,jet_phi,0.);
         out_jets.push_back(my_jet);
 
-        //now, we update sigma
-        TMatrix sigma_update(2,2);
-        for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++){
-            TMatrix hold(2,2);
-
-            // pt scaled particle weight
-            double q_ji = pow(particles[particle_iter].pt(),alpha) * weights[particle_iter][cluster_iter];
-            hold(0,0) = q_ji
-                * (particles[particle_iter].rapidity()-my_jet.rapidity())
-                * (particles[particle_iter].rapidity()-my_jet.rapidity()) / cluster_weighted_pt;
-
-            hold(0,1) = q_ji
-                * (particles[particle_iter].rapidity()-my_jet.rapidity())
-                * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
-
-            hold(1,0) = q_ji
-                * (particles[particle_iter].rapidity()-my_jet.rapidity())
-                * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
-
-            hold(1,1) = q_ji
-                * (particles[particle_iter].phi()-my_jet.phi())
-                * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
-
-            sigma_update+=hold;
-        }
-
-        // if the matrix is looking singular...
-        if (sigma_update(0,0)+sigma_update(1,1)+sigma_update(0,1) < 0.01){
-            sigma_update(0,0)=0.1*0.1;
-            sigma_update(1,1)=0.1*0.1;
-        }
-
-        // updated sigma is junk if it had almost no contained pT
-        if (!(cluster_weighted_pt > 0)){
-            sigma_update(0,0)=0.001*0.001;
-            sigma_update(1,1)=0.001*0.001;
-            sigma_update(0,1)=0.;
-            sigma_update(1,0)=0.;
-        }
         if (learn_shape) {
+            //now, we update sigma
+            MatTwo sigma_update(0, 0, 0, 0);
+            for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++){
+                // pt scaled particle weight
+                double q_ji = pow(particles[particle_iter].pt(),alpha) * weights[particle_iter][cluster_iter];
+                sigma_update.xx += q_ji
+                    * (particles[particle_iter].rapidity()-my_jet.rapidity())
+                    * (particles[particle_iter].rapidity()-my_jet.rapidity()) / cluster_weighted_pt;
+
+                sigma_update.xy += q_ji
+                    * (particles[particle_iter].rapidity()-my_jet.rapidity())
+                    * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
+
+                sigma_update.yx += q_ji
+                    * (particles[particle_iter].rapidity()-my_jet.rapidity())
+                    * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
+
+                sigma_update.yy += q_ji
+                    * (particles[particle_iter].phi()-my_jet.phi())
+                    * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
+            }
+
+            // if the matrix is looking singular...
+            if (sigma_update.xx+sigma_update.yy+sigma_update.xy < 0.01){
+                sigma_update.xx=0.1*0.1;
+                sigma_update.yy=0.1*0.1;
+            }
+
+             // updated sigma is junk if it had almost no contained pT
+            if (!(cluster_weighted_pt > 0)){
+                sigma_update.xx=0.001*0.001;
+                sigma_update.yy=0.001*0.001;
+                sigma_update.xy=0.;
+                sigma_update.yx=0.;
+            }
             mTGMM_jets_params->at(cluster_iter) = sigma_update;
         }
-
     }
 
     return out_jets;
@@ -425,7 +421,7 @@ vecPseudoJet
 FuzzyTools::UpdateJetsGaussian(vecPseudoJet const& particles,
                                vector<vector<double> > const& weights,
                                int cluster_count,
-                               vector<TMatrix>* mGMM_jets_params,
+                               vector<MatTwo>* mGMM_jets_params,
                                vector<double>* mGMM_weights){
     vecPseudoJet out_jets;
 
@@ -468,47 +464,43 @@ FuzzyTools::UpdateJetsGaussian(vecPseudoJet const& particles,
         my_jet.reset_PtYPhiM(1.,jet_y,jet_phi,0.);
         out_jets.push_back(my_jet);
 
-        //now, we update sigma
-        TMatrix sigma_update(2,2);
-        for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++){
-            TMatrix hold(2,2);
-
-            // pt scaled particle weight
-            double q_ji = pow(particles[particle_iter].pt(),alpha) * weights[particle_iter][cluster_iter];
-            hold(0,0) = q_ji
-                * (particles[particle_iter].rapidity()-my_jet.rapidity())
-                * (particles[particle_iter].rapidity()-my_jet.rapidity()) / cluster_weighted_pt;
-
-            hold(0,1) = q_ji
-                * (particles[particle_iter].rapidity()-my_jet.rapidity())
-                * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
-
-            hold(1,0) = q_ji
-                * (particles[particle_iter].rapidity()-my_jet.rapidity())
-                * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
-
-            hold(1,1) = q_ji
-                * (particles[particle_iter].phi()-my_jet.phi())
-                * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
-
-            sigma_update+=hold;
-        }
-
-        // if the matrix is looking singular...
-        if (sigma_update(0,0)+sigma_update(1,1)+sigma_update(0,1) < 0.01){
-            sigma_update(0,0)=0.1*0.1;
-            sigma_update(1,1)=0.1*0.1;
-        }
-
-        // updated sigma is junk if it had almost no contained pT
-        if (!(cluster_weighted_pt > 0)){
-            sigma_update(0,0)=0.001*0.001;
-            sigma_update(1,1)=0.001*0.001;
-            sigma_update(0,1)=0.;
-            sigma_update(1,0)=0.;
-        }
         if (learn_shape) {
-            mGMM_jets_params->at(cluster_iter)=sigma_update;
+            //now, we update sigma
+            MatTwo sigma_update(0, 0, 0, 0);
+            for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++){
+                // pt scaled particle weight
+                double q_ji = pow(particles[particle_iter].pt(),alpha) * weights[particle_iter][cluster_iter];
+                sigma_update.xx += q_ji
+                    * (particles[particle_iter].rapidity()-my_jet.rapidity())
+                    * (particles[particle_iter].rapidity()-my_jet.rapidity()) / cluster_weighted_pt;
+
+                sigma_update.xy += q_ji
+                    * (particles[particle_iter].rapidity()-my_jet.rapidity())
+                    * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
+
+                sigma_update.yx += q_ji
+                    * (particles[particle_iter].rapidity()-my_jet.rapidity())
+                    * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
+
+                sigma_update.yy += q_ji
+                    * (particles[particle_iter].phi()-my_jet.phi())
+                    * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
+            }
+
+            // if the matrix is looking singular...
+            if (sigma_update.xx+sigma_update.yy+sigma_update.xy < 0.01){
+                sigma_update.xx=0.1*0.1;
+                sigma_update.yy=0.1*0.1;
+            }
+
+            // updated sigma is junk if it had almost no contained pT
+            if (!(cluster_weighted_pt > 0)){
+                sigma_update.xx=0.001*0.001;
+                sigma_update.yy=0.001*0.001;
+                sigma_update.xy=0.;
+                sigma_update.yx=0.;
+            }
+            mGMM_jets_params->at(cluster_iter) = sigma_update;
         }
     }
 
@@ -519,7 +511,7 @@ FuzzyTools::UpdateJetsGaussian(vecPseudoJet const& particles,
 
 set<unsigned int>
 FuzzyTools::ClustersForRemovalGaussian(vecPseudoJet const& mGMM_jets,
-                                       vector<TMatrix> const& mGMM_jets_params,
+                                       vector<MatTwo> const& mGMM_jets_params,
                                        vector<double> const& mGMM_weights) {
     set<unsigned int>removal_indices;
     // remove any jets which are candidates for mergers
@@ -540,7 +532,7 @@ FuzzyTools::ClustersForRemovalGaussian(vecPseudoJet const& mGMM_jets,
     //Also remove jets that are too small if the size is learned
     double epsilon = min_sigma*min_sigma;
     for (unsigned int j=0; j<mGMM_jets.size(); j++){
-        if (mGMM_jets_params[j](0,0) < epsilon || mGMM_jets_params[j](1,1) < epsilon){
+        if (mGMM_jets_params[j].xx < epsilon || mGMM_jets_params[j].yy < epsilon){
             removal_indices.insert(j);
         }
     }
@@ -652,7 +644,7 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet const& particles,
 vecPseudoJet
 FuzzyTools::ClusterFuzzyTruncGaus(vecPseudoJet const& particles,
                                   vector<vector<double> >* weights_out,
-                                  vector<TMatrix>* mTGMM_jets_params_out,
+                                  vector<MatTwo>* mTGMM_jets_params_out,
                                   vector<double>* mTGMM_weights_out){
     assert(kernel_type == FuzzyTools::TRUNCGAUSSIAN);
 
@@ -665,7 +657,7 @@ FuzzyTools::ClusterFuzzyTruncGaus(vecPseudoJet const& particles,
 
     vector<vector<double> > weights = InitWeights(particles,cluster_count);
     vecPseudoJet mTGMM_jets = Initialize(particles,cluster_count,seeds);
-    vector<TMatrix> mTGMM_jets_params = Initializeparams(particles,cluster_count);
+    vector<MatTwo> mTGMM_jets_params = Initializeparams(particles,cluster_count);
     for (int iter=0; iter<max_iters; iter++){
         // EM algorithm update steps
         ComputeWeightsTruncGaus(particles,&weights,cluster_count,mTGMM_jets,mTGMM_jets_params, mTGMM_weights);
@@ -682,7 +674,7 @@ FuzzyTools::ClusterFuzzyTruncGaus(vecPseudoJet const& particles,
 
         vector<vector<double> >weights_hold;
         vecPseudoJet mTGMM_jets_hold;
-        vector<TMatrix> mTGMM_jets_params_hold;
+        vector<MatTwo> mTGMM_jets_params_hold;
         vector<double> mTGMM_weights_hold;
 
         for (unsigned int q=0; q<particles.size(); q++){
@@ -735,7 +727,7 @@ FuzzyTools::ClusterFuzzyTruncGaus(vecPseudoJet const& particles,
 vecPseudoJet
 FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet const& particles,
                                  vector<vector<double> >* weights_out,
-                                 vector<TMatrix>* mGMM_jets_params_out,
+                                 vector<MatTwo>* mGMM_jets_params_out,
                                  vector<double>* mGMM_weights_out){
     assert(kernel_type == FuzzyTools::GAUSSIAN);
 
@@ -748,7 +740,7 @@ FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet const& particles,
 
     vector<vector<double> > weights = InitWeights(particles,cluster_count);
     vecPseudoJet mGMM_jets = Initialize(particles,cluster_count,seeds);
-    vector<TMatrix> mGMM_jets_params = Initializeparams(particles,cluster_count);
+    vector<MatTwo> mGMM_jets_params = Initializeparams(particles,cluster_count);
     for (int iter=0; iter<max_iters; iter++){
         // EM algorithm update steps
         ComputeWeightsGaussian(particles,&weights,cluster_count,mGMM_jets,mGMM_jets_params, mGMM_weights);
@@ -765,7 +757,7 @@ FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet const& particles,
 
         vector<vector<double> >weights_hold;
         vecPseudoJet mGMM_jets_hold;
-        vector<TMatrix> mGMM_jets_params_hold;
+        vector<MatTwo> mGMM_jets_params_hold;
         vector<double> mGMM_weights_hold;
 
         for (unsigned int q=0; q<particles.size(); q++){
@@ -821,7 +813,7 @@ FuzzyTools::NewEventDisplay(vecPseudoJet const& particles,
                             __attribute__((unused)) vecPseudoJet const& mGMM_jets,
                             __attribute__((unused)) vector<vector<double> > const& weights,
                             __attribute__((unused)) int which,
-                            __attribute__((unused)) vector<TMatrix> const& mGMM_jets_params,
+                            __attribute__((unused)) vector<MatTwo> const& mGMM_jets_params,
                             __attribute__((unused)) vector<double> const& mGMM_weights,
                             TString const& out) {
     double min_eta = -5;
@@ -854,9 +846,9 @@ FuzzyTools::NewEventDisplay(vecPseudoJet const& particles,
 
     vector<TEllipse> ellipses;
     for (unsigned int i=0; i < mGMM_jets_params.size(); i++) {
-        double var_eta = mGMM_jets_params[i](0,0);
-        double var_phi = mGMM_jets_params[i](1,1);
-        double covar  = mGMM_jets_params[i](1,0);
+        double var_eta = mGMM_jets_params[i].xx;
+        double var_phi = mGMM_jets_params[i].yy;
+        double covar  = mGMM_jets_params[i].yx;
         double temp_a  = 0.5*(var_eta + var_phi);
         double temp_b  = 0.5*sqrt((var_eta-var_phi)*(var_eta-var_phi) + 4*covar*covar);
         double lambda_eta = temp_a + temp_b;
@@ -871,8 +863,8 @@ FuzzyTools::NewEventDisplay(vecPseudoJet const& particles,
         theta = theta * 180 / TMath::Pi();
         aux.Fill();
         TEllipse current_ellipse(loc_eta, loc_phi,
-                                x_r, y_r,
-                                0, 360, theta);
+                                 x_r, y_r,
+                                 0, 360, theta);
         current_ellipse.SetFillStyle(0);
         if(learn_weights) {
             current_ellipse.SetLineWidth(2);
@@ -952,8 +944,8 @@ FuzzyTools::NewEventDisplayUniform(vecPseudoJet const& particles,
         theta = 0;
         aux.Fill();
         TEllipse current_ellipse(loc_eta, loc_phi,
-                                x_r, y_r,
-                                0, 360, theta);
+                                 x_r, y_r,
+                                 0, 360, theta);
         current_ellipse.SetFillStyle(0);
         if(learn_weights) {
             current_ellipse.SetLineWidth(2);
@@ -994,7 +986,7 @@ FuzzyTools::EventDisplay(vecPseudoJet const& particles,
                          vecPseudoJet const& mGMM_jets,
                          vector<vector<double> > const& weights,
                          int which,
-                         vector<TMatrix> const& mGMM_jets_params,
+                         vector<MatTwo> const& mGMM_jets_params,
                          TString out){
 
     gStyle->SetOptStat(0);
@@ -1092,9 +1084,9 @@ FuzzyTools::EventDisplay(vecPseudoJet const& particles,
     // std::cout << "here4 ? " << std::endl;
 
     for (unsigned int i=0; i<mGMM_jets_params.size(); i++){
-        double a = mGMM_jets_params[i](0,0);
-        double b = mGMM_jets_params[i](1,1);
-        double c = mGMM_jets_params[i](1,0);
+        double a = mGMM_jets_params[i].xx;
+        double b = mGMM_jets_params[i].yy;
+        double c = mGMM_jets_params[i].yx;
         double lambda1 = 0.5*(a+b)+0.5*sqrt((a-b)*(a-b)+4.*c*c);
         double lambda2 = 0.5*(a+b)-0.5*sqrt((a-b)*(a-b)+4.*c*c);
         double theta = 0.;
@@ -1310,7 +1302,7 @@ FuzzyTools::SoftpT(vecPseudoJet const& particles,
 double
 FuzzyTools::MLlpTGaussian(vecPseudoJet const& particles,
                           fastjet::PseudoJet const& jet,
-                          TMatrix const& jet_params,
+                          MatTwo const& jet_params,
                           double jetWeight, int m_type) {
     fastjet::PseudoJet my_jet;
     for(unsigned int i = 0; i < particles.size(); i++) {
@@ -1340,7 +1332,7 @@ FuzzyTools::MLlpTUniform(vecPseudoJet const& particles,
 double
 FuzzyTools::MLlpTTruncGaus(vecPseudoJet const& particles,
                            fastjet::PseudoJet const& jet,
-                           TMatrix const& jet_params,
+                           MatTwo const& jet_params,
                            double jetWeight, int m_type) {
     fastjet::PseudoJet my_jet;
     for(unsigned int i = 0; i < particles.size(); i++) {
