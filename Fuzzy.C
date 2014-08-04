@@ -10,6 +10,7 @@
 #include <iterator>
 #include <algorithm>
 #include <assert.h>
+#include <time.h>
 
 
 #include "TString.h"
@@ -31,6 +32,21 @@
 #include "boost/program_options.hpp"
 
 namespace po = boost::program_options;
+
+void eventLoop (int n_events, Pythia8::Pythia *pythia8,
+                Pythia8::Pythia *pythia_MB, int NPV,
+                FuzzyAnalysis *analysis) {
+    clock_t start = clock();
+    clock_t now;
+    double secs;
+    for (int event_iter = 0; event_iter < n_events; event_iter++) {
+        analysis->AnalyzeEvent(event_iter, pythia8, pythia_MB, NPV);
+        now = clock();
+        secs = ((double) (now - start) / (event_iter + 1)) / CLOCKS_PER_SEC;
+        cout << "Seconds per event (sample: " << (event_iter + 1)
+             << " events): " << secs << endl;
+    }
+}
 
 int main(int argc, char* argv[]){
     // argument parsing  ------------------------
@@ -139,6 +155,7 @@ int main(int argc, char* argv[]){
             ss.clear();
             ss.str("");
             ss << current_npv << ".root";
+
             analysis->SetOutName(ss.str());
             analysis->SetPrefix(directory);
             analysis->SetSize(size);
@@ -146,9 +163,9 @@ int main(int argc, char* argv[]){
             analysis->SetLearnWeights(learn_weights);
             analysis->Begin();
             analysis->Debug(f_debug);
-            for (int event_iter = 0; event_iter < n_events; event_iter++) {
-                analysis->AnalyzeEvent(event_iter, pythia8, pythia_MB, current_npv);
-            }
+
+            eventLoop(n_events, pythia8, pythia_MB, current_npv, analysis);
+
             analysis->End();
         }
     } else {
@@ -164,17 +181,14 @@ int main(int argc, char* argv[]){
             analysis->SetPrefix(directory);
             analysis->SetBatched(false);
         }
+        analysis->SetShouldPrint(false);
         analysis->SetSize(size);
         analysis->SetLearnWeights(learn_weights);
         analysis->Begin();
         analysis->Debug(f_debug);
 
-        // Event loop
         cout << "running on " << n_events << " events " << endl;
-        for (Int_t event_iter = 0; event_iter < n_events; event_iter++) {
-            if (event_iter%100==0) cout << event_iter << " " << n_events << endl;
-            analysis->AnalyzeEvent(event_iter, pythia8, pythia_MB, NPV);
-        }
+        eventLoop(n_events, pythia8, pythia_MB, NPV, analysis);
 
         analysis->End();
     }
