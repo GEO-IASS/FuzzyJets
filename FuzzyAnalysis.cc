@@ -369,7 +369,9 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
 
     // generate a new event
     if (!pythia8->next()) return;
-    if (!pythia_MB->next()) return;
+
+    // lazy determine if should generate new pythia pileup event
+    if (NPV && !pythia_MB->next()) return;
     if(f_debug) cout << "FuzzyAnalysis::AnalyzeEvent Event Number " << event_iter << endl;
 
     // reset branches
@@ -387,7 +389,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     fTNPV = NPV;
     // Pileup loop -------------------------------------------------------------
     double px, py, pz, e;
-    for (int pileup_idx = 0; pileup_idx <= NPV; ++pileup_idx) {
+    for (int pileup_idx = 0; pileup_idx < NPV; ++pileup_idx) {
         for (unsigned int particle_idx = 0; particle_idx < (unsigned)pythia_MB->event.size(); ++particle_idx) {
             if (!pythia_MB->event[particle_idx].isFinal()) continue;
             if (fabs(pythia_MB->event[particle_idx].id())==12) continue;
