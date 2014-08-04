@@ -27,6 +27,7 @@ class FuzzyAnalysis{
     double  f_size;
     bool f_learn_weights;
     bool batched;
+    bool should_print;
     string f_out_name;
     string directory_prefix;
 
@@ -189,6 +190,10 @@ class FuzzyAnalysis{
 
     void SetBatched(bool b) {
         batched = b;
+    }
+
+    void SetShouldPrint(bool s) {
+        should_print = s;
     }
 };
 

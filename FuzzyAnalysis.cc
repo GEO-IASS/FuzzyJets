@@ -317,6 +317,7 @@ FuzzyAnalysis::FuzzyAnalysis(){
     directory_prefix = "results/";
 
     batched = false;
+    should_print = true;
 
     tool = new FuzzyTools();
 
@@ -924,7 +925,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
 
     t_t->Fill();
 
-    if (!batched) {
+    if (!batched && should_print) {
         map<string, float*>::const_iterator iter;
         for (iter = tree_vars.begin(); iter != tree_vars.end(); iter++) {
             cout << iter->first << ": " << *(iter->second) << endl;
