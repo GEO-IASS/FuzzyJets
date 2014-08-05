@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os, time, subprocess, pickle
+import os, time, subprocess, pickle, threading
 
 def safe_mkdir(p):
     if not os.path.isdir(p):
@@ -10,6 +10,9 @@ def file_name(prefix, is_intermediate, size, lw, mu):
     lw_flag = "1" if lw else "0"
     div = "/temp_" if is_intermediate else "/"
     return prefix + div + str(size) + "s_" + str(mu) + "mu_" + lw_flag
+
+def subprocess_call_bg(args):
+    subprocess.call(args)
 
 def submit_fuzzy(mu, size, lw, n_events, i, unique_id):
     logdir = cwd + 'logs/' + time_postfix + "_bsub_" + str(mu) + "_" + str(i)
@@ -28,30 +31,34 @@ def submit_fuzzy(mu, size, lw, n_events, i, unique_id):
               "--NPV", str(mu),  "--Size", str(size_s),
               "--PythiaConfig", pythia_conf,
               "--LearnWeights", lw_flag, "--Batch", "1"]
+    #t = threading.Thread(target = subprocess_call_bg, args = (submit,))
+    #t.daemon = True
+    #t.start()
     subprocess.call(submit)
 
 workdir = "/u/at/chstan/nfs/summer_2014/ForConrad/"
 
-pythia_conf = workdir + "configs/default_bat"
+pythia_conf = workdir + "configs/default_batch.pythia"
 
 cwd = os.getcwd() + "/"
 subfile = cwd + "_batchSingleSub.sh"
 
 time_postfix = time.strftime('%Y_%m_%d_%Hh%Mm%Ss')
 
-events_per_job = 400
-n_jobs = 5
+events_per_job = 50
+n_jobs = 20
 queue = 'xlong'
 
 outdir = cwd + 'files/' + time_postfix
 safe_mkdir(outdir)
 
 NPVs = [0, 10, 20, 30]
-sizes = [7, 9]
-learnWeights = [True, False]
+sizes = [7, 8, 9, 10]
+learnWeights = [False, True]
 
 j = 0
 cleanup_commands = []
+
 for current_mu in NPVs:
     for current_size in sizes:
         for current_lw in learnWeights:

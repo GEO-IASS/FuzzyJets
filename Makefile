@@ -10,8 +10,8 @@ CXXFLAGS =   -O2 -Wall -Wextra -equal -Wshadow -Werror -Wno-shadow
 CXX = g++
 
 # Are we profiling?
-PROFILER = -pg
-#PROFILER =
+#PROFILER = -pg
+PROFILER =
 
 # Use these for ROOTless compiles
 #ROOTLIBS =
