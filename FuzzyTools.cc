@@ -823,9 +823,9 @@ FuzzyTools::NewEventDisplay(__attribute__((unused)) vecPseudoJet const& particle
     #ifdef WITHROOT
     double min_eta = -5;
     double max_eta = 5;
-    TCanvas canv(TString::Format("NEVC_%s_%d", out, iter), "", 1200, 600);
-    TH2F hist(TString::Format("NEVH_%s_%d", out, iter), "", 30, min_eta, max_eta, 28, 0, 7);
-    TTree aux(TString::Format("NEVT_%s_%d", out, iter), "");
+    TCanvas canv(TString::Format("NEVC_%s_%d", out.c_str(), iter), "", 1200, 600);
+    TH2F hist(TString::Format("NEVH_%s_%d", out.c_str(), iter), "", 30, min_eta, max_eta, 28, 0, 7);
+    TTree aux(TString::Format("NEVT_%s_%d", out.c_str(), iter), "");
 
     double loc_eta;
     double loc_phi;
@@ -914,8 +914,8 @@ FuzzyTools::NewEventDisplayUniform(__attribute__((unused)) vecPseudoJet const& p
     #ifdef WITHROOT
     double min_eta = -5;
     double max_eta = 5;
-    TCanvas canv(TString::Format("NEVC_%s_%d", out, iter), "", 1200, 600);
-    TTree aux(TString::Format("NEVT_%s_%d", out, iter), "");
+    TCanvas canv(TString::Format("NEVC_%s_%d", out.c_str(), iter), "", 1200, 600);
+    TTree aux(TString::Format("NEVT_%s_%d", out.c_str(), iter), "");
 
     double loc_eta;
     double loc_phi;
@@ -932,7 +932,7 @@ FuzzyTools::NewEventDisplayUniform(__attribute__((unused)) vecPseudoJet const& p
     aux.Branch("w", &w, "w/D");
 
 
-    TH2F hist(TString::Format("NEVH_%s_%d", out, iter), "TEST", 30, min_eta, max_eta, 28, 0, 7);
+    TH2F hist(TString::Format("NEVH_%s_%d", out.c_str(), iter), "TEST", 30, min_eta, max_eta, 28, 0, 7);
 
     double eta, phi, pT;
     for (unsigned int i = 0; i < particles.size(); i++) {
@@ -1006,7 +1006,7 @@ FuzzyTools::EventDisplay(__attribute__((unused)) vecPseudoJet const& particles,
     //gStyle->SetPadLeftMargin(0.15);
     //gStyle->SetPadTopMargin(0.15);
 
-    TCanvas *c = new TCanvas(TString::Format("EventDisplayOld_%s_%d", out, iter),"",500,500);
+    TCanvas *c = new TCanvas(TString::Format("EventDisplayOld_%s_%d", out.c_str(), iter),"",500,500);
 
     __attribute__((unused)) double max_pt=-1;
 
@@ -1122,7 +1122,8 @@ FuzzyTools::EventDisplay(__attribute__((unused)) vecPseudoJet const& particles,
     leggaa->SetBorderSize(0);
     leggaa->Draw();
 
-    c->Print(directory_prefix + "Event"+out+".root");
+    TString file_name = TString::Format("%sEvent%s.root", directory_prefix.c_str(), out.c_str());
+    c->Print(file_name);
     delete c;
     #endif
 }
@@ -1133,7 +1134,7 @@ FuzzyTools::Qjetmass(__attribute__((unused)) vecPseudoJet particles,
                      __attribute__((unused)) int which, 
                      __attribute__((unused)) std::string out){
     #ifdef WITHROOT
-    TH1F q_jet_mass(TString::("qjetmass%s", out),"",100,0,250);
+    TH1F q_jet_mass(TString::Format("qjetmass%s", out.c_str()),"",100,0,250);
     TRandom3 rand = TRandom3(1);
 
     for (int j=0; j<10000; j++){
@@ -1247,7 +1248,7 @@ FuzzyTools::CentralMoments(vecPseudoJet const& particles,
     moments.push_back(0);
     for (unsigned int trial = 0; trial < n_trials; trial++) {
         for (unsigned int particle_iter=0; particle_iter<particles.size(); particle_iter++) {
-            #ifdef WTIHROOT
+            #ifdef WITHROOT
             double my_throw = rand.Uniform(0, 1);
             #else
             double my_throw = ((double) rand() / (RAND_MAX));

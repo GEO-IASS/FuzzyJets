@@ -34,7 +34,7 @@ namespace {
                             __attribute__((unused)) std::string out,
                             __attribute__((unused)) int iter) {
         #ifdef WITHROOT
-        TTree aux(TString::Formt("WT_%s_%d", out, iter), "");
+        TTree aux(TString::Format("WT_%s_%d", out.c_str(), iter), "");
         double w;
         int p_count = weights.size();
         aux.Branch("w", &w, "w/D");
@@ -352,9 +352,9 @@ void FuzzyAnalysis::Begin(){
     #ifdef WITHROOT
     t_f = new TFile(fullName.c_str(), "RECREATE");
     t_t = new TTree("EventTree", "Event Tree for Fuzzy");
+    #endif
 
     DeclareBranches();
-    #endif
 
     ResetBranches();
 
@@ -943,7 +943,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
 
     moments_m.clear();
     moments_pt.clear();
-
+    
     #ifdef WITHROOT
     t_t->Fill();
 
