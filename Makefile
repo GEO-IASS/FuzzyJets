@@ -7,6 +7,7 @@
 # --------------------------------------------- #
 
 CXXFLAGS =   -O2 -Wall -Wextra -equal -Wshadow -Werror -Wno-shadow
+CXXFLAGSEXTRA = -std=c++0x
 CXX = g++
 
 # Are we profiling?
@@ -33,21 +34,21 @@ all: Fuzzy Histogrammer
 
 Histogrammer: Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so
 	$(CXX) Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so -o $@ \
-	$(CXXFLAGS) $(ROOTLIBSREAL) \
+	$(CXXFLAGS) $(CXXFLAGSEXTRA) $(ROOTLIBSREAL) \
 	-L$(BOOSTLIBLOCATION) -lboost_program_options
 
 Histogrammer.so: Histogrammer.cc AnalyzeFuzzyTools.so AtlasUtils.so
 	$(CXX) -o $@ -c $< \
-	$(CXXFLAGS) -fPIC -shared $(ROOTFLAGSREAL) \
+	$(CXXFLAGS) $(CXXFLAGSEXTRA) -fPIC -shared $(ROOTFLAGSREAL) \
 	-isystem $(BOOSTINCDIR)
 
 AnalyzeFuzzyTools.so: AnalyzeFuzzyTools.cc AnalyzeFuzzyTools.h
 	$(CXX) -o $@ -c $<  \
-	$(CXXFLAGS) -fPIC -shared $(ROOTFLAGSREAL) \
+	$(CXXFLAGS) $(CXXFLAGSEXTRA) -fPIC -shared $(ROOTFLAGSREAL) \
 
 AtlasUtils.so: AtlasUtils.cc AtlasUtils.h
 	$(CXX) -o $@ -c $<  \
-	$(CXXFLAGS) -fPIC -shared $(ROOTFLAGSREAL)
+	$(CXXFLAGS) $(CXXFLAGSEXTRA) -fPIC -shared $(ROOTFLAGSREAL)
 
 Fuzzy:  Fuzzy.so FuzzyTools.so FuzzyAnalysis.so
 	$(CXX) Fuzzy.so FuzzyTools.so FuzzyAnalysis.so -o $@ $(PROFILER) \
