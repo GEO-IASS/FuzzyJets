@@ -10,16 +10,16 @@ CXXFLAGS =   -O2 -Wall -Wextra -equal -Wshadow -Werror -Wno-shadow
 CXX = g++
 
 # Are we profiling?
-#PROFILER = -pg
-PROFILER = 
+PROFILER = -pg
+#PROFILER =
 
 # Use these for ROOTless compiles
-ROOTLIBS =
-ROOTFLAGS = 
+#ROOTLIBS =
+#ROOTFLAGS = 
 
 # Use these for actually logging data
-#ROOTLIBS = `root-config --glibs`
-#ROOTFLAGS = `root-config --cflags`
+ROOTLIBS = `root-config --glibs`
+ROOTFLAGS = `root-config --cflags`
 
 # Use these always, of course
 ROOTLIBSREAL = `root-config --glibs`

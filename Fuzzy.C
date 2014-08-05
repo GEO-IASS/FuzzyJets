@@ -197,6 +197,7 @@ int main(int argc, char* argv[]){
 
     // that was it
     delete pythia8;
+    delete pythia_MB;
     delete analysis;
 
     return 0;
