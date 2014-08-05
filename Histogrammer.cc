@@ -96,16 +96,16 @@ int main(int argc, char *argv[]) {
 
     std::string out_dir = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/";
     
-    CanvasHelper c_dec_test("Mass [GeV]", "", "Test Title", out_dir, 800, 800);
-    
-    HistHelper hh_one(zero_loc, "CA_m", "CA Mass", 510, 0, 400, 50,
-                      StyleTypes::NONE, kBlue);
-    HistHelper hh_two(zero_loc, "antikt_m", "Anti-kt Mass", 510, 0, 400, 50,
-                      StyleTypes::DASHED, kBlack);
-    
-    std::vector<HistHelper> v_hist_decs_test;
-    v_hist_decs_test.push_back(hh_one);
-    v_hist_decs_test.push_back(hh_two);
-    
-    prettyHist<float>(v_hist_decs_test, c_dec_test);
+    //CanvasHelper c_dec_test("Mass [GeV]", "", "Test Title", out_dir, 800, 800);
+    //
+    //HistHelper hh_one(zero_loc, "CA_m", "CA Mass", 510, 0, 400, 50,
+    //                  StyleTypes::NONE, kBlue);
+    //HistHelper hh_two(zero_loc, "antikt_m", "Anti-kt Mass", 510, 0, 400, 50,
+    //                  StyleTypes::DASHED, kBlack);
+    //
+    //std::vector<HistHelper> v_hist_decs_test;
+    //v_hist_decs_test.push_back(hh_one);
+    //v_hist_decs_test.push_back(hh_two);
+    //
+    //prettyHist<float>(v_hist_decs_test, c_dec_test);
 }
