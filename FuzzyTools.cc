@@ -15,7 +15,9 @@
 
 #include "FuzzyTools.h"
 #include "myFastJetBase.h"
+#include "ROOTConf.h"
 
+#ifdef WITHROOT
 #include "TTree.h"
 #include "TRandom3.h"
 #include "TError.h"
@@ -30,6 +32,7 @@
 #include "TGraph.h"
 #include "TLegend.h"
 #include "TLine.h"
+#endif
 
 // Makes debugging a little easier, pretty print vectors
 template<typename T>
@@ -263,13 +266,13 @@ FuzzyTools::ComputeWeightsUniform(vecPseudoJet const& particles,
             dist = particles[i].delta_R(mUMM_jets[j]);
             if (dist <= R) {
                 // pT to scale by cluster weight
-                denom += mUMM_weights[j]/(TMath::Pi() * R*R);
+                denom += mUMM_weights[j]/(M_PI * R*R);
             }
         }
         for (unsigned int j=0; j <  mUMM_jets.size(); j++) {
             dist = particles[i].delta_R(mUMM_jets[j]);
             t = (dist <= R) ? mUMM_weights[j] : 0;
-            double new_weight = t/((TMath::Pi() * R*R) * denom);
+            double new_weight = t/((M_PI * R*R) * denom);
             if(new_weight < 0 || new_weight > 1 || isnan(new_weight)) {
                 new_weight = 0.;
             }
@@ -807,7 +810,7 @@ FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet const& particles,
 }
 
 void
-FuzzyTools::NewEventDisplay(vecPseudoJet const& particles,
+FuzzyTools::NewEventDisplay(__attribute__((unused)) vecPseudoJet const& particles,
                             __attribute__((unused)) vecPseudoJet const& ca_jets,
                             __attribute__((unused)) vecPseudoJet const& tops,
                             __attribute__((unused)) vecPseudoJet const& mGMM_jets,
@@ -815,12 +818,14 @@ FuzzyTools::NewEventDisplay(vecPseudoJet const& particles,
                             __attribute__((unused)) int which,
                             __attribute__((unused)) vector<MatTwo> const& mGMM_jets_params,
                             __attribute__((unused)) vector<double> const& mGMM_weights,
-                            TString const& out) {
+                            __attribute__((unused)) std::string const& out,
+                            __attribute__((unused)) int iter) {
+    #ifdef WITHROOT
     double min_eta = -5;
     double max_eta = 5;
-    TCanvas canv("NEVC" + out, "", 1200, 600);
-    TH2F hist("NEVH" + out, "", 30, min_eta, max_eta, 28, 0, 7);
-    TTree aux("NEVT" + out, "");
+    TCanvas canv(TString::Format("NEVC_%s_%d", out, iter), "", 1200, 600);
+    TH2F hist(TString::Format("NEVH_%s_%d", out, iter), "", 30, min_eta, max_eta, 28, 0, 7);
+    TTree aux(TString::Format("NEVT_%s_%d", out, iter), "");
 
     double loc_eta;
     double loc_phi;
@@ -893,21 +898,24 @@ FuzzyTools::NewEventDisplay(vecPseudoJet const& particles,
     }
     gPad->SetLogz();
     canv.Update();
+    #endif
 }
 
 void
-FuzzyTools::NewEventDisplayUniform(vecPseudoJet const& particles,
+FuzzyTools::NewEventDisplayUniform(__attribute__((unused)) vecPseudoJet const& particles,
                                    __attribute__((unused)) vecPseudoJet const& ca_jets,
                                    __attribute__((unused)) vecPseudoJet const& tops,
                                    __attribute__((unused)) vecPseudoJet const& mUMM_jets,
                                    __attribute__((unused)) vector<vector<double> > const& weights,
                                    __attribute__((unused)) int which,
                                    __attribute__((unused)) vector<double> const& mUMM_weights,
-                                   TString const& out) {
+                                   __attribute__((unused)) std::string const& out,
+                                   __attribute__((unused)) int iter) {
+    #ifdef WITHROOT
     double min_eta = -5;
     double max_eta = 5;
-    TCanvas canv("NEVC" + out, "", 1200, 600);
-    TTree aux("NEVT" + out, "");
+    TCanvas canv(TString::Format("NEVC_%s_%d", out, iter), "", 1200, 600);
+    TTree aux(TString::Format("NEVT_%s_%d", out, iter), "");
 
     double loc_eta;
     double loc_phi;
@@ -924,7 +932,7 @@ FuzzyTools::NewEventDisplayUniform(vecPseudoJet const& particles,
     aux.Branch("w", &w, "w/D");
 
 
-    TH2F hist("NEVH" + out, "TEST", 30, min_eta, max_eta, 28, 0, 7);
+    TH2F hist(TString::Format("NEVH_%s_%d", out, iter), "TEST", 30, min_eta, max_eta, 28, 0, 7);
 
     double eta, phi, pT;
     for (unsigned int i = 0; i < particles.size(); i++) {
@@ -977,18 +985,20 @@ FuzzyTools::NewEventDisplayUniform(vecPseudoJet const& particles,
     canv.Update();
 
     //canv.Print(directory_prefix + "NEWEventUniform"+out+".root");
+    #endif
 }
 
 void
-FuzzyTools::EventDisplay(vecPseudoJet const& particles,
-                         vecPseudoJet const& ca_jets,
-                         vecPseudoJet const& tops,
-                         vecPseudoJet const& mGMM_jets,
-                         vector<vector<double> > const& weights,
-                         int which,
-                         vector<MatTwo> const& mGMM_jets_params,
-                         TString out){
-
+FuzzyTools::EventDisplay(__attribute__((unused)) vecPseudoJet const& particles,
+                         __attribute__((unused)) vecPseudoJet const& ca_jets,
+                         __attribute__((unused)) vecPseudoJet const& tops,
+                         __attribute__((unused)) vecPseudoJet const& mGMM_jets,
+                         __attribute__((unused)) vector<vector<double> > const& weights,
+                         __attribute__((unused)) int which,
+                         __attribute__((unused)) vector<MatTwo> const& mGMM_jets_params,
+                         __attribute__((unused)) std::string const& out,
+                         __attribute__((unused)) int iter) {
+    #ifdef WITHROOT
     gStyle->SetOptStat(0);
     //gROOT->Reset();
     //gROOT->SetStyle("ATLAS");
@@ -996,7 +1006,7 @@ FuzzyTools::EventDisplay(vecPseudoJet const& particles,
     //gStyle->SetPadLeftMargin(0.15);
     //gStyle->SetPadTopMargin(0.15);
 
-    TCanvas *c = new TCanvas("EventDisplayOld" + out,"",500,500);
+    TCanvas *c = new TCanvas(TString::Format("EventDisplayOld_%s_%d", out, iter),"",500,500);
 
     __attribute__((unused)) double max_pt=-1;
 
@@ -1114,12 +1124,16 @@ FuzzyTools::EventDisplay(vecPseudoJet const& particles,
 
     c->Print(directory_prefix + "Event"+out+".root");
     delete c;
+    #endif
 }
 
 void
-FuzzyTools::Qjetmass(vecPseudoJet particles, vector<vector<double> > weights, int which, TString out){
-
-    TH1F q_jet_mass("qjetmass" + out,"",100,0,250);
+FuzzyTools::Qjetmass(__attribute__((unused)) vecPseudoJet particles, 
+                     __attribute__((unused)) vector<vector<double> > weights, 
+                     __attribute__((unused)) int which, 
+                     __attribute__((unused)) std::string out){
+    #ifdef WITHROOT
+    TH1F q_jet_mass(TString::("qjetmass%s", out),"",100,0,250);
     TRandom3 rand = TRandom3(1);
 
     for (int j=0; j<10000; j++){
@@ -1140,18 +1154,21 @@ FuzzyTools::Qjetmass(vecPseudoJet particles, vector<vector<double> > weights, in
     q_jet_mass.GetXaxis()->SetTitleOffset(1.4);
     q_jet_mass.GetYaxis()->SetTitleOffset(1.4);
     q_jet_mass.Write();
+    #endif
 }
 
 void
-FuzzyTools::JetContributionDisplay(vecPseudoJet particles,
-                                   vector<vector<double> > weights,
-                                   int which,
-                                   int m_type,
-                                   TString out) {
+FuzzyTools::JetContributionDisplay(__attribute__((unused)) vecPseudoJet particles,
+                                   __attribute__((unused)) vector<vector<double> > weights,
+                                   __attribute__((unused)) int which,
+                                   __attribute__((unused)) int m_type,
+                                   __attribute__((unused)) std::string out,
+                                   __attribute__((unused)) int iter) {
+    #ifdef WTIHROOT
     double min_eta = -5;
     double max_eta = 5;
     unsigned int k = weights[0].size();
-    TH2F hist("JCH_hard" + out, "", 30, min_eta, max_eta, 28, 0, 7);
+    TH2F hist(TString::Format("JCH_hard_%s_%d", out, iter), "", 30, min_eta, max_eta, 28, 0, 7);
     for (unsigned int i = 0; i < particles.size(); i++) {
         int m_idx = -1;
         double mweight = -1;
@@ -1168,7 +1185,7 @@ FuzzyTools::JetContributionDisplay(vecPseudoJet particles,
     }
     hist.Write();
 
-    TH2F hist2("JCH_soft" + out, "", 30, min_eta, max_eta, 28, 0, 7);
+    TH2F hist2(TString::Format("JCH_soft_%s_%d", out, iter), "", 30, min_eta, max_eta, 28, 0, 7);
     for (unsigned int i=0; i < particles.size(); i++) {
         double fill_val = m_type == 1 ? particles[i].m() : particles[i].pt();
         fill_val *= weights[i][which];
@@ -1176,6 +1193,7 @@ FuzzyTools::JetContributionDisplay(vecPseudoJet particles,
     }
 
     hist2.Write();
+    #endif
 }
 
 double totalMass(vecPseudoJet particles, vector<unsigned int> indices) {
@@ -1218,14 +1236,22 @@ FuzzyTools::CentralMoments(vecPseudoJet const& particles,
     vector<double> moments;
     moments.reserve(moment_count);
 
+    #ifdef WITHROOT
     TRandom3 rand = TRandom3(1);
     UInt_t seed = rand.GetSeed();
-
+    #else 
+    time_t seed = time(NULL);
+    srand(seed);
+    #endif
     // compute throws and the mean
     moments.push_back(0);
     for (unsigned int trial = 0; trial < n_trials; trial++) {
         for (unsigned int particle_iter=0; particle_iter<particles.size(); particle_iter++) {
+            #ifdef WTIHROOT
             double my_throw = rand.Uniform(0, 1);
+            #else
+            double my_throw = ((double) rand() / (RAND_MAX));
+            #endif
             if (my_throw < weights[particle_iter][cluster_id]) {
                 particle_indices.push_back(particle_iter);
             }
@@ -1235,7 +1261,11 @@ FuzzyTools::CentralMoments(vecPseudoJet const& particles,
     }
 
     moments[0] /= n_trials;
+    #ifdef WITHROOT
     rand.SetSeed(seed);
+    #else
+    srand(seed);
+    #endif
     particle_indices.clear();
     for (unsigned int i = 1; i < moment_count; i++) {
         moments.push_back(0);
@@ -1243,7 +1273,11 @@ FuzzyTools::CentralMoments(vecPseudoJet const& particles,
 
     for(unsigned int trial = 0; trial < n_trials; trial++) {
         for (unsigned int particle_iter = 0; particle_iter < particles.size(); particle_iter++) {
+            #ifdef WITHROOT
             double my_throw = rand.Uniform(0, 1);
+            #else
+            double my_throw = ((double) rand() / (RAND_MAX));
+            #endif
             if (my_throw < weights[particle_iter][cluster_id]) {
                 particle_indices.push_back(particle_iter);
             }

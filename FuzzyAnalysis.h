@@ -10,15 +10,19 @@
 #include "fastjet/PseudoJet.hh"
 #include "fastjet/tools/Filter.hh"
 #include "fastjet/Selector.hh"
+#include "FuzzyTools.h"
+#include "myFastJetBase.h"
 
+#include "Pythia8/Pythia.h"
+
+#include "ROOTConf.h"
+
+#ifdef WITHROOT
 #include "TFile.h"
 #include "TTree.h"
 #include "TClonesArray.h"
 #include "TParticle.h"
-
-#include "FuzzyTools.h"
-#include "myFastJetBase.h"
-#include "Pythia8/Pythia.h"
+#endif
 
 class FuzzyAnalysis{
  private:
@@ -33,8 +37,11 @@ class FuzzyAnalysis{
 
     std::map<string, float*> tree_vars;
 
+    #ifdef WITHROOT
     TFile *t_f;
     TTree *t_t;
+    #endif
+    
     FuzzyTools *tool;
 
     // Tree Vars ---------------------------------------

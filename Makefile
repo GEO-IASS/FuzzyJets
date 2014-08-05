@@ -8,10 +8,22 @@
 
 CXXFLAGS =   -O2 -Wall -Wextra -equal -Wshadow -Werror -Wno-shadow
 CXX = g++
+
+# Are we profiling?
+#PROFILER = -pg
 PROFILER = 
 
-ROOTLIBS = `root-config --glibs`
-ROOTFLAGS = `root-config --cflags`
+# Use these for ROOTless compiles
+ROOTLIBS =
+ROOTFLAGS = 
+
+# Use these for actually logging data
+#ROOTLIBS = `root-config --glibs`
+#ROOTFLAGS = `root-config --cflags`
+
+# Use these always, of course
+ROOTLIBSREAL = `root-config --glibs`
+ROOTFLAGSREAL = `root-config --cflags`
 FASTJETLIBS = `$(FASTJETLOCATION)/bin/fastjet-config --libs --plugins`
 FASTJETFLAGS = `$(FASTJETLOCATION)/bin/fastjet-config --cxxflags --plugins`
 
@@ -21,21 +33,21 @@ all: Fuzzy Histogrammer
 
 Histogrammer: Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so
 	$(CXX) Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so -o $@ \
-	$(CXXFLAGS) $(ROOTLIBS) \
+	$(CXXFLAGS) $(ROOTLIBSREAL) \
 	-L$(BOOSTLIBLOCATION) -lboost_program_options
 
 Histogrammer.so: Histogrammer.cc AnalyzeFuzzyTools.so AtlasUtils.so
 	$(CXX) -o $@ -c $< \
-	$(CXXFLAGS) -fPIC -shared $(ROOTFLAGS) \
+	$(CXXFLAGS) -fPIC -shared $(ROOTFLAGSREAL) \
 	-isystem $(BOOSTINCDIR)
 
 AnalyzeFuzzyTools.so: AnalyzeFuzzyTools.cc AnalyzeFuzzyTools.h
 	$(CXX) -o $@ -c $<  \
-	$(CXXFLAGS) -fPIC -shared $(ROOTFLAGS) \
+	$(CXXFLAGS) -fPIC -shared $(ROOTFLAGSREAL) \
 
 AtlasUtils.so: AtlasUtils.cc AtlasUtils.h
 	$(CXX) -o $@ -c $<  \
-	$(CXXFLAGS) -fPIC -shared $(ROOTFLAGS)
+	$(CXXFLAGS) -fPIC -shared $(ROOTFLAGSREAL)
 
 Fuzzy:  Fuzzy.so FuzzyTools.so FuzzyAnalysis.so
 	$(CXX) Fuzzy.so FuzzyTools.so FuzzyAnalysis.so -o $@ $(PROFILER) \

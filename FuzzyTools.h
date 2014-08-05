@@ -12,8 +12,11 @@
 #include "Pythia8/Pythia.h"
 
 #include "myFastJetBase.h"
+#include "ROOTConf.h"
 
+#ifdef WITHROOT
 #include "TMatrix.h"
+#endif
 
 typedef std::vector<fastjet::PseudoJet> vecPseudoJet;
 
@@ -218,7 +221,8 @@ class FuzzyTools {
                       vector<vector<double> > const& weights,
                       int which,
                       vector<MatTwo> const& mGMM_jets_params,
-                      TString out);
+                      std::string const& out,
+                      int iter);
 
     void NewEventDisplay(vecPseudoJet const& particles,
                          vecPseudoJet const& ca_jets,
@@ -228,7 +232,8 @@ class FuzzyTools {
                          int which,
                          vector<MatTwo> const& mGMM_jets_params,
                          vector<double> const& mGMM_weights,
-                         TString const& out);
+                         std::string const& out,
+                         int iter);
 
     void NewEventDisplayUniform(vecPseudoJet const& particles,
                                 vecPseudoJet const& ca_jets,
@@ -237,13 +242,15 @@ class FuzzyTools {
                                 vector<vector<double> > const& weights,
                                 int which,
                                 vector<double> const& mUMM_weights,
-                                TString const& out);
+                                std::string const& out,
+                                int iter);
 
     void JetContributionDisplay(vecPseudoJet particles,
                                 vector<vector<double> > weights,
                                 int which,
                                 int m_type,
-                                TString out);
+                                std::string out,
+                                int iter);
 
     double MLpT(vecPseudoJet particles,
                 vector<vector<double> > weights,
@@ -271,7 +278,7 @@ class FuzzyTools {
     void Qjetmass(vecPseudoJet particles,
                   vector<vector<double> > weights,
                   int which,
-                  TString out);
+                  std::string out);
 
     double SoftpT(vecPseudoJet const& particles,
                   vector<vector<double> > const& weights,

@@ -4,19 +4,6 @@
 #include <sstream>
 #include <set>
 
-
-#include "TFile.h"
-#include "TTree.h"
-#include "TClonesArray.h"
-#include "TParticle.h"
-#include "TDatabasePDG.h"
-#include "TMath.h"
-#include "TVector3.h"
-#include "TMatrix.h"
-
-#include "FuzzyAnalysis.h"
-#include "FuzzyTools.h"
-
 #include "myFastJetBase.h"
 #include "fastjet/ClusterSequence.hh"
 #include "fastjet/PseudoJet.hh"
@@ -25,12 +12,29 @@
 
 #include "Pythia8/Pythia.h"
 
+#include "FuzzyAnalysis.h"
+#include "FuzzyTools.h"
+#include "ROOTConf.h"
+
+#ifdef WITHROOT
+#include "TFile.h"
+#include "TTree.h"
+#include "TClonesArray.h"
+#include "TParticle.h"
+#include "TDatabasePDG.h"
+#include "TMath.h"
+#include "TVector3.h"
+#include "TMatrix.h"
+#endif
+
 // Privately separate the logic of different analysis modes from using them
 namespace {
-    void WeightDistribution(vector<vector<double> > const& weights,
-                            int which,
-                            TString out) {
-        TTree aux("WT" + out, "");
+    void WeightDistribution(__attribute__((unused)) vector<vector<double> > const& weights,
+                            __attribute__((unused)) int which,
+                            __attribute__((unused)) std::string out,
+                            __attribute__((unused)) int iter) {
+        #ifdef WITHROOT
+        TTree aux(TString::Formt("WT_%s_%d", out, iter), "");
         double w;
         int p_count = weights.size();
         aux.Branch("w", &w, "w/D");
@@ -39,6 +43,7 @@ namespace {
             aux.Fill();
         }
         aux.Write();
+        #endif
     }
 
     // is the reference particle given by index p_idx clustered at all?
@@ -344,10 +349,13 @@ FuzzyAnalysis::~FuzzyAnalysis(){
 void FuzzyAnalysis::Begin(){
     // Declare TTree
     string fullName = directory_prefix + f_out_name;
+    #ifdef WITHROOT
     t_f = new TFile(fullName.c_str(), "RECREATE");
     t_t = new TTree("EventTree", "Event Tree for Fuzzy");
 
     DeclareBranches();
+    #endif
+
     ResetBranches();
 
     tool->SetPrefix(directory_prefix);
@@ -357,9 +365,10 @@ void FuzzyAnalysis::Begin(){
 
 // End
 void FuzzyAnalysis::End(){
-
+    #ifdef WITHROOT
     t_t->Write();
     t_f->Close();
+    #endif 
     return;
 }
 
@@ -563,24 +572,25 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     if (do_weight_distributions && event_iter < 10 && !batched) {
 
         if(mGMM_on) {
+          
             WeightDistribution(mGMM_particle_weights, lead_mGMM_index,
-                               TString::Format("_mGMM_%d", event_iter));
+                               "mGMM", event_iter);
         }
         if(mTGMM_on) {
             WeightDistribution(mTGMM_particle_weights, lead_mTGMM_index,
-                               TString::Format("_mTGMM_%d", event_iter));
+                               "mTGMM", event_iter);
         }
         if(mUMM_on) {
             WeightDistribution(mUMM_particle_weights, lead_mUMM_index,
-                               TString::Format("_mUMM_%d", event_iter));
+                               "mUMM", event_iter);
         }
         if(mGMMs_on) {
             WeightDistribution(mGMMs_particle_weights, lead_mGMMs_index,
-                               TString::Format("_mGMMs_%d", event_iter));
+                               "mGMMs", event_iter);
         }
         if(mTGMMs_on) {
             WeightDistribution(mTGMMs_particle_weights, lead_mTGMMs_index,
-                               TString::Format("_mTGMMs_%d", event_iter));
+                               "mTGMMs", event_iter);
         }
     }
 
@@ -593,7 +603,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                mGMM_particle_weights,
                                lead_mGMM_index,
                                mGMM_jets_params,
-                               TString::Format("%i",event_iter));
+                               "",
+                               event_iter);
         }
         if(mGMM_on) {
             tool->NewEventDisplay(particles_for_jets,
@@ -603,16 +614,20 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                   lead_mGMM_index,
                                   mGMM_jets_params,
                                   mGMM_weights,
-                                  TString::Format("_mGMM_%i",event_iter));
+                                  "mGMM",
+                                  event_iter);
             tool->JetContributionDisplay(particles_for_jets,
                                          mGMM_particle_weights,
                                          lead_mGMM_index,
-                                         1, TString::Format("_m_mGMM_%i", event_iter));
+                                         1, 
+                                         "m_mGMM",
+                                         event_iter);
             tool->JetContributionDisplay(particles_for_jets,
                                          mGMM_particle_weights,
                                          lead_mGMM_index,
-                                         0, TString::Format("_pt_mGMM_%i", event_iter));
-
+                                         0, 
+                                         "pt_mGMM",
+                                         event_iter);
         }
         if(mTGMM_on) {
             tool->NewEventDisplay(particles_for_jets,
@@ -622,7 +637,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                   lead_mTGMM_index,
                                   mTGMM_jets_params,
                                   mTGMM_weights,
-                                  TString::Format("_mTGMM_%i",event_iter));
+                                  "mTGMM",
+                                  event_iter);
         }
         if(mUMM_on) {
             tool->NewEventDisplayUniform(particles_for_jets,
@@ -631,7 +647,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                          mUMM_particle_weights,
                                          lead_mUMM_index,
                                          mUMM_weights,
-                                         TString::Format("_mUMM_%i",event_iter));
+                                         "mUMM",
+                                         event_iter);
         }
         if(mGMMs_on) {
             tool->NewEventDisplay(particles_for_jets,
@@ -641,7 +658,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                   lead_mGMMs_index,
                                   mGMMs_jets_params,
                                   mGMMs_weights,
-                                  TString::Format("_mGMMs_%i", event_iter));
+                                  "mGMMs",
+                                  event_iter);
         }
         if(mTGMMs_on) {
             tool->NewEventDisplay(particles_for_jets,
@@ -651,7 +669,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                   lead_mTGMMs_index,
                                   mTGMMs_jets_params,
                                   mTGMMs_weights,
-                                  TString::Format("_mTGMMs_%i", event_iter));
+                                  "mTGMMs",
+                                  event_iter);
         }
     }
 
@@ -925,9 +944,13 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     moments_m.clear();
     moments_pt.clear();
 
+    #ifdef WITHROOT
     t_t->Fill();
 
     if (!batched && should_print) {
+    #else
+    if (true) {
+    #endif
         map<string, float*>::const_iterator iter;
         for (iter = tree_vars.begin(); iter != tree_vars.end(); iter++) {
             cout << iter->first << ": " << *(iter->second) << endl;
@@ -1062,6 +1085,7 @@ void FuzzyAnalysis::DeclareBranches(){
     tree_vars["mTGMM_m_pu_hard"] = &fTmTGMM_m_pu_hard;
 
     // Event Properties
+    #ifdef WITHROOT
     t_t->Branch("EventNumber",    &fTEventNumber,    "EventNumber/I");
     t_t->Branch("NPV",            &fTNPV,            "NPV/I");
 
@@ -1075,6 +1099,7 @@ void FuzzyAnalysis::DeclareBranches(){
         string branch_typename = ss.str();
         t_t->Branch(branch_name.c_str(), iter->second, branch_typename.c_str());
     }
+    #endif
 
     return;
 }

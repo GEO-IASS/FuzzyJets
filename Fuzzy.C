@@ -12,13 +12,7 @@
 #include <assert.h>
 #include <time.h>
 
-
-#include "TString.h"
-#include "TSystem.h"
-#include "TError.h"
-#include "TClonesArray.h"
-#include "TParticle.h"
-#include "TDatabasePDG.h"
+#include "boost/program_options.hpp"
 
 #include "fastjet/PseudoJet.hh"
 #include "fastjet/ClusterSequence.hh"
@@ -28,8 +22,16 @@
 
 #include "FuzzyTools.h"
 #include "FuzzyAnalysis.h"
+#include "ROOTConf.h"
 
-#include "boost/program_options.hpp"
+#ifdef WITHROOT
+#include "TString.h"
+#include "TSystem.h"
+#include "TError.h"
+#include "TClonesArray.h"
+#include "TParticle.h"
+#include "TDatabasePDG.h"
+#endif
 
 namespace po = boost::program_options;
 
