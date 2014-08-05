@@ -62,7 +62,7 @@ cleanup_commands = []
 for current_mu in NPVs:
     for current_size in sizes:
         for current_lw in learnWeights:
-            cleanup_base = file_name(outdir, False, current_size, current_lw, current_mu)
+            cleanup_base = file_name(outdir, True, current_size, current_lw, current_mu)
             cleanup_command = "hadd " + cleanup_base + ".root" + " " \
                               + cleanup_base + "_{0.." + str(n_jobs-1) + "}.root"
             cleanup_commands.append(cleanup_command)
