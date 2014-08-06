@@ -168,7 +168,8 @@ std::vector<TH1D *> v_hists;
         // fill each histogram with its next value
         for (size_t hist_iter = 0; hist_iter < n_hists; hist_iter++) {
             const double v = v_vals[hist_iter][event_iter];
-            if(hist_decs[hist_iter].min_edge <= v && v <= hist_decs[hist_iter].max_edge) {
+            //if(hist_decs[hist_iter].min_edge <= v && v <= hist_decs[hist_iter].max_edge) {
+            if (true) {
                 v_hists[hist_iter]->Fill(v);
             }
         }
