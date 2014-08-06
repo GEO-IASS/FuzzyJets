@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include <vector>
 #include <string>
 #include <tuple>
@@ -82,10 +83,13 @@ int main(int argc, char *argv[]) {
     static const int sizes_arr[] = {7, 8, 9, 10};
     static const int NPVs_arr[] = {0, 10, 20, 30};
     static const int learns_arr[] = {0, 1};
+    static const std::string algs_arr[] = {"mGMM", "mGMMs", "mUMM", "mTGMM", "mTGMMs"};
 
     std::vector<int> sizes(sizes_arr, sizes_arr+sizeof(sizes_arr) / sizeof(sizes_arr[0]));
     std::vector<int> NPVs(NPVs_arr, NPVs_arr+sizeof(NPVs_arr) / sizeof(NPVs_arr[0]));
     std::vector<int> learns(learns_arr, learns_arr+sizeof(learns_arr) / sizeof(learns_arr[0]));
+    std::vector<std::string> algs(algs_arr, algs_arr+sizeof(algs_arr) / sizeof(algs_arr[0]));
+
     std::string file_prefix = "/u/at/chstan/nfs/summer_2014/ForConrad/files/2014_08_04_19h02m14s/";
 
     file_map_t file_m = constructFileMap(sizes, learns, NPVs, file_prefix);
@@ -96,16 +100,90 @@ int main(int argc, char *argv[]) {
 
     std::string out_dir = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/";
     
-    //CanvasHelper c_dec_test("Mass [GeV]", "", "Test Title", out_dir, 800, 800);
-    //
-    //HistHelper hh_one(zero_loc, "CA_m", "CA Mass", 510, 0, 400, 50,
-    //                  StyleTypes::NONE, kBlue);
-    //HistHelper hh_two(zero_loc, "antikt_m", "Anti-kt Mass", 510, 0, 400, 50,
-    //                  StyleTypes::DASHED, kBlack);
-    //
-    //std::vector<HistHelper> v_hist_decs_test;
-    //v_hist_decs_test.push_back(hh_one);
-    //v_hist_decs_test.push_back(hh_two);
-    //
-    //prettyHist<float>(v_hist_decs_test, c_dec_test);
+    CanvasHelper c_dec_test("Mass [GeV]", "", "Test Title", out_dir, 800, 800);
+    
+
+    // KEYS ARE BUILT BY (SIZE, LEARN, PILEUP)
+    HistHelper hh_one(file_m[std::make_tuple(10, 0, 0)], "CA_m", "CA Mass", 510, 0, 400, 50,
+                      StyleTypes::NONE, kBlue);
+    HistHelper hh_two(file_m[std::make_tuple(10, 0, 0)], "antikt_m", "Anti-kt Mass", 510, 0, 400, 50,
+                      StyleTypes::DASHED, kBlack);
+    
+    std::vector<HistHelper> v_hist_decs_test;
+    v_hist_decs_test.push_back(hh_one);
+    v_hist_decs_test.push_back(hh_two);
+    
+    prettyHist<float>(v_hist_decs_test, c_dec_test);
+
+
+    // DO PILEUP COMPARISONS: MASS RESOLUTION
+    std::vector<HistHelper> v_hist_decs;
+
+    std::stringstream ss;
+    
+    // god I'd love a for each loop guys please update the system gcc!
+    for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
+        for (unsigned int size_iter = 0; size_iter < sizes.size(); size_iter++) {
+            for(unsigned int learn_iter = 0; learn_iter < learns.size(); learn_iter++) {
+                v_hist_decs.clear();
+                int size = sizes[size_iter];
+                int learn = learns[learn_iter];
+                std::string alg = algs[alg_iter];
+                ss.str(std::string());
+                ss << "Mass resolution with pileup " << alg << " jets: sz " << size << " lw " << learn;
+                std::string canvas_title = ss.str();
+                CanvasHelper c_dec("Mass [GeV]", "", canvas_title, out_dir, 800, 800);
+                for(unsigned int npv_iter = 0; npv_iter < NPVs.size(); npv_iter++) {
+                    int npv = NPVs[npv_iter];
+                    ss.str(std::string());
+                    ss << alg << " Mass - PuV " << npv;
+                    std::string title = ss.str();
+                    ss.str(std::string());
+                    ss << alg << "_m";
+                    std::string branch = ss.str();
+                    HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv)],
+                                                  branch, title, 510, 0, 400, 50, StyleTypes::NONE, kBlue);
+                    v_hist_decs.push_back(hist_helper_temp);
+                }
+                HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, 0)],
+                                              "antikt_m", "Anti-kt Mass - PuV 0", 
+                                              510, 0, 400, 50, StyleTypes::NONE, kBlack);
+                v_hist_decs.push_back(hist_helper_temp);
+                prettyHist<float>(v_hist_decs, c_dec);
+            }
+        }
+    }
+
+    // PT RESOLUTION
+    for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
+        for (unsigned int size_iter = 0; size_iter < sizes.size(); size_iter++) {
+            for(unsigned int learn_iter = 0; learn_iter < learns.size(); learn_iter++) {
+                v_hist_decs.clear();
+                int size = sizes[size_iter];
+                int learn = learns[learn_iter];
+                std::string alg = algs[alg_iter];
+                ss.str(std::string());
+                ss << "pT resolution with pileup " << alg << " jets: sz " << size << " lw " << learn;
+                std::string canvas_title = ss.str();
+                CanvasHelper c_dec("pT [GeV]", "", canvas_title, out_dir, 800, 800);
+                for(unsigned int npv_iter = 0; npv_iter < NPVs.size(); npv_iter++) {
+                    int npv = NPVs[npv_iter];
+                    ss.str(std::string());
+                    ss << alg << " pT - PuV " << npv;
+                    std::string title = ss.str();
+                    ss.str(std::string());
+                    ss << alg << "_pt";
+                    std::string branch = ss.str();
+                    HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv)],
+                                                  branch, title, 510, 0, 800, 50, StyleTypes::NONE, kBlue);
+                    v_hist_decs.push_back(hist_helper_temp);
+                }
+                HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, 0)],
+                                              "antikt_pt", "Anti-kt pT - PuV 0", 
+                                              510, 0, 800, 50, StyleTypes::NONE, kBlack);
+                v_hist_decs.push_back(hist_helper_temp);
+                prettyHist<float>(v_hist_decs, c_dec);
+            }
+        }
+    }
 }

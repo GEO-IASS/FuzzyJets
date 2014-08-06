@@ -3,3 +3,10 @@ The structure of FuzzyTools at the moment is tied a bit too tightly to the kerne
 Also, the interface functions are not consistent because they treat the weights, the cluster parameters, and the cluster locations differently (two are modified by reference, one is returned as a vector).
 
 Some strange memory problems seem to abound in the code... Segfaults occasionally, but has stopped for the moment. 
+
+====================================
+====== RUNS ========================
+====================================
+
+Bad run at 8/5 7:13 pm
+Run at 8/5 7:15 pm
