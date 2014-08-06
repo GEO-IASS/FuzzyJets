@@ -41,6 +41,8 @@ public:
     size_t width;
     size_t height;
 
+    bool diff_scale;
+
     CanvasHelper(std::string x_label, std::string y_label, std::string title,
                  std::string base, size_t width, size_t height) {
         this->x_label = x_label;
@@ -50,6 +52,7 @@ public:
 
         this->width = width;
         this->height = height;
+        this->diff_scale = false;
     }
 };
 
@@ -63,15 +66,17 @@ public:
 
     double      min_edge, max_edge;
     size_t      n_bins;
-
+    
+    Style_t style;
     Color_t color;
+    std::string draw_opts;
 
     StyleTypes::HistOptions options;
 
     HistHelper(std::string file_name, std::string branch_name,
                std::string legend_label, size_t ticks, double min_edge,
                double max_edge, size_t n_bins, StyleTypes::HistOptions options,
-               Color_t color) {
+               Color_t color, Style_t style, std::string draw_opts) {
         this->file_name = file_name;
         this->branch_name = branch_name;
         this->legend_label = legend_label;
@@ -81,6 +86,8 @@ public:
         this->max_edge = max_edge;
         this->n_bins = n_bins;
         this->color = color;
+        this->style = style;
+        this->draw_opts = draw_opts;
     }
 };
 
@@ -105,9 +112,10 @@ loadSingleBranch(std::string const& file, std::string const& branch) {
         b->GetEvent(entry_iter);
         out.push_back(branch_target);
     }
+
     //delete b;
     //delete f;
-    //delete t;
+    delete f;
 
     return out;
 }
@@ -193,13 +201,34 @@ std::vector<TH1D *> v_hists;
             current_hist->SetLineStyle(7); // dashed style
         }
         current_hist->SetLineColor(hist_dec.color);
+        current_hist->SetMarkerColor(hist_dec.color);
+        current_hist->SetMarkerStyle(hist_dec.style);
 
+        if (hist_dec.options == StyleTypes::STRIPED) {
+            current_hist->SetFillStyle(3004);
+            current_hist->SetFillColor(hist_dec.color);
+        }
+        std::string postfix;
         if (hist_iter == 0) {
-            current_hist->GetYaxis()->SetRangeUser(0, RoundDoubleUp(all_max*1.2, 10));
+            if (c_dec.diff_scale) {
+                current_hist->Scale(1./current_hist->Integral(-1, current_hist->GetNbinsX()+1));
+            } else {
+                current_hist->GetYaxis()->SetRangeUser(0, RoundDoubleUp(all_max*1.2, 10));
+            }
             current_hist->GetXaxis()->SetTitle(c_dec.x_label.c_str());
-            current_hist->Draw();
+            postfix = "";
         } else {
-            current_hist->Draw("same");
+            postfix = " same";
+        }
+        //std::cout << current_hist->Integral(-1, current_hist->GetNbinsX() + 1) << std::endl;
+        if (hist_dec.draw_opts == "") {
+            if (postfix != "") {
+                current_hist->Draw("same");
+            } else {
+                current_hist->Draw(TString::Format("%s",postfix.c_str()));
+            }
+        } else {
+            current_hist->Draw(TString::Format("%s%s", hist_dec.draw_opts.c_str(), postfix.c_str()));
         }
     }
 
