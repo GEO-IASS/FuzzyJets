@@ -58,6 +58,71 @@ constructFileMap(std::vector<int> const& sizes, std::vector<int> const& learns,
   return m;
 }
 
+void doSanityPlot(std::string branch, std::string old_loc, std::string new_loc, std::string title,
+                  std::string out) {
+    std::vector<HistHelper> v_hist_decs;
+    CanvasHelper c_dec("X", "", title, out, 800, 800);
+    c_dec.diff_scale = false;
+    HistHelper h_one(old_loc, branch, "OLD", 510, 0, 400, 25, StyleTypes::STRIPED, kMagenta + 3, 20, "");
+    HistHelper h_two(new_loc, branch, "NEW", 510, 0, 400, 25, StyleTypes::STRIPED, kViolet + 9, 20, "");
+    v_hist_decs.push_back(h_one);
+    v_hist_decs.push_back(h_two);
+    prettyHist<float>(v_hist_decs, c_dec);
+}
+
+void sanityTests() {
+    std::string sanity_out = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/sanity/";
+    std::string old_data_pref = "/u/at/chstan/nfs/summer_2014/ForConrad/results/with_pu/";
+    std::string new_data_pref = "/u/at/chstan/nfs/summer_2014/ForConrad/files/2014_08_04_19h02m14s/";
+    static const std::string sets[] = {"wno_s10/", "wno_s8/", "wyes_s10/", "wyes_s8/"};
+    static const int sizes[] = {10, 8};
+    static const int learns[] = {0, 1};
+    static const int NPVs[] = {0, 10, 20, 30};
+    static const std::string sporadic[] =
+        { "CA_m", "CA_pt", "toppt", "antikt_m", "antikt_pt" }; 
+    static const std::string algs[] = { "mGMM", "mGMMs", "mUMM", "mTGMM", "mTGMMs" };
+    static const std::string vars[] = { "_m", "_pt", "_m_soft", "_pt_soft" };
+    for (unsigned int size_iter = 0; size_iter < 2; size_iter++) {
+        for (unsigned int learn_iter = 0; learn_iter < 2; learn_iter++) {
+            unsigned int set_idx = size_iter + 2*learn_iter;
+            for (unsigned int npv_iter = 0; npv_iter < 4; npv_iter++) {
+                int npv = NPVs[npv_iter];
+                int size = sizes[size_iter];
+                int learn = learns[learn_iter];
+                std::stringstream ss;
+                ss.str("");
+                ss << old_data_pref << sets[set_idx] << npv << ".root";
+                std::string old_loc = ss.str();
+                ss.str("");
+                ss << new_data_pref << size << "s_" << npv << "mu_" << learn << ".root";
+                std::string new_loc = ss.str();
+                
+                for (unsigned int sporadic_iter = 0; sporadic_iter < 5; sporadic_iter++) {
+                    ss.str("");
+                    ss << "SANITY CHECK MU " << npv << " SZ " 
+                       << size << " LEARN " << learn << " BRANCH " 
+                       << sporadic[sporadic_iter];
+                    std::string title = ss.str();
+                    doSanityPlot(sporadic[sporadic_iter], old_loc, new_loc, title, sanity_out);
+                }
+                for (unsigned int alg_iter = 0; alg_iter < 5; alg_iter++) {
+                    for (unsigned int branch_iter = 0; branch_iter < 4; branch_iter++) {
+                        ss.str("");
+                        ss << algs[alg_iter] << vars[branch_iter];
+                        std::string branch_name = ss.str();
+                        ss.str("");
+                        ss << "SANITY CHECK MU " << npv << " SZ "
+                           << size << " LEARN " << learn << " BRANCH " 
+                           << branch_name;
+                        std::string title = ss.str();
+                        doSanityPlot(branch_name, old_loc, new_loc, title, sanity_out);
+                    }
+                }
+            }
+        }
+    }
+}
+
 int main(int argc, char *argv[]) {
     std::cout << "Called as: ";
     for (int i = 0; i < argc; i++) {
@@ -80,6 +145,9 @@ int main(int argc, char *argv[]) {
 
     SetAtlasStyle();
 
+    sanityTests();
+    return 0;
+
     static const int sizes_arr[] = {7, 8, 9, 10};
     static const int NPVs_arr[] = {0, 10, 20, 30};
     static const int learns_arr[] = {0, 1};
@@ -101,7 +169,7 @@ int main(int argc, char *argv[]) {
       std::cout << ":" << iter->second << std::endl;
     }
 
-    std::string out_dir = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/";
+    std::string out_dir = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/gen/";
     
     CanvasHelper c_dec_test("Mass [GeV]", "", "Test Title", out_dir, 800, 800);
     
