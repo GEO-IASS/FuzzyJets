@@ -15,7 +15,7 @@ def subprocess_call_bg(args):
     subprocess.call(args)
 
 def submit_fuzzy(mu, size, lw, n_events, i, unique_id):
-    logdir = cwd + 'logs/' + time_postfix + "_bsub_" + str(mu) + "_" + str(i)
+    logdir = cwd + 'logs/' + name + time_postfix + "_bsub_" + str(mu) + "_" + str(unique_id)
     safe_mkdir(logdir)
 
     scratchdir = "/scratch/chstan/" + time_postfix + "_" + str(unique_id)
@@ -45,14 +45,15 @@ subfile = cwd + "_batchSingleSub.sh"
 
 time_postfix = time.strftime('%Y_%m_%d_%Hh%Mm%Ss')
 
-events_per_job = 50
-n_jobs = 20
+events_per_job = 5000
+n_jobs = 100
 queue = 'xlong'
 
-outdir = cwd + 'files/' + time_postfix
+name = 'fixing/'
+outdir = cwd + 'files/' + name + time_postfix
 safe_mkdir(outdir)
 
-NPVs = [0, 10, 20, 30]
+NPVs = [0]
 sizes = [7, 8, 9, 10]
 learnWeights = [False, True]
 
@@ -62,8 +63,9 @@ cleanup_commands = []
 for current_mu in NPVs:
     for current_size in sizes:
         for current_lw in learnWeights:
+            out_base = file_name(outdir, False, current_size, current_lw, current_mu)
             cleanup_base = file_name(outdir, True, current_size, current_lw, current_mu)
-            cleanup_command = "hadd " + cleanup_base + ".root" + " " \
+            cleanup_command = "hadd " + out_base + ".root" + " " \
                               + cleanup_base + "_{0.." + str(n_jobs-1) + "}.root"
             cleanup_commands.append(cleanup_command)
             for current_job in range(n_jobs):
