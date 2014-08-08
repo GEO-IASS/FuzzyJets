@@ -367,7 +367,7 @@ void FuzzyAnalysis::Begin(){
 void FuzzyAnalysis::End(){
     #ifdef WITHROOT
     t_t->Write();
-    t_f->Close();
+    delete t_f;
     #endif 
     return;
 }
@@ -455,10 +455,13 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     fastjet::ClusterSequence cs_large_r_ca(particles_for_jets, *m_jet_def_large_r_ca);
     vecPseudoJet my_jets_large_r_ca = fastjet::sorted_by_pt(cs_large_r_ca.inclusive_jets(pT_min));
 
-    fTCA_m = my_jets_large_r_ca[0].m();
-    fTCA_pt = my_jets_large_r_ca[0].pt();
-    fTCA_pufrac = JetPuFracFastjet(my_jets_large_r_ca[0]);
-    fTCA_m_pu = JetPuMassFastjet(my_jets_large_r_ca[0]);
+    // this is a very temporary fix, it appears that there are no jets sometimes with pT at least 
+    if (my_jets_large_r_ca.size() != 0) {
+        fTCA_m = my_jets_large_r_ca[0].m();
+        fTCA_pt = my_jets_large_r_ca[0].pt();
+        fTCA_pufrac = JetPuFracFastjet(my_jets_large_r_ca[0]);
+        fTCA_m_pu = JetPuMassFastjet(my_jets_large_r_ca[0]);
+    }
 
     // anti-kt R:1.0 trimmed ----------------
     fastjet::Filter filter_two(0.2, fastjet::SelectorPtFractionMin(0.05));
@@ -467,20 +470,22 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     fastjet::ClusterSequence cs_large_r_antikt(particles_for_jets, *m_jet_def_large_r_antikt);
     vecPseudoJet my_jets_large_r_antikt = fastjet::sorted_by_pt(cs_large_r_antikt.inclusive_jets(pT_min));
 
-    fastjet::PseudoJet lead_akt = my_jets_large_r_antikt[0];
-    const fastjet::PseudoJet lead_akt_filter_two = filter_two(lead_akt);
-    const fastjet::PseudoJet lead_akt_filter_three = filter_three(lead_akt);
-    fTantikt_m = lead_akt.m();
-    fTantikt_pt = lead_akt.pt();
-    fTantikt_m_trimmed_two = lead_akt_filter_two.m();
-    fTantikt_pt_trimmed_two = lead_akt_filter_two.pt();
-    fTantikt_m_trimmed_three = lead_akt_filter_three.m();
-    fTantikt_pt_trimmed_three = lead_akt_filter_three.pt();
-    fTantikt_pufrac_trimmed_two = JetPuFracFastjet(lead_akt_filter_two);
-    fTantikt_pufrac_trimmed_three = JetPuFracFastjet(lead_akt_filter_three);
-    fTantikt_m_pu = JetPuMassFastjet(lead_akt);
-    fTantikt_m_pu_trimmed_two = JetPuMassFastjet(lead_akt_filter_two);
-    fTantikt_m_pu_trimmed_three = JetPuMassFastjet(lead_akt_filter_three);
+    if (my_jets_large_r_antikt.size() != 0) {
+        fastjet::PseudoJet lead_akt = my_jets_large_r_antikt[0];
+        const fastjet::PseudoJet lead_akt_filter_two = filter_two(lead_akt);
+        const fastjet::PseudoJet lead_akt_filter_three = filter_three(lead_akt);
+        fTantikt_m = lead_akt.m();
+        fTantikt_pt = lead_akt.pt();
+        fTantikt_m_trimmed_two = lead_akt_filter_two.m();
+        fTantikt_pt_trimmed_two = lead_akt_filter_two.pt();
+        fTantikt_m_trimmed_three = lead_akt_filter_three.m();
+        fTantikt_pt_trimmed_three = lead_akt_filter_three.pt();
+        fTantikt_pufrac_trimmed_two = JetPuFracFastjet(lead_akt_filter_two);
+        fTantikt_pufrac_trimmed_three = JetPuFracFastjet(lead_akt_filter_three);
+        fTantikt_m_pu = JetPuMassFastjet(lead_akt);
+        fTantikt_m_pu_trimmed_two = JetPuMassFastjet(lead_akt_filter_two);
+        fTantikt_m_pu_trimmed_three = JetPuMassFastjet(lead_akt_filter_three);
+    }
 
     // ======================================
     // Various mixture models ---------------
@@ -568,6 +573,23 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     }
 
     // Having found jets, now do a bit of data logging and analysis
+    // turn off any degenerate algs for this particular event
+    if (!mGMM_weights.size()) {
+        mGMM_on = false;
+    }
+    if (!mGMMs_weights.size()) {
+        mGMMs_on = false;
+    }
+    if (!mUMM_weights.size()) {
+        mUMM_on = false;
+    }
+    if (!mTGMM_weights.size()) {
+        mTGMM_on = false;
+    }
+    if (!mTGMMs_weights.size()) {
+        mTGMMs_on = false;
+    }
+    
     bool do_weight_distributions = true;
     if (do_weight_distributions && event_iter < 10 && !batched) {
 
