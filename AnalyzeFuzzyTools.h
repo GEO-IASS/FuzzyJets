@@ -171,6 +171,10 @@ std::vector<TH1D *> v_hists;
         std::cout << hist_dec.branch_name << std::endl;
         v_vals.push_back(loadSingleBranch<T>(hist_dec.file_name, hist_dec.branch_name));
     }
+
+    // ... if no branches provided
+    if (!v_vals.size()) return;
+
     const size_t n_events = v_vals[0].size();
     for (size_t event_iter = 0; event_iter < n_events; event_iter++) {
         // fill each histogram with its next value
