@@ -5,9 +5,9 @@
 #                                               #
 # Note: source setup.sh before make             #
 # --------------------------------------------- #
-
-CXXFLAGS =   -O2 -Wall -Wextra -equal -Wshadow -Werror -Wno-shadow
-CXXFLAGSEXTRA = -std=c++0x
+OPTIMIZATION = -O3
+CXXFLAGS =  -Wall -Wextra -equal -Wshadow -Werror -Wno-shadow
+CXXFLAGSEXTRA = -std=c++0x -g
 CXX = g++
 
 # Are we profiling?
@@ -52,25 +52,25 @@ AtlasUtils.so: AtlasUtils.cc AtlasUtils.h
 
 Fuzzy:  Fuzzy.so FuzzyTools.so FuzzyAnalysis.so
 	$(CXX) Fuzzy.so FuzzyTools.so FuzzyAnalysis.so -o $@ $(PROFILER) \
-	$(CXXFLAGS) $(ROOTLIBS) \
+	$(CXXFLAGS) $(OPTIMIZATION) $(ROOTLIBS) \
 	-L$(FASTJETLOCATION)/lib $(FASTJETLIBS) \
 	-L$(PYTHIA8LOCATION)/lib -lpythia8 -llhapdfdummy \
 	-L$(BOOSTLIBLOCATION) -lboost_program_options
 
 Fuzzy.so: Fuzzy.C    FuzzyTools.so FuzzyAnalysis.so
 	$(CXX) -o $@ -c $< $(PROFILER)  \
-	$(CXXFLAGS) -fPIC -shared $(FASTJETFLAGS) \
+	$(CXXFLAGS) $(OPTIMIZATION) -fPIC -shared $(FASTJETFLAGS) \
 	-isystem $(PYTHIA8LOCATION)/include \
 	-isystem $(BOOSTINCDIR) $(ROOTFLAGS)
 
 FuzzyTools.so : FuzzyTools.cc FuzzyTools.h
 	$(CXX) -o $@ -c $< $(PROFILER) \
-	$(CXXFLAGS) -fPIC -shared $(FASTJETFLAGS) \
+	$(CXXFLAGS) $(OPTIMIZATION) -fPIC -shared $(FASTJETFLAGS) \
 	-isystem $(PYTHIA8LOCATION)/include $(ROOTFLAGS)
 
 FuzzyAnalysis.so : FuzzyAnalysis.cc FuzzyAnalysis.h
 	$(CXX) -o $@ -c $< $(PROFILER) \
-	$(CXXFLAGS) -fPIC -shared $(FASTJETFLAGS) \
+	$(CXXFLAGS) $(OPTIMIZATION) -fPIC -shared $(FASTJETFLAGS) \
 	-isystem $(PYTHIA8LOCATION)/include $(ROOTFLAGS)
 
 clean:
