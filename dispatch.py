@@ -15,7 +15,7 @@ def subprocess_call_bg(args):
     subprocess.call(args)
 
 def submit_fuzzy(mu, size, lw, n_events, i, unique_id):
-    logdir = cwd + 'logs/' + name + time_postfix + "_bsub_" + str(mu) + "_" + str(unique_id)
+    logdir = cwd + 'logs/' + name + "/" + time_postfix + "_bsub_" + str(mu) + "_" + str(unique_id)
     safe_mkdir(logdir)
 
     scratchdir = "/scratch/chstan/" + time_postfix + "_" + str(unique_id)
@@ -47,10 +47,11 @@ time_postfix = time.strftime('%Y_%m_%d_%Hh%Mm%Ss')
 
 events_per_job = 5000
 n_jobs = 100
+n_jobs_patch = 5
 queue = 'xlong'
 
-name = 'fixing/'
-outdir = cwd + 'files/' + name + time_postfix
+name = '500kevts_mu0'
+outdir = cwd + 'files/' + name + '/' + time_postfix
 safe_mkdir(outdir)
 
 NPVs = [0]
@@ -72,7 +73,16 @@ for current_mu in NPVs:
                 submit_fuzzy(current_mu, current_size, current_lw, events_per_job, current_job, j)
                 j += 1
 
+outdir = cwd + 'files/' + name + '_patch/' + time_postfix
+safe_mkdir(outdir) 
+for current_mu in NPVs:
+    for current_size in sizes:
+        for current_lw in learnWeights:
+            for current_job in range(n_jobs_patch):
+                submit_fuzzy(current_mu, current_size, current_lw, events_per_job, current_job, j)
+                j += 1
+
 with open('clean_scripts/' + time_postfix + '.clscr', 'wb') as outf:
     pickle.dump(cleanup_commands, outf)
 
-print "SUBMITTED " + str(len(NPVs) * len(learnWeights) * len(sizes) * n_jobs) + " JOBS TO THE QUEUE " + queue
+print "SUBMITTED " + str(len(NPVs) * len(learnWeights) * len(sizes) * (n_jobs + n_jobs_patch)) + " JOBS TO THE QUEUE " + queue
