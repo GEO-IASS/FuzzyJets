@@ -260,7 +260,7 @@ namespace {
                            vecPseudoJet& seeds,
                            bool learn_weights,
                            bool learn_shape,
-                           bool size,
+                           double size,
                            int& lead_index,
                            double& lead_pT,
                            FuzzyTools *tool,
