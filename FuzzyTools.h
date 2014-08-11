@@ -181,6 +181,17 @@ class FuzzyTools {
                                       vector<MatTwo>* mGMM_jets_params_out,
                                       vector<double>* mGMM_weights_out);
 
+    vecPseudoJet UpdateJetsGaussianC(vecPseudoJet const& particles,
+                                     vector<vector<double> > const& weights,
+                                     int k,
+                                     vector<MatTwo>* mGMMc_jets_params,
+                                     vector<double>* mGMMc_weights);
+
+    vecPseudoJet ClusterFuzzyGaussianC(vecPseudoJet const& particles,
+                                       vector<vector<double> >* weights,
+                                       vector<MatTwo>* mGMMc_jets_params_out,
+                                       vector<double>* mGMMc_weights_out);
+
     void ComputeWeightsUniform(vecPseudoJet const& particles,
                                vector<vector<double> >* weights,
                                int k,
