@@ -195,7 +195,7 @@ FuzzyTools::Initializeparams(__attribute__((unused)) vecPseudoJet const& particl
 void
 FuzzyTools::ComputeWeightsGaussian(vecPseudoJet const& particles,
                                    vector<vector<double> >* weights,
-                                   __attribute__((unused)) int k,
+                                   __attribute__((unused)) int cluster_count,
                                    vecPseudoJet const& mGMM_jets,
                                    vector<MatTwo> const& mGMM_jets_params,
                                    vector<double> const& mGMM_weights){
@@ -223,7 +223,7 @@ FuzzyTools::ComputeWeightsGaussian(vecPseudoJet const& particles,
 void
 FuzzyTools::ComputeWeightsTruncGaus(vecPseudoJet const& particles,
                                     vector<vector<double> >* weights,
-                                    __attribute__((unused)) int k,
+                                    __attribute__((unused)) int cluster_count,
                                     vecPseudoJet const& mTGMM_jets,
                                     vector<MatTwo> const& mTGMM_jets_params,
                                     vector<double> const& mTGMM_weights) {
@@ -255,7 +255,7 @@ FuzzyTools::ComputeWeightsTruncGaus(vecPseudoJet const& particles,
 void
 FuzzyTools::ComputeWeightsUniform(vecPseudoJet const& particles,
                                   vector<vector<double> >* weights,
-                                  __attribute__((unused)) int k,
+                                  __attribute__((unused)) int cluster_count,
                                   vecPseudoJet const& mUMM_jets,
                                   vector<double> const& mUMM_weights) {
     for (unsigned int i=0; i<particles.size(); i++) {
@@ -423,7 +423,7 @@ FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet const& particles,
 vecPseudoJet
 FuzzyTools::UpdateJetsGaussianC(vecPseudoJet const& particles,
                                 vector<vector<double> > const& weights,
-                                __attribute__((unused)) int k,
+                                int cluster_count,
                                 vector<MatTwo>* mGMMc_jets_params,
                                 vector<double>* mGMMc_weights) {
     vecPseudoJet out_jets;

@@ -165,14 +165,14 @@ class FuzzyTools {
 
     void ComputeWeightsGaussian(vecPseudoJet const& particles,
                                 vector<vector<double> >* weights,
-                                int k,
+                                int cluster_count,
                                 vecPseudoJet const& mGMM_jets,
                                 vector<MatTwo> const& mGMM_jets_params,
                                 vector<double> const& mGMM_weights);
 
     vecPseudoJet UpdateJetsGaussian(vecPseudoJet const& particles,
                                     vector<vector<double> > const& weights,
-                                    int k,
+                                    int cluster_count,
                                     vector<MatTwo>* mGMM_jets_params,
                                     vector<double>* mGMM_weights);
 
@@ -183,7 +183,7 @@ class FuzzyTools {
 
     vecPseudoJet UpdateJetsGaussianC(vecPseudoJet const& particles,
                                      vector<vector<double> > const& weights,
-                                     int k,
+                                     int cluster_count,
                                      vector<MatTwo>* mGMMc_jets_params,
                                      vector<double>* mGMMc_weights);
 
@@ -194,13 +194,13 @@ class FuzzyTools {
 
     void ComputeWeightsUniform(vecPseudoJet const& particles,
                                vector<vector<double> >* weights,
-                               int k,
+                               int cluster_count,
                                vecPseudoJet const& mUMM_jets,
                                vector<double> const& mUMM_weights);
 
     vecPseudoJet UpdateJetsUniform(vecPseudoJet const& particles,
                                    vector<vector<double> > const& weights,
-                                   int k,
+                                   int cluster_count,
                                    vector<double>* mUMM_weights);
 
     vecPseudoJet ClusterFuzzyUniform(vecPseudoJet const& particles,
@@ -209,14 +209,14 @@ class FuzzyTools {
 
     void ComputeWeightsTruncGaus(vecPseudoJet const& particles,
                                  vector<vector<double> >* weights,
-                                 int k,
+                                 int cluster_count,
                                  vecPseudoJet const& mTGMM_jets,
                                  vector<MatTwo> const& mTGMM_jets_params,
                                  vector<double> const& mTGMM_weights);
 
     vecPseudoJet UpdateJetsTruncGaus(vecPseudoJet const& particles,
                                      vector<vector<double> > const& weights,
-                                     int k,
+                                     int cluster_count,
                                      vector<MatTwo>* mTGMM_jets_params,
                                      vector<double>* mTGMM_weights);
 
