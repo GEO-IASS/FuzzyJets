@@ -236,7 +236,9 @@ namespace {
     }
 
     void DoMUMMJetFinding(vecPseudoJet& particles,
+                          vecPseudoJet& seeds,
                           bool learn_weights,
+                          bool do_recombination,
                           double size,
                           int& lead_index,
                           double& lead_pT,
@@ -246,9 +248,14 @@ namespace {
                           vector<double>& jet_weights) {
         vecPseudoJet parts = particles;
         tool->SetKernelType(FuzzyTools::UNIFORM);
-        tool->SetSeeds(parts);
         tool->SetLearnWeights(learn_weights);
-        tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
+        if (do_recombination) {
+            tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
+            tool->SetSeeds(parts);
+        } else {
+            tool->SetClusteringMode(FuzzyTools::FIXED);
+            tool->SetSeeds(seeds);
+        }
         tool->SetR(size);
         jets = tool->ClusterFuzzyUniform(particles,
                                          &particle_weights,
@@ -260,6 +267,7 @@ namespace {
                            vecPseudoJet& seeds,
                            bool learn_weights,
                            bool learn_shape,
+                           bool do_recombination,
                            double size,
                            int& lead_index,
                            double& lead_pT,
@@ -269,12 +277,18 @@ namespace {
                            vector<MatTwo>& parameters,
                            vector<double>& jet_weights) {
         tool->SetKernelType(FuzzyTools::TRUNCGAUSSIAN);
-        tool->SetSeeds(seeds);
         tool->SetLearnWeights(learn_weights);
         if(learn_shape) {
             tool->SetClusteringMode(FuzzyTools::FIXED);
+            tool->SetSeeds(seeds);
         } else {
-            tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
+            if (do_recombination) {
+                tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
+                tool->SetSeeds(particles);
+            } else {
+                tool->SetClusteringMode(FuzzyTools::FIXED);
+                tool->SetSeeds(seeds);
+            }
         }
         tool->SetLearnShape(learn_shape);
         tool->SetR(size);
@@ -288,6 +302,7 @@ namespace {
     void DoMGMMCJetFinding(vecPseudoJet& particles,
                            vecPseudoJet& seeds,
                            bool learn_weights,
+                           bool do_recombination,
                            int& lead_index,
                            double& lead_pT,
                            FuzzyTools *tool,
@@ -296,9 +311,14 @@ namespace {
                            vector<MatTwo>& parameters,
                            vector<double>& jet_weights) {
         tool->SetKernelType(FuzzyTools::GAUSSIAN);
-        tool->SetSeeds(seeds);
         tool->SetLearnWeights(learn_weights);
-        tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
+        if (do_recombination) {
+            tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
+            tool->SetSeeds(particles);
+        } else {
+            tool->SetClusteringMode(FuzzyTools::FIXED);
+            tool->SetSeeds(seeds);
+        }
         jets = tool->ClusterFuzzyGaussianC(particles,
                                           &particle_weights,
                                           &parameters,
@@ -311,6 +331,7 @@ namespace {
                           vecPseudoJet& seeds,
                           bool learn_weights,
                           bool learn_shape,
+                          bool do_recombination,
                           int& lead_index,
                           double& lead_pT,
                           FuzzyTools *tool,
@@ -319,12 +340,18 @@ namespace {
                           vector<MatTwo>& parameters,
                           vector<double>& jet_weights) {
         tool->SetKernelType(FuzzyTools::GAUSSIAN);
-        tool->SetSeeds(seeds);
         tool->SetLearnWeights(learn_weights);
         if(learn_shape) {
             tool->SetClusteringMode(FuzzyTools::FIXED);
+            tool->SetSeeds(seeds);
         } else {
-            tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
+            if (do_recombination) {
+                tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
+                tool->SetSeeds(particles);
+            } else {
+                tool->SetClusteringMode(FuzzyTools::FIXED);
+                tool->SetSeeds(seeds);
+            }
         }
         tool->SetLearnShape(learn_shape);
         jets = tool->ClusterFuzzyGaussian(particles,
@@ -532,7 +559,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     double max_pT_mGMMs;
     if(mGMMs_on) {
         DoMGMMJetFinding(particles_for_jets, my_jets_large_r_ca,
-                         f_learn_weights, true,
+                         f_learn_weights, true, do_recombination,
                          lead_mGMMs_index, max_pT_mGMMs,
                          tool, mGMMs_jets, mGMMs_particle_weights,
                          mGMMs_jets_params, mGMMs_weights);
@@ -547,7 +574,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     double max_pT_mGMMc;
     if(mGMMc_on) {
         DoMGMMCJetFinding(particles_for_jets, my_jets_large_r_ca,
-                          f_learn_weights,
+                          f_learn_weights, do_recombination,
                           lead_mGMMc_index, max_pT_mGMMc,
                           tool, mGMMc_jets, mGMMc_particle_weights,
                           mGMMc_jets_params, mGMMc_weights);
@@ -562,7 +589,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     double max_pT_mTGMMs;
     if(mTGMMs_on) {
         DoMTGMMJetFinding(particles_for_jets, my_jets_large_r_ca,
-                          f_learn_weights, true,
+                          f_learn_weights, true, do_recombination,
                           f_size, lead_mTGMMs_index, max_pT_mTGMMs,
                           tool, mTGMMs_jets, mTGMMs_particle_weights,
                           mTGMMs_jets_params, mTGMMs_weights);
@@ -576,8 +603,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     int lead_mGMM_index;
     double max_pT_mGMM;
     if(mGMM_on) {
-        DoMGMMJetFinding(particles_for_jets, particles_for_jets,
-                         f_learn_weights, false,
+        DoMGMMJetFinding(particles_for_jets, my_jets_large_r_ca,
+                         f_learn_weights, false, do_recombination,
                          lead_mGMM_index, max_pT_mGMM,
                          tool, mGMM_jets, mGMM_particle_weights,
                          mGMM_jets_params, mGMM_weights);
@@ -591,7 +618,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     int lead_mUMM_index;
     double max_pT_mUMM;
     if(mUMM_on) {
-        DoMUMMJetFinding(particles_for_jets, f_learn_weights, f_size,
+        DoMUMMJetFinding(particles_for_jets, my_jets_large_r_ca,
+                         f_learn_weights, f_size, do_recombination,
                          lead_mUMM_index, max_pT_mUMM, tool, mUMM_jets,
                          mUMM_particle_weights, mUMM_weights);
     }
@@ -604,8 +632,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     int lead_mTGMM_index;
     double max_pT_mTGMM;
     if(mTGMM_on) {
-        DoMTGMMJetFinding(particles_for_jets, particles_for_jets,
-                          f_learn_weights, false, f_size,
+        DoMTGMMJetFinding(particles_for_jets, my_jets_large_r_ca,
+                          f_learn_weights, false, do_recombination, f_size,
                           lead_mTGMM_index, max_pT_mTGMM, tool, mTGMM_jets,
                           mTGMM_particle_weights, mTGMM_jets_params, mTGMM_weights);
     }

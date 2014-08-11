@@ -65,6 +65,7 @@ int main(int argc, char* argv[]){
     double size = -1;
     bool learn_weights = false;
     bool is_batch = false;
+    bool do_recombination = true;
     string out_name = "FuzzyJets.root";
     string pythia_config_name = "configs/default.pythia";
     string directory = "results/tmp/";
@@ -80,6 +81,7 @@ int main(int argc, char* argv[]){
         ("LearnWeights", po::value<bool>(&learn_weights)->default_value(false), "Whether to learn cluster weights")
         ("PythiaConfig", po::value<string>(&pythia_config_name)->default_value("configs/default.pythia"), "Pythia configuration file location")
         ("Batch",   po::value<bool>(&is_batch)->default_value(false), "Is this running on the batch?")
+        ("Recombination", po::value<bool>(&do_recombination)->default_value(true), "Should we use fixed clusters or all particles with recombination?")
         ("Directory", po::value<string>(&directory)->default_value("results/tmp/"), "Directory in which to place results (.root files etc.)");
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -158,6 +160,7 @@ int main(int argc, char* argv[]){
             ss.str("");
             ss << current_npv << ".root";
 
+            analysis->SetRecombination(do_recombination);
             analysis->SetOutName(ss.str());
             analysis->SetPrefix(directory);
             analysis->SetSize(size);
@@ -183,6 +186,7 @@ int main(int argc, char* argv[]){
             analysis->SetPrefix(directory);
             analysis->SetBatched(false);
         }
+        analysis->SetRecombination(do_recombination);
         analysis->SetShouldPrint(false);
         analysis->SetSize(size);
         analysis->SetLearnWeights(learn_weights);
