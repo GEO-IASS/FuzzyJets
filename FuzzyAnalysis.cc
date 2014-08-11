@@ -285,6 +285,28 @@ namespace {
         FindLeadingJet(particles, jets, particle_weights, tool, lead_index, lead_pT);
     }
 
+    void DoMGMMCJetFinding(vecPseudoJet& particles,
+                           vecPseudoJet& seeds,
+                           bool learn_weights,
+                           int& lead_index,
+                           double& lead_pT,
+                           FuzzyTools *tool,
+                           vecPseudoJet& jets,
+                           vector<vector<double> >& particle_weights,
+                           vector<MatTwo>& parameters,
+                           vector<double>& jet_weights) {
+        tool->SetKernelType(FuzzyTools::GAUSSIAN);
+        tool->SetSeeds(seeds);
+        tool->SetLearnWeights(learn_weights);
+        tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
+        jets = tool->ClusterFuzzyGaussianC(particles,
+                                          &particle_weights,
+                                          &parameters,
+                                          &jet_weights);
+        FindLeadingJet(particles, jets, particle_weights, tool, lead_index, lead_pT);
+    }
+                           
+
     void DoMGMMJetFinding(vecPseudoJet& particles,
                           vecPseudoJet& seeds,
                           bool learn_weights,
@@ -495,6 +517,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     // which jets to run
     bool mUMM_on = true;
     bool mGMM_on = true;
+    bool mGMMc_on = true;
     bool mGMMs_on = true;
     bool mTGMM_on = true;
     bool mTGMMs_on = true;
@@ -513,6 +536,21 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                          lead_mGMMs_index, max_pT_mGMMs,
                          tool, mGMMs_jets, mGMMs_particle_weights,
                          mGMMs_jets_params, mGMMs_weights);
+    }
+
+    // Fuzzy Jets: mGMMc --------------------
+    vector<vector<double> > mGMMc_particle_weights;
+    vector<MatTwo> mGMMc_jets_params;
+    vector<double> mGMMc_weights;
+    vecPseudoJet mGMMc_jets;
+    int lead_mGMMc_index;
+    double max_pT_mGMMc;
+    if(mGMMc_on) {
+        DoMGMMCJetFinding(particles_for_jets, my_jets_large_r_ca,
+                          f_learn_weights,
+                          lead_mGMMc_index, max_pT_mGMMc,
+                          tool, mGMMc_jets, mGMMc_particle_weights,
+                          mGMMc_jets_params, mGMMc_weights);
     }
 
     // Fuzzy Jets: mTGMMs -------------------
@@ -577,6 +615,9 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     if (!mGMM_weights.size()) {
         mGMM_on = false;
     }
+    if (!mGMMc_weights.size()) {
+        mGMMc_on = false;
+    }
     if (!mGMMs_weights.size()) {
         mGMMs_on = false;
     }
@@ -594,9 +635,12 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     if (do_weight_distributions && event_iter < 10 && !batched) {
 
         if(mGMM_on) {
-          
             WeightDistribution(mGMM_particle_weights, lead_mGMM_index,
                                "mGMM", event_iter);
+        }
+        if(mGMMc_on) {
+            WeightDistribution(mGMMc_particle_weights, lead_mGMMc_index,
+                               "mGMMc", event_iter);
         }
         if(mTGMM_on) {
             WeightDistribution(mTGMM_particle_weights, lead_mTGMM_index,
@@ -683,6 +727,17 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                   "mGMMs",
                                   event_iter);
         }
+        if(mGMMc_on) {
+            tool->NewEventDisplay(particles_for_jets,
+                                  my_jets_large_r_ca, tops,
+                                  mGMMc_jets,
+                                  mGMMc_particle_weights,
+                                  lead_mGMMc_index,
+                                  mGMMc_jets_params,
+                                  mGMMc_weights,
+                                  "mGMMc",
+                                  event_iter);
+        }
         if(mTGMMs_on) {
             tool->NewEventDisplay(particles_for_jets,
                                   my_jets_large_r_ca,tops,
@@ -761,6 +816,19 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         fTmGMMs_pufrac_hard = JetPuFracHard(particles_for_jets, mGMMs_particle_weights, lead_mGMMs_index);
         fTmGMMs_m_pu_soft = JetPuMassSoft(particles_for_jets, mGMMs_particle_weights, lead_mGMMs_index);
         fTmGMMs_m_pu_hard = JetPuMassHard(particles_for_jets, mGMMs_particle_weights, lead_mGMMs_index);
+    }
+    if(mGMMc_on) {
+        fTmGMMc_m = tool->MLpT(particles_for_jets, mGMMc_particle_weights,
+                               lead_mGMMc_index, mGMMc_particle_weights[0].size(), 1);
+        fTmGMMc_pt = max_pT_mGMMc;
+        fTmGMMc_ml = tool->MLlpTGaussian(particles_for_jets,mGMMc_jets[lead_mGMMc_index],
+                                         mGMMc_jets_params[lead_mGMMc_index], mGMMc_weights[lead_mGMMc_index],1);
+        fTmGMMc_ptl = tool->MLlpTGaussian(particles_for_jets,mGMMc_jets[lead_mGMMc_index],
+                                          mGMMc_jets_params[lead_mGMMc_index], mGMMc_weights[lead_mGMMc_index],0);
+        fTmGMMc_pufrac_soft = JetPuFracSoft(particles_for_jets, mGMMc_particle_weights, lead_mGMMc_index);
+        fTmGMMc_pufrac_hard = JetPuFracHard(particles_for_jets, mGMMc_particle_weights, lead_mGMMc_index);
+        fTmGMMc_m_pu_soft = JetPuMassSoft(particles_for_jets, mGMMc_particle_weights, lead_mGMMc_index);
+        fTmGMMc_m_pu_hard = JetPuMassHard(particles_for_jets, mGMMc_particle_weights, lead_mGMMc_index);
     }
 
     int my_top = 0;
@@ -861,6 +929,24 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                                     mGMMs_particle_weights);
         fTmGMMs_clpu = ClusteredPileupFrac(particles_for_jets,
                                            mGMMs_particle_weights);
+    }
+    if(mGMMc_on) {
+        fTdeltatop_mGMMc = tops[0].delta_R(mGMMc_jets[lead_mGMMc_index]);
+        if (tops[1].delta_R(mGMMc_jets[lead_mGMMc_index]) < fTdeltatop_mGMMc) {
+            fTdeltatop_mGMMc = tops[1].delta_R(mGMMc_jets[lead_mGMMc_index]);
+        }
+        fTmGMMc_m_soft = tool->SoftpT(particles_for_jets,
+                                      mGMMc_particle_weights,
+                                      lead_mGMMc_index,
+                                      1);
+        fTmGMMc_pt_soft = tool->SoftpT(particles_for_jets,
+                                       mGMMc_particle_weights,
+                                       lead_mGMMc_index,
+                                       0);
+        fTmGMMc_ucpu = UnclusteredPileupComposition(particles_for_jets,
+                                                    mGMMc_particle_weights);
+        fTmGMMc_clpu = ClusteredPileupFrac(particles_for_jets,
+                                           mGMMc_particle_weights);
     }
 
     // Moments
@@ -965,6 +1051,26 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
 
     moments_m.clear();
     moments_pt.clear();
+
+    if(mGMMc_on) {
+        moments_m = tool->CentralMoments(particles_for_jets, mGMMc_particle_weights,
+                                         lead_mGMMc_index, 3, &totalMass);
+
+        moments_pt = tool->CentralMoments(particles_for_jets, mGMMc_particle_weights,
+                                          lead_mGMMc_index, 3, &totalpT);
+
+        fTmGMMc_m_mean = moments_m[0];
+        fTmGMMc_m_var  = moments_m[1];
+        sig = sqrt(fTmGMMc_m_var);
+        fTmGMMc_m_skew = moments_m[2];
+        fTmGMMc_pt_mean = moments_pt[0];
+        fTmGMMc_pt_var = moments_pt[1];
+        sig = sqrt(fTmGMMc_m_var);
+        fTmGMMc_pt_skew = moments_pt[2];
+    }
+
+    moments_m.clear();
+    moments_pt.clear();
     
     #ifdef WITHROOT
     t_t->Fill();
@@ -1025,6 +1131,26 @@ void FuzzyAnalysis::DeclareBranches(){
     tree_vars["mGMMs_pufrac_hard"] = &fTmGMMs_pufrac_hard;
     tree_vars["mGMMs_m_pu_soft"] = &fTmGMMs_m_pu_soft;
     tree_vars["mGMMs_m_pu_hard"] = &fTmGMMs_m_pu_hard;
+
+    tree_vars["mGMMc_m"] = &fTmGMMc_m;
+    tree_vars["mGMMc_pt"] = &fTmGMMc_pt;
+    tree_vars["deltatop_mGMMc"] = &fTdeltatop_mGMMc;
+    tree_vars["mGMMc_m_mean"] = &fTmGMMc_m_mean;
+    tree_vars["mGMMc_m_var"] = &fTmGMMc_m_var;
+    tree_vars["mGMMc_m_skew"] = &fTmGMMc_m_skew;
+    tree_vars["mGMMc_pt_mean"] = &fTmGMMc_pt_mean;
+    tree_vars["mGMMc_pt_var"] = &fTmGMMc_pt_var;
+    tree_vars["mGMMc_pt_skew"] = &fTmGMMc_pt_skew;
+    tree_vars["mGMMc_ptl"] = &fTmGMMc_ptl;
+    tree_vars["mGMMc_ml"] = &fTmGMMc_ml;
+    tree_vars["mGMMc_m_soft"] = &fTmGMMc_m_soft;
+    tree_vars["mGMMc_pt_soft"] = &fTmGMMc_pt_soft;
+    tree_vars["mGMMc_ucpu"] = &fTmGMMc_ucpu;
+    tree_vars["mGMMc_clpu"] = &fTmGMMc_clpu;
+    tree_vars["mGMMc_pufrac_soft"] = &fTmGMMc_pufrac_soft;
+    tree_vars["mGMMc_pufrac_hard"] = &fTmGMMc_pufrac_hard;
+    tree_vars["mGMMc_m_pu_soft"] = &fTmGMMc_m_pu_soft;
+    tree_vars["mGMMc_m_pu_hard"] = &fTmGMMc_m_pu_hard;
 
     tree_vars["mTGMMs_m"] = &fTmTGMMs_m;
     tree_vars["mTGMMs_pt"] = &fTmTGMMs_pt;
