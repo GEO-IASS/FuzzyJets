@@ -470,7 +470,8 @@ FuzzyTools::UpdateJetsGaussianC(vecPseudoJet const& particles,
             MatTwo sigma_update(0, 0, 0, 0);
             double sum = 0;
             for (unsigned int particle_iter = 0; particle_iter < particle_count; particle_iter++) {
-                double q_ji = pow(particles[particle_iter].pt(),alpha) * weights[particle_iter][cluster_iter];
+                double q_ji = pow(particles[particle_iter].pt(), alpha) * weights[particle_iter][cluster_iter]
+                    / cluster_weighted_pt;
                 double v_off_x = particles[particle_iter].rapidity() - my_jet.rapidity();
                 double v_off_y = particles[particle_iter].phi() - my_jet.phi();
                 sum += q_ji * (v_off_x * v_off_x + v_off_y * v_off_y);
@@ -1050,6 +1051,7 @@ FuzzyTools::NewEventDisplay(__attribute__((unused)) vecPseudoJet const& particle
     }
     gPad->SetLogz();
     canv.Update();
+    canv.Write(TString::Format("NewEventDisplay_%s_%d", out.c_str(), iter));
     #endif
 }
 
@@ -1136,7 +1138,7 @@ FuzzyTools::NewEventDisplayUniform(__attribute__((unused)) vecPseudoJet const& p
     gPad->SetLogz();
     canv.Update();
 
-    //canv.Print(directory_prefix + "NEWEventUniform"+out+".root");
+    canv.Write(TString::Format("NewEventDisplay_%s_%d", out.c_str(), iter));
     #endif
 }
 
@@ -1274,7 +1276,7 @@ FuzzyTools::EventDisplay(__attribute__((unused)) vecPseudoJet const& particles,
     leggaa->SetBorderSize(0);
     leggaa->Draw();
 
-    TString file_name = TString::Format("%sEvent%s.root", directory_prefix.c_str(), out.c_str());
+    TString file_name = TString::Format("%sEvent%s_%d.root", directory_prefix.c_str(), out.c_str(), iter);
     c->Print(file_name);
     delete c;
     #endif
