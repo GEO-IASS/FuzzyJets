@@ -126,6 +126,10 @@ class FuzzyAnalysis{
     float fTmGMMc_pufrac_hard;
     float fTmGMMc_m_pu_soft;
     float fTmGMMc_m_pu_hard;
+    
+    float fTmGMMc_r;
+    float fTmGMMc_r_avg;
+    float fTmGMMc_r_weighted_avg;
 
     float fTmTGMMs_m;
     float fTmTGMMs_pt;

@@ -688,6 +688,21 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         }
     }
 
+    // Some sporadic values for specific algorithms
+    if (mGMMc_on) {
+        fTmGMMc_r = sqrt(mGMMc_jets_params[lead_mGMMc_index].xx);
+        double sum = 0;
+        double weighted_sum = 0;
+        for (unsigned int cluster_iter = 0; cluster_iter < mGMMc_jets.size(); cluster_iter++) {
+            sum += sqrt(mGMMc_jets_params[cluster_iter].xx);
+            weighted_sum += sqrt(mGMMc_jets_params[cluster_iter].xx) * mGMMc_weights[cluster_iter];
+        }
+        fTmGMMc_r_avg = sum / mGMMc_jets.size();
+        fTmGMMc_r_weighted_avg = sum; // already normalized because weights sum to one
+    }
+
+
+    // Event displays
     bool do_event_displays = false;
     if (do_event_displays && !batched) {
         if(event_iter < 10 && mGMM_on) {
@@ -1179,6 +1194,10 @@ void FuzzyAnalysis::DeclareBranches(){
     tree_vars["mGMMc_pufrac_hard"] = &fTmGMMc_pufrac_hard;
     tree_vars["mGMMc_m_pu_soft"] = &fTmGMMc_m_pu_soft;
     tree_vars["mGMMc_m_pu_hard"] = &fTmGMMc_m_pu_hard;
+    
+    tree_vars["mGMMc_r"] = &fTmGMMc_r;
+    tree_vars["mGMMc_r_avg"] = &fTmGMMc_r_avg;
+    tree_vars["mGMMc_r_weighted_avg"] = &fTmGMMc_r_weighted_avg;
 
     tree_vars["mTGMMs_m"] = &fTmTGMMs_m;
     tree_vars["mTGMMs_pt"] = &fTmTGMMs_pt;
