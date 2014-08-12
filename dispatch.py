@@ -88,4 +88,4 @@ for current_mu in NPVs:
 with open('clean_scripts/' + time_postfix + '.clscr', 'wb') as outf:
     pickle.dump(cleanup_commands, outf)
 
-print "SUBMITTED " + str(len(NPVs) * len(learnWeights) * len(sizes) * (n_jobs + n_jobs_patch)) + " JOBS TO THE QUEUE " + queue
+print "SUBMITTED " + str(len(NPVs) * len(learnWeights) * len(sizes) * (n_jobs + n_jobs_patch) * len(recombinations)) + " JOBS TO THE QUEUE " + queue
