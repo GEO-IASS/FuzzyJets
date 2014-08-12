@@ -500,7 +500,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     } // end particle loop -----------------------------------------------
 
     // large-R jets: C/A --------------------
-    double pT_min = 50;
+    double pT_min = 5;
     fastjet::ClusterSequence cs_large_r_ca(particles_for_jets, *m_jet_def_large_r_ca);
     vecPseudoJet my_jets_large_r_ca = fastjet::sorted_by_pt(cs_large_r_ca.inclusive_jets(pT_min));
 
@@ -698,12 +698,11 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
             weighted_sum += sqrt(mGMMc_jets_params[cluster_iter].xx) * mGMMc_weights[cluster_iter];
         }
         fTmGMMc_r_avg = sum / mGMMc_jets.size();
-        fTmGMMc_r_weighted_avg = sum; // already normalized because weights sum to one
+        fTmGMMc_r_weighted_avg = weighted_sum; // already normalized because weights sum to one
     }
-
-
+    
     // Event displays
-    bool do_event_displays = false;
+    bool do_event_displays = true;
     if (do_event_displays && !batched) {
         if(event_iter < 10 && mGMM_on) {
             tool->EventDisplay(particles_for_jets,
