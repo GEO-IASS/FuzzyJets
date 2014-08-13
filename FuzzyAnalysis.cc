@@ -405,8 +405,10 @@ void FuzzyAnalysis::Begin(){
     t_f = new TFile(fullName.c_str(), "RECREATE");
     t_t = new TTree("EventTree", "Event Tree for Fuzzy");
     #endif
-
-    SetupHistosMap();
+    
+    if(!batched) {
+        SetupHistosMap();
+    }
     DeclareBranches();
 
     ResetBranches();
@@ -629,7 +631,9 @@ void FuzzyAnalysis::WriteHistosMap() {
 // End
 void FuzzyAnalysis::End(){
     #ifdef WITHROOT
-    WriteHistosMap();
+    if(!batched) {
+        WriteHistosMap();
+    }
     t_t->Write();
     delete t_f;
     #endif 
