@@ -225,6 +225,15 @@ class FuzzyTools {
                                        vector<MatTwo>* mTGMM_jets_params_out,
                                        vector<double>* mTGMM_weights);
 
+    void SubsEventDisplay(vecPseudoJet const& particles,
+                          vecPseudoJet const& mGMM_jets,
+                          vector<vector<double> > const& weights,
+                          int lead_mGMM_index,
+                          vector<MatTwo> const& mGMM_jets_params,
+                          std::string const& label,
+                          int event_iter);
+
+
     void EventDisplay(vecPseudoJet const& particles,
                       vecPseudoJet const& ca_jets,
                       vecPseudoJet const& tops,

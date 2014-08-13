@@ -24,6 +24,8 @@
 #include "TParticle.h"
 #endif
 
+typedef std::vector<fastjet::PseudoJet> vecPseudoJet;
+
 class FuzzyAnalysis{
  private:
     int  f_test;
@@ -203,6 +205,7 @@ class FuzzyAnalysis{
     void Begin();
     void SetupHistosMap();
     void WriteHistosMap();
+    void SubstructureStudy(vecPseudoJet ca_jets, vecPseudoJet antikt_jets, int event_iter);
     void AnalyzeEvent(int i_evt, Pythia8::Pythia *pythia8, Pythia8::Pythia *pythia_MB, int NPV);
     void End();
     void DeclareBranches();

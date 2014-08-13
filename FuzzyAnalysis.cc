@@ -416,6 +416,130 @@ void FuzzyAnalysis::Begin(){
     return;
 }
 
+void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets, 
+                                      __attribute__((unused)) vecPseudoJet antikt_jets,
+                                      __attribute__((unused)) int event_iter) {
+    vecPseudoJet particles_for_jets = ca_jets[0].constituents();
+    bool mUMM_on = true;
+    bool mGMM_on = true;
+    bool mGMMc_on = true;
+    bool mGMMs_on = true;
+    bool mTGMM_on = true;
+    bool mTGMMs_on = true;
+    
+    // Fuzzy Jets: mGMMs --------------------
+    vector<vector<double> > mGMMs_particle_weights;
+    vector<MatTwo> mGMMs_jets_params;
+    vector<double> mGMMs_weights;
+    vecPseudoJet mGMMs_jets;
+    int lead_mGMMs_index;
+    double max_pT_mGMMs;
+    if(mGMMs_on) {
+        DoMGMMJetFinding(particles_for_jets, particles_for_jets,
+                         f_learn_weights, true, true,
+                         lead_mGMMs_index, max_pT_mGMMs,
+                         tool, mGMMs_jets, mGMMs_particle_weights,
+                         mGMMs_jets_params, mGMMs_weights);
+    }
+
+    // Fuzzy Jets: mGMMc --------------------
+    vector<vector<double> > mGMMc_particle_weights;
+    vector<MatTwo> mGMMc_jets_params;
+    vector<double> mGMMc_weights;
+    vecPseudoJet mGMMc_jets;
+    int lead_mGMMc_index;
+    double max_pT_mGMMc;
+    if(mGMMc_on) {
+        DoMGMMCJetFinding(particles_for_jets, particles_for_jets,
+                          f_learn_weights, true,
+                          lead_mGMMc_index, max_pT_mGMMc,
+                          tool, mGMMc_jets, mGMMc_particle_weights,
+                          mGMMc_jets_params, mGMMc_weights);
+    }
+
+    // Fuzzy Jets: mTGMMs -------------------
+    vector<vector<double > > mTGMMs_particle_weights;
+    vector<MatTwo> mTGMMs_jets_params;
+    vector<double> mTGMMs_weights;
+    vecPseudoJet mTGMMs_jets;
+    int lead_mTGMMs_index;
+    double max_pT_mTGMMs;
+    if(mTGMMs_on) {
+        DoMTGMMJetFinding(particles_for_jets, particles_for_jets,
+                          f_learn_weights, true, true,
+                          f_size, lead_mTGMMs_index, max_pT_mTGMMs,
+                          tool, mTGMMs_jets, mTGMMs_particle_weights,
+                          mTGMMs_jets_params, mTGMMs_weights);
+    }
+
+    // Fuzzy Jets: mGMM ---------------------
+    vector<vector<double> >mGMM_particle_weights;
+    vector<MatTwo> mGMM_jets_params;
+    vector<double> mGMM_weights;
+    vector<fastjet::PseudoJet> mGMM_jets;
+    int lead_mGMM_index;
+    double max_pT_mGMM;
+    if(mGMM_on) {
+        DoMGMMJetFinding(particles_for_jets, particles_for_jets,
+                         f_learn_weights, false, true,
+                         lead_mGMM_index, max_pT_mGMM,
+                         tool, mGMM_jets, mGMM_particle_weights,
+                         mGMM_jets_params, mGMM_weights);
+    }
+
+    // Fuzzy Jets: mUMM ---------------------
+    vector<vector<double> > mUMM_particle_weights;
+    vector<double> mUMM_weights;
+    vecPseudoJet mUMM_jets;
+
+    int lead_mUMM_index;
+    double max_pT_mUMM;
+    if(mUMM_on) {
+        DoMUMMJetFinding(particles_for_jets, particles_for_jets,
+                         f_learn_weights, f_size, true,
+                         lead_mUMM_index, max_pT_mUMM, tool, mUMM_jets,
+                         mUMM_particle_weights, mUMM_weights);
+    }
+
+    // Fuzzy Jets: mTGMM --------------------
+    vector<vector<double> > mTGMM_particle_weights;
+    vector<double> mTGMM_weights;
+    vecPseudoJet mTGMM_jets;
+    vector<MatTwo> mTGMM_jets_params;
+    int lead_mTGMM_index;
+    double max_pT_mTGMM;
+    if(mTGMM_on) {
+        DoMTGMMJetFinding(particles_for_jets, particles_for_jets,
+                          f_learn_weights, false, true, f_size,
+                          lead_mTGMM_index, max_pT_mTGMM, tool, mTGMM_jets,
+                          mTGMM_particle_weights, mTGMM_jets_params, mTGMM_weights);
+    }
+    
+    if(!mGMM_weights.size()) {
+        mGMM_on = false;
+    }
+    if(!mGMMs_weights.size()) {
+        mGMMs_on = false;
+    }
+    if(!mGMMc_weights.size()) {
+        mGMMc_on = false;
+    }
+    if(!mTGMM_weights.size()) {
+        mTGMM_on = false;
+    }
+    if(!mTGMMs_weights.size()) {
+        mTGMMs_on = false;
+    }
+    if(!mUMM_weights.size()) {
+        mUMM_on = false;
+    }
+
+    // do event displays
+    if (mGMM_on) {
+        
+    }
+}
+
 void FuzzyAnalysis::SetupHistosMap() {
     static const std::string algs_arr[] = 
         {"mGMM", "mGMMs", "mGMMc", "mTGMM", "mTGMMs", "mUMM"};
@@ -627,6 +751,11 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         fTantikt_m_pu_trimmed_three = JetPuMassFastjet(lead_akt_filter_three);
     }
 
+    if (!batched && event_iter < 10 && my_jets_large_r_antikt.size() != 0 &&
+        my_jets_large_r_ca.size() != 0) {
+        SubstructureStudy(my_jets_large_r_ca, my_jets_large_r_antikt, event_iter);
+    }
+    
     // ======================================
     // Various mixture models ---------------
     // ======================================

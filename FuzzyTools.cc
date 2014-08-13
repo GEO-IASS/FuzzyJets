@@ -1143,6 +1143,22 @@ FuzzyTools::NewEventDisplayUniform(__attribute__((unused)) vecPseudoJet const& p
 }
 
 void
+FuzzyTools::SubsEventDisplay(vecPseudoJet const& particles,
+                             vecPseudoJet const& mGMM_jets,
+                             vector<vector<double> > const& weights,
+                             int lead_mGMM_index,
+                             vector<MatTwo> const& mGMM_jets_params,
+                             std::string const& label,
+                             int event_iter) {
+    #ifdef WITHROOT
+    gStyle->SetOptStat(0);
+    TCanvas * c = new TCanvas();
+
+    delete c;
+    #endif
+}
+
+void
 FuzzyTools::EventDisplay(__attribute__((unused)) vecPseudoJet const& particles,
                          __attribute__((unused)) vecPseudoJet const& ca_jets,
                          __attribute__((unused)) vecPseudoJet const& tops,
