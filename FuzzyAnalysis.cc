@@ -25,6 +25,9 @@
 #include "TMath.h"
 #include "TVector3.h"
 #include "TMatrix.h"
+#include "TH1F.h"
+#include "TCanvas.h"
+#include "TLegend.h"
 #endif
 
 // Privately separate the logic of different analysis modes from using them
@@ -403,6 +406,7 @@ void FuzzyAnalysis::Begin(){
     t_t = new TTree("EventTree", "Event Tree for Fuzzy");
     #endif
 
+    SetupHistosMap();
     DeclareBranches();
 
     ResetBranches();
@@ -412,9 +416,96 @@ void FuzzyAnalysis::Begin(){
     return;
 }
 
+void FuzzyAnalysis::SetupHistosMap() {
+    static const std::string algs_arr[] = 
+        {"mGMM", "mGMMs", "mGMMc", "mTGMM", "mTGMMs", "mUMM"};
+    std::vector<std::string> algs(algs_arr, algs_arr+sizeof(algs_arr) / sizeof(algs_arr[0]));
+    for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
+        std::stringstream ss;
+
+        ss.str(std::string());
+        ss << algs[alg_iter] << "_hs";
+        map_weight_vecs[ss.str()] = std::vector<float>();
+        
+        ss.str(std::string());
+        ss << algs[alg_iter] << "_pu";
+        map_weight_vecs[ss.str()] = std::vector<float>();
+    }
+}
+
+void FuzzyAnalysis::WriteHistosMap() {
+    #ifdef WITHROOT
+    static const std::string algs_arr[] = 
+        {"mGMM", "mGMMs", "mGMMc", "mTGMM", "mTGMMs", "mUMM"};
+    std::vector<std::string> algs(algs_arr, algs_arr+sizeof(algs_arr) / sizeof(algs_arr[0]));
+    for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
+        std::stringstream ss;
+
+        ss.str(std::string());
+        ss << algs[alg_iter] << "_hs";
+        std::string hs_name = ss.str();
+        std::vector<float> const& hs_weights = map_weight_vecs[hs_name];
+        TH1F hs_hist(TString::Format("Hard Scatter Weights %s", algs[alg_iter].c_str()),
+                     TString::Format("Hard Scatter Weights for %s", algs[alg_iter].c_str()),
+                     48, 0.04, 1);
+        for (unsigned int weight_iter = 0; weight_iter < hs_weights.size(); weight_iter++) {
+            hs_hist.Fill(hs_weights[weight_iter]);
+        }
+        hs_hist.Write();
+
+        ss.str(std::string());
+        ss << algs[alg_iter] << "_pu";
+        std::string pu_name = ss.str();
+        std::vector<float> const& pu_weights = map_weight_vecs[pu_name];
+        TH1F pu_hist(TString::Format("Pileup Weights  %s", algs[alg_iter].c_str()),
+                     TString::Format("Pileup Weights for %s", algs[alg_iter].c_str()),
+                     48, 0.04, 1);
+        for (unsigned int weight_iter = 0; weight_iter < pu_weights.size(); weight_iter++) {
+            pu_hist.Fill(pu_weights[weight_iter]);
+        }
+        pu_hist.Write();
+
+        TCanvas *c = new TCanvas(TString::Format("HSPU Weight Comparison %s", algs[alg_iter].c_str()),
+                                 "Hard Scatter and Pileup Weight Comparison", 800, 800);
+        pu_hist.SetLineColor(kBlue);
+        pu_hist.SetFillStyle(3004);
+        pu_hist.SetFillColor(kBlue);
+
+        hs_hist.SetLineColor(kRed);
+        hs_hist.SetFillStyle(3004);
+        hs_hist.SetFillColor(kRed);
+
+        if(hs_hist.Integral(-1, hs_hist.GetNbinsX()+1) > 0) {
+            hs_hist.Scale(1./hs_hist.Integral(-1, hs_hist.GetNbinsX()+1));
+        }
+        if(pu_hist.Integral(-1, pu_hist.GetNbinsX()+1) > 0) {
+            pu_hist.Scale(1./pu_hist.Integral(-1, pu_hist.GetNbinsX()+1));
+        }
+        
+        hs_hist.Draw("");
+        pu_hist.Draw("same");
+        
+        TLegend *leggaa = new TLegend(0.6, 0.7, 0.9, 0.8);
+        leggaa->SetTextFont(42);
+        leggaa->AddEntry(&pu_hist, "Pileup weights", "l");
+        leggaa->AddEntry(&hs_hist, "Hard scatter weights", "l");
+        leggaa->SetFillColor(0);
+        leggaa->SetFillStyle(0);
+        leggaa->SetBorderSize(0);
+        leggaa->Draw();
+
+        c->Write();
+        delete c;
+        delete leggaa;
+        
+    }
+    #endif
+}
+
 // End
 void FuzzyAnalysis::End(){
     #ifdef WITHROOT
+    WriteHistosMap();
     t_t->Write();
     delete t_f;
     #endif 
@@ -790,6 +881,68 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                   mTGMMs_weights,
                                   "mTGMMs",
                                   event_iter);
+        }
+    }
+
+    // log weights
+    if(mGMM_on) {
+        for (unsigned int particle_iter = 0; particle_iter < particles_for_jets.size(); particle_iter++) {
+            fastjet::PseudoJet p = particles_for_jets[particle_iter];
+            if(p.user_info<MyUserInfo>().isPU()) {
+                map_weight_vecs["mGMM_pu"].push_back(mGMM_particle_weights[particle_iter][lead_mGMM_index]);
+            } else {
+                map_weight_vecs["mGMM_hs"].push_back(mGMM_particle_weights[particle_iter][lead_mGMM_index]);
+            }
+        }
+    }
+    if(mGMMs_on) {
+        for (unsigned int particle_iter = 0; particle_iter < particles_for_jets.size(); particle_iter++) {
+            fastjet::PseudoJet p = particles_for_jets[particle_iter];
+            if(p.user_info<MyUserInfo>().isPU()) {
+                map_weight_vecs["mGMMs_pu"].push_back(mGMMs_particle_weights[particle_iter][lead_mGMMs_index]);
+            } else {
+                map_weight_vecs["mGMMs_hs"].push_back(mGMMs_particle_weights[particle_iter][lead_mGMMs_index]);
+            }
+        }
+    }
+    if(mGMMc_on) {
+        for (unsigned int particle_iter = 0; particle_iter < particles_for_jets.size(); particle_iter++) {
+            fastjet::PseudoJet p = particles_for_jets[particle_iter];
+            if(p.user_info<MyUserInfo>().isPU()) {
+                map_weight_vecs["mGMMc_pu"].push_back(mGMMc_particle_weights[particle_iter][lead_mGMMc_index]);
+            } else {
+                map_weight_vecs["mGMMc_hs"].push_back(mGMMc_particle_weights[particle_iter][lead_mGMMc_index]);
+            }
+        }
+    }
+    if(mTGMM_on) {
+        for (unsigned int particle_iter = 0; particle_iter < particles_for_jets.size(); particle_iter++) {
+            fastjet::PseudoJet p = particles_for_jets[particle_iter];
+            if(p.user_info<MyUserInfo>().isPU()) {
+                map_weight_vecs["mTGMM_pu"].push_back(mTGMM_particle_weights[particle_iter][lead_mTGMM_index]);
+            } else {
+                map_weight_vecs["mTGMM_hs"].push_back(mTGMM_particle_weights[particle_iter][lead_mTGMM_index]);
+            }
+        }
+    }
+    if(mTGMMs_on) {
+        for (unsigned int particle_iter = 0; particle_iter < particles_for_jets.size(); particle_iter++) {
+            fastjet::PseudoJet p = particles_for_jets[particle_iter];
+            if(p.user_info<MyUserInfo>().isPU()) {
+                map_weight_vecs["mTGMMs_pu"].push_back(mTGMMs_particle_weights[particle_iter][lead_mTGMMs_index]);
+            } else {
+                map_weight_vecs["mTGMMs_hs"].push_back(mTGMMs_particle_weights[particle_iter][lead_mTGMMs_index]);
+            }
+        }
+    }
+    if(mUMM_on) {
+        for (unsigned int particle_iter = 0; particle_iter < particles_for_jets.size(); particle_iter++) {
+            fastjet::PseudoJet p = particles_for_jets[particle_iter];
+            if(p.user_info<MyUserInfo>().isPU()) {
+                map_weight_vecs["mUMM_pu"].push_back(mUMM_particle_weights[particle_iter][lead_mUMM_index]);
+            } else {
+                map_weight_vecs["mUMM_hs"].push_back(mUMM_particle_weights[particle_iter][lead_mUMM_index]);
+            }
         }
     }
 

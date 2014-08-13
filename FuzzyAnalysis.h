@@ -37,6 +37,7 @@ class FuzzyAnalysis{
     string directory_prefix;
 
     std::map<string, float*> tree_vars;
+    std::map<string, std::vector<float> > map_weight_vecs;
 
     #ifdef WITHROOT
     TFile *t_f;
@@ -200,6 +201,8 @@ class FuzzyAnalysis{
     ~FuzzyAnalysis ();
 
     void Begin();
+    void SetupHistosMap();
+    void WriteHistosMap();
     void AnalyzeEvent(int i_evt, Pythia8::Pythia *pythia8, Pythia8::Pythia *pythia_MB, int NPV);
     void End();
     void DeclareBranches();
