@@ -50,7 +50,7 @@ n_jobs = 100
 n_jobs_patch = 5
 queue = 'xlong'
 
-name = '500kevts_mu0_bothrec'
+name = 'fixing'
 outdir = cwd + 'files/' + name + '/' + time_postfix
 safe_mkdir(outdir)
 

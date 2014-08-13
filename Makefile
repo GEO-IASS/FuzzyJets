@@ -5,8 +5,8 @@
 #                                               #
 # Note: source setup.sh before make             #
 # --------------------------------------------- #
-OPTIMIZATION = -g
-CXXFLAGS =  -Wall -Wextra -equal -Wshadow -Werror -Wno-shadow -fstack-protector-all
+OPTIMIZATION = -O3
+CXXFLAGS = -Wall -Wextra -equal -Wshadow -Werror -Wno-shadow -fstack-protector-all
 CXXFLAGSEXTRA = -std=c++0x -g
 CXX = g++
 

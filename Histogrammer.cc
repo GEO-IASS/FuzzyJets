@@ -165,7 +165,7 @@ int main(int argc, char *argv[]) {
     std::vector<int> do_recs(do_recs_arr, do_recs_arr+sizeof(do_recs_arr) / sizeof(do_recs_arr[0]));
     std::vector<std::string> algs(algs_arr, algs_arr+sizeof(algs_arr) / sizeof(algs_arr[0]));
 
-    std::string file_prefix = "/u/at/chstan/nfs/summer_2014/ForConrad/files/500kevts_mu0_bothrec/2014_08_11_19h46m58s/";
+    std::string file_prefix = "/u/at/chstan/nfs/summer_2014/ForConrad/files/100kevts_mu0_bothrec/2014_08_12_22h15m36s/";
 
     file_map_t file_m = constructFileMap(sizes, learns, do_recs, NPVs, file_prefix);
 
@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
       std::cout << ":" << iter->second << std::endl;
     }
 
-    std::string out_dir = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/500kevts_mu0_bothrec/";
+    std::string out_dir = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/100kevts_mu0_bothrec/";
     
     // KEYS ARE BUILT BY (SIZE, LEARN, PILEUP)
     // DO PILEUP COMPARISONS: MASS RESOLUTION
