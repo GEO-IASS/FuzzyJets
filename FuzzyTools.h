@@ -32,12 +32,13 @@ public:
     double yx;
     double yy;
 
-    MatTwo(double xx_in, double xy_in, double yx_in, double yy_in) {
-        xx = xx_in;
-        xy = xy_in;
-        yx = yx_in;
-        yy = yy_in;
-    }
+    MatTwo(double xx_in, double xy_in, double yx_in, double yy_in) 
+        : xx(xx_in)
+        , xy(xy_in)
+        , yx(yx_in)
+        , yy(yy_in) 
+    {}
+
 
     double determinant() const {
         return (xx * yy) - (xy * yx);
@@ -73,6 +74,8 @@ class FuzzyTools {
     double R;
     int max_iters;
 
+    MatTwo default_sigma;
+
     string directory_prefix;
 
     bool learn_weights;
@@ -94,6 +97,10 @@ class FuzzyTools {
     vecPseudoJet Initialize(vecPseudoJet particles,
                             int k,
                             vecPseudoJet jets);
+
+    void SetDefaultSigma(MatTwo s) {
+        default_sigma = s;
+    }
 
     void SetLearnWeights(bool b) {
         learn_weights = b;

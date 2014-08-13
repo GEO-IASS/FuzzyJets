@@ -51,7 +51,8 @@ ostream& operator<< (ostream& out, const vector<T> v) {
 
 
 // Constructor
-FuzzyTools::FuzzyTools(){
+FuzzyTools::FuzzyTools()
+    : default_sigma(MatTwo(0.5, 0, 0, 0.5)) {
     alpha = 1.0;
     m_test = 0;
     max_iters = 100;
@@ -174,9 +175,9 @@ vector<MatTwo>
 FuzzyTools::Initializeparams(__attribute__((unused)) vecPseudoJet const& particles,
                              int k){
     vector<MatTwo> out_params;
-    double sigma_sq = 0.5;
+
     for (int i=0; i<k;i++){
-        out_params.push_back(MatTwo(sigma_sq, 0, 0, sigma_sq));
+        out_params.push_back(default_sigma);
     }
     return out_params;
 }
@@ -1172,7 +1173,7 @@ FuzzyTools::SubsEventDisplay(vecPseudoJet const& particles,
     double y_jet[mGMM_jet_count];
     for (int jet_iter = 0; jet_iter < mGMM_jet_count; jet_iter++) {
         x_jet[jet_iter] = mGMM_jets[jet_iter].rapidity();
-        y_jet[jet_iter] = mGMM_jets[jet_iter].rapidity();
+        y_jet[jet_iter] = mGMM_jets[jet_iter].phi();
     }
     TGraph *jet_graph = new TGraph(mGMM_jet_count, x_jet, y_jet);
     
