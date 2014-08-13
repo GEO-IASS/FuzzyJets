@@ -210,7 +210,7 @@ FuzzyTools::ComputeWeightsGaussian(vecPseudoJet const& particles,
                 * mGMM_weights[j];
         }
         for (unsigned int j=0; j<mGMM_jets.size(); j++){
-            weights->at(i)[j] = doGaus(particles[i].rapidity(),
+            weights->at(i).at(j) = doGaus(particles[i].rapidity(),
                                        particles[i].phi(),
                                        mGMM_jets[j].rapidity(),
                                        mGMM_jets[j].phi(),
@@ -247,7 +247,7 @@ FuzzyTools::ComputeWeightsTruncGaus(vecPseudoJet const& particles,
             if(new_weight < 0 || new_weight > 1 || isnan(new_weight)) {
                 new_weight = 0.;
             }
-            weights->at(i)[j] = new_weight;
+            weights->at(i).at(j) = new_weight;
         }
     }
 }
@@ -276,7 +276,7 @@ FuzzyTools::ComputeWeightsUniform(vecPseudoJet const& particles,
             if(new_weight < 0 || new_weight > 1 || isnan(new_weight)) {
                 new_weight = 0.;
             }
-            weights->at(i)[j] = new_weight;
+            weights->at(i).at(j) = new_weight;
         }
     }
 }
