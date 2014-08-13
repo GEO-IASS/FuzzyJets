@@ -429,6 +429,10 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
     bool mTGMM_on = true;
     bool mTGMMs_on = true;
     
+    double subs_sigma = 0.3;
+    tool->SetDefaultSigma(MatTwo(subs_sigma*subs_sigma, 0, 0, subs_sigma*subs_sigma));
+    tool->SetMergeDistance(0.05);
+
     // Fuzzy Jets: mGMMs --------------------
     vector<vector<double> > mGMMs_particle_weights;
     vector<MatTwo> mGMMs_jets_params;
@@ -540,22 +544,22 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
     if (mGMM_on) {
         tool->SubsEventDisplay(particles_for_jets, mGMM_jets, mGMM_particle_weights,
                                lead_mGMM_index, mGMM_jets_params, "mGMM", event_iter);                               
-        
     }
     if (mGMMs_on) {
         tool->SubsEventDisplay(particles_for_jets, mGMMs_jets, mGMMs_particle_weights,
-                               lead_mGMMs_index, mGMMs_jets_params, "mGMMs", event_iter);                                }
+                               lead_mGMMs_index, mGMMs_jets_params, "mGMMs", event_iter);
+    }
     if (mGMMc_on) {
         tool->SubsEventDisplay(particles_for_jets, mGMMc_jets, mGMMc_particle_weights,
-                               lead_mGMMc_index, mGMMc_jets_params, "mGMMc", event_iter);                               
+                               lead_mGMMc_index, mGMMc_jets_params, "mGMMc", event_iter);
     }
     if (mTGMM_on) {
         tool->SubsEventDisplay(particles_for_jets, mTGMM_jets, mTGMM_particle_weights,
-                               lead_mTGMM_index, mTGMM_jets_params, "mTGMM", event_iter);                               
+                               lead_mTGMM_index, mTGMM_jets_params, "mTGMM", event_iter);
     }
     if (mTGMMs_on) {
         tool->SubsEventDisplay(particles_for_jets, mTGMMs_jets, mTGMMs_particle_weights,
-                               lead_mTGMMs_index, mTGMMs_jets_params, "mTGMMs", event_iter);                               
+                               lead_mTGMMs_index, mTGMMs_jets_params, "mTGMMs", event_iter);
     }
 }
 
@@ -600,7 +604,7 @@ void FuzzyAnalysis::WriteHistosMap() {
         ss << algs[alg_iter] << "_pu";
         std::string pu_name = ss.str();
         std::vector<float> const& pu_weights = map_weight_vecs[pu_name];
-        TH1F pu_hist(TString::Format("Pileup Weights  %s", algs[alg_iter].c_str()),
+        TH1F pu_hist(TString::Format("Pileup Weights %s", algs[alg_iter].c_str()),
                      TString::Format("Pileup Weights for %s", algs[alg_iter].c_str()),
                      48, 0.04, 1);
         for (unsigned int weight_iter = 0; weight_iter < pu_weights.size(); weight_iter++) {
@@ -608,6 +612,10 @@ void FuzzyAnalysis::WriteHistosMap() {
         }
         pu_hist.Write();
 
+        // don't write canvases if we are on the batch,
+        // we can do that later
+        if (batched) return;
+        
         TCanvas *c = new TCanvas(TString::Format("HSPU Weight Comparison %s", algs[alg_iter].c_str()),
                                  "Hard Scatter and Pileup Weight Comparison", 800, 800);
         pu_hist.SetLineColor(kBlue);
@@ -648,9 +656,7 @@ void FuzzyAnalysis::WriteHistosMap() {
 // End
 void FuzzyAnalysis::End(){
     #ifdef WITHROOT
-    if(!batched) {
-        WriteHistosMap();
-    }
+    WriteHistosMap();
     t_t->Write();
     delete t_f;
     #endif 
@@ -772,15 +778,19 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         fTantikt_m_pu_trimmed_three = JetPuMassFastjet(lead_akt_filter_three);
     }
 
-    if (!batched && event_iter < 10 && my_jets_large_r_antikt.size() != 0 &&
+    if (false && !batched && event_iter < 10 && my_jets_large_r_antikt.size() != 0 &&
         my_jets_large_r_ca.size() != 0) {
+        cout << "HERE" << endl;
         SubstructureStudy(my_jets_large_r_ca, my_jets_large_r_antikt, event_iter);
+        return;
     }
     
     // ======================================
     // Various mixture models ---------------
     // ======================================
     tool->SetMergeDistance(0.05);
+    double sigma_squared = 0.5;
+    tool->SetDefaultSigma(MatTwo(sigma_squared, 0, 0, sigma_squared));
 
     // which jets to run
     bool mUMM_on = true;
@@ -900,7 +910,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         mTGMMs_on = false;
     }
     
-    bool do_weight_distributions = true;
+    bool do_weight_distributions = false;
     if (do_weight_distributions && event_iter < 10 && !batched) {
 
         if(mGMM_on) {
@@ -943,7 +953,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     }
     
     // Event displays
-    bool do_event_displays = true;
+    bool do_event_displays = false;
     if (do_event_displays && !batched) {
         if(event_iter < 10 && mGMM_on) {
             tool->EventDisplay(particles_for_jets,
