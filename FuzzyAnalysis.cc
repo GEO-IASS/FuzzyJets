@@ -614,7 +614,7 @@ void FuzzyAnalysis::WriteHistosMap() {
 
         // don't write canvases if we are on the batch,
         // we can do that later
-        if (batched) return;
+        if (batched) continue;
         
         TCanvas *c = new TCanvas(TString::Format("HSPU Weight Comparison %s", algs[alg_iter].c_str()),
                                  "Hard Scatter and Pileup Weight Comparison", 800, 800);
