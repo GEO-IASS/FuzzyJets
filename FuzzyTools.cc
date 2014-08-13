@@ -1152,7 +1152,75 @@ FuzzyTools::SubsEventDisplay(vecPseudoJet const& particles,
                              int event_iter) {
     #ifdef WITHROOT
     gStyle->SetOptStat(0);
-    TCanvas * c = new TCanvas();
+    TCanvas * c = new TCanvas(TString::Format("SubstructureEventDisplay_%s_%d", label.c_str(), event_iter), "", 500, 500);
+    
+    const int particle_count = particles.size();
+    
+    map<int, TGraph*> vars;
+    for (int particle_iter = 0; particle_iter < particle_count; particle_iter++) {
+        double x = particles[particle_iter].rapidity();
+        double y = particles[particle_iter].phi();
+        
+        vars[particle_iter] = new TGraph(1, &x, &y);
+        int mycolor = 19 - floor(weights[particle_iter][lead_mGMM_index] * 10);
+        if (mycolor < 12) mycolor = 1;
+        vars[particle_iter]->SetMarkerColor(mycolor);
+    }
+
+    const int mGMM_jet_count = mGMM_jets.size();
+    double x_jet[mGMM_jet_count];
+    double y_jet[mGMM_jet_count];
+    for (int jet_iter = 0; jet_iter < mGMM_jet_count; jet_iter++) {
+        x_jet[jet_iter] = mGMM_jets[jet_iter].rapidity();
+        y_jet[jet_iter] = mGMM_jets[jet_iter].rapidity();
+    }
+    TGraph *jet_graph = new TGraph(mGMM_jet_count, x_jet, y_jet);
+    
+    TH1F * background = new TH1F("", "", 100, -4, 8);
+    background->GetXaxis()->SetTitle("Rapidity");
+    background->GetYaxis()->SetTitleOffset(1.4);
+    background->GetYaxis()->SetTitle("Azimuthal Angle [rad]");
+    background->GetXaxis()->SetNdivisions(505);
+    background->GetYaxis()->SetRangeUser(0,7);
+    background->Draw();
+
+    for (int i=0; i<particle_count; i++) {
+        vars[i]->SetMarkerSize(1);
+        vars[i]->SetMarkerStyle(20);
+        vars[i]->Draw("samep");
+    }
+
+    jet_graph->SetMarkerSize(2);
+    jet_graph->SetMarkerStyle(3);
+    jet_graph->SetMarkerColor(6);
+    jet_graph->Draw("psame");
+
+    for (unsigned int i=0; i<mGMM_jets_params.size(); i++){
+        double a = mGMM_jets_params[i].xx;
+        double b = mGMM_jets_params[i].yy;
+        double c = mGMM_jets_params[i].yx;
+        double lambda1 = 0.5*(a+b)+0.5*sqrt((a-b)*(a-b)+4.*c*c);
+        double lambda2 = 0.5*(a+b)-0.5*sqrt((a-b)*(a-b)+4.*c*c);
+        double theta = 0.;
+        if (c>0) theta=atan((lambda1-a)/c);
+        // std::cout << "yo " << i << " " << sqrt(lambda1) << " " << sqrt(lambda2) << " " << theta << std::endl;
+        TEllipse *el4 = new TEllipse(x_jet[i],y_jet[i],sqrt(lambda1),sqrt(lambda2),0,360,theta*180/TMath::Pi());
+        el4->SetFillStyle(0);
+        el4->Draw("same");
+    }
+
+    TLegend* leggaa = new TLegend(.7,.33,0.95,.67);
+    leggaa->SetTextFont(42);
+
+    leggaa->AddEntry(jet_graph,"mGMM Jets","p");
+    leggaa->SetFillStyle(0);
+    leggaa->SetFillColor(0);
+    leggaa->SetBorderSize(0);
+    leggaa->Draw();
+
+    TString file_name = TString::Format("%sSubstructureEvent%s_%d.root", directory_prefix.c_str(), 
+                                        label.c_str(), event_iter);
+    c->Print(file_name);
 
     delete c;
     #endif

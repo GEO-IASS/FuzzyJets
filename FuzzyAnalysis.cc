@@ -538,7 +538,24 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
 
     // do event displays
     if (mGMM_on) {
+        tool->SubsEventDisplay(particles_for_jets, mGMM_jets, mGMM_particle_weights,
+                               lead_mGMM_index, mGMM_jets_params, "mGMM", event_iter);                               
         
+    }
+    if (mGMMs_on) {
+        tool->SubsEventDisplay(particles_for_jets, mGMMs_jets, mGMMs_particle_weights,
+                               lead_mGMMs_index, mGMMs_jets_params, "mGMMs", event_iter);                                }
+    if (mGMMc_on) {
+        tool->SubsEventDisplay(particles_for_jets, mGMMc_jets, mGMMc_particle_weights,
+                               lead_mGMMc_index, mGMMc_jets_params, "mGMMc", event_iter);                               
+    }
+    if (mTGMM_on) {
+        tool->SubsEventDisplay(particles_for_jets, mTGMM_jets, mTGMM_particle_weights,
+                               lead_mTGMM_index, mTGMM_jets_params, "mTGMM", event_iter);                               
+    }
+    if (mTGMMs_on) {
+        tool->SubsEventDisplay(particles_for_jets, mTGMMs_jets, mTGMMs_particle_weights,
+                               lead_mTGMMs_index, mTGMMs_jets_params, "mTGMMs", event_iter);                               
     }
 }
 
