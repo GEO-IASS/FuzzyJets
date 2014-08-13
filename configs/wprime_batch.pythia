@@ -1,0 +1,13 @@
+# Configure pythia to run W' -> hadronic
+34:m0 = 600
+NewGaugeBoson:ffbar2Wprime = on
+Wprime:coup2WZ = 1
+34:onMode = off
+34:onIfAny = 23 24
+24:onMode = off
+24:onIfAny 1 2 3 4
+23:onMode = off
+23:onIfAny = 11
+
+Random:setSeed = on
+Random:seed = 0
