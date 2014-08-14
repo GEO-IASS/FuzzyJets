@@ -1149,11 +1149,11 @@ FuzzyTools::SubsEventDisplay(vecPseudoJet const& particles,
                              vector<vector<double> > const& weights,
                              int lead_mGMM_index,
                              vector<MatTwo> const& mGMM_jets_params,
-                             std::string const& label,
-                             int event_iter) {
+                             std::string const& file_name,
+                             std::string const& title) {
     #ifdef WITHROOT
     gStyle->SetOptStat(0);
-    TCanvas * c = new TCanvas(TString::Format("SubstructureEventDisplay_%s_%d", label.c_str(), event_iter), "", 500, 500);
+    TCanvas * c = new TCanvas("c", title.c_str(), 500, 500);
     
     const int particle_count = particles.size();
     
@@ -1163,7 +1163,7 @@ FuzzyTools::SubsEventDisplay(vecPseudoJet const& particles,
         double y = particles[particle_iter].phi();
         
         vars[particle_iter] = new TGraph(1, &x, &y);
-        int mycolor = 19 - floor(weights[particle_iter][lead_mGMM_index] * 10);
+        int mycolor = 17 - floor(weights[particle_iter][lead_mGMM_index] * 8);
         if (mycolor < 12) mycolor = 1;
         vars[particle_iter]->SetMarkerColor(mycolor);
     }
@@ -1213,15 +1213,15 @@ FuzzyTools::SubsEventDisplay(vecPseudoJet const& particles,
     TLegend* leggaa = new TLegend(.7,.33,0.95,.67);
     leggaa->SetTextFont(42);
 
-    leggaa->AddEntry(jet_graph,"mGMM Jets","p");
+    leggaa->AddEntry(jet_graph,"Fuzzy Jets","p");
     leggaa->SetFillStyle(0);
     leggaa->SetFillColor(0);
     leggaa->SetBorderSize(0);
     leggaa->Draw();
 
-    TString file_name = TString::Format("%sSubstructureEvent%s_%d.root", directory_prefix.c_str(), 
-                                        label.c_str(), event_iter);
-    c->Print(file_name);
+
+    c->Print(file_name.c_str(), "pdf");
+
 
     delete c;
     #endif

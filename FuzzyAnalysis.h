@@ -197,6 +197,8 @@ class FuzzyAnalysis{
     fastjet::JetDefinition     *m_jet_def;
     fastjet::JetDefinition     *m_jet_def_large_r_antikt;
     fastjet::JetDefinition     *m_jet_def_large_r_ca;
+    fastjet::JetDefinition     *m_jet_def_vlarge_r_antikt;
+    fastjet::JetDefinition     *m_jet_def_vlarge_r_ca;
 
  public:
     FuzzyAnalysis ();

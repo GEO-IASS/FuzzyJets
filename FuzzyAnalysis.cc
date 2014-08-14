@@ -3,6 +3,7 @@
 #include <string>
 #include <sstream>
 #include <set>
+#include <assert.h>
 
 #include "myFastJetBase.h"
 #include "fastjet/ClusterSequence.hh"
@@ -32,6 +33,41 @@
 
 // Privately separate the logic of different analysis modes from using them
 namespace {
+    float randb() {
+        float random = ((float) rand()) / (float) RAND_MAX;
+        return (random >= 0.5) ? 1 : -1;
+    }
+    float randf(float low, float high) {
+        float random = ((float) rand()) / (float) RAND_MAX;
+        float d = high - low;
+        return low + d*random;
+    }
+
+    vecPseudoJet randomSubvector(vecPseudoJet const& origin, unsigned int how_many) {
+        assert(origin.size() >= how_many);
+        vecPseudoJet out;
+        
+        std::vector<unsigned int> indices;
+        for(unsigned int iter = 0; iter < origin.size(); iter++) {
+            indices.push_back(iter);
+        }
+        std::random_shuffle(indices.begin(), indices.end());
+        
+        for(unsigned int iter = 0; iter < how_many; iter++) {
+            unsigned int index = indices.at(iter);
+            out.push_back(origin[index]);
+        }
+
+        for(unsigned int iter = 0; iter < out.size(); iter++) {
+            float rap = out.at(iter).rapidity() + randb() * randf(0.8, 1);
+            float phi = out.at(iter).phi() + randb() * randf(0.8, 1);
+            out.at(iter).reset_PtYPhiM(1.0, rap, phi, 0);
+            
+        }
+        
+        return out;
+    }
+
     void WeightDistribution(__attribute__((unused)) vector<vector<double> > const& weights,
                             __attribute__((unused)) int which,
                             __attribute__((unused)) std::string out,
@@ -385,6 +421,8 @@ FuzzyAnalysis::FuzzyAnalysis(){
     m_jet_def                 = new fastjet::JetDefinition(fastjet::antikt_algorithm, 0.4);
     m_jet_def_large_r_antikt  = new fastjet::JetDefinition(fastjet::antikt_algorithm, 1.0);
     m_jet_def_large_r_ca      = new fastjet::JetDefinition(fastjet::cambridge_algorithm, 1.0);
+    m_jet_def_vlarge_r_antikt  = new fastjet::JetDefinition(fastjet::antikt_algorithm, 1.5);
+    m_jet_def_vlarge_r_ca      = new fastjet::JetDefinition(fastjet::cambridge_algorithm, 1.5);
 
     if(f_debug) cout << "FuzzyAnalysis::FuzzyAnalysis End " << endl;
 }
@@ -395,6 +433,8 @@ FuzzyAnalysis::~FuzzyAnalysis(){
     delete m_jet_def;
     delete m_jet_def_large_r_antikt;
     delete m_jet_def_large_r_ca;
+    delete m_jet_def_vlarge_r_antikt;
+    delete m_jet_def_vlarge_r_ca;
 }
 
 // Begin method
@@ -422,144 +462,229 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                                       __attribute__((unused)) vecPseudoJet antikt_jets,
                                       __attribute__((unused)) int event_iter) {
     vecPseudoJet particles_for_jets = ca_jets[0].constituents();
-    bool mUMM_on = true;
-    bool mGMM_on = true;
-    bool mGMMc_on = true;
-    bool mGMMs_on = true;
-    bool mTGMM_on = true;
-    bool mTGMMs_on = true;
-    
-    double subs_sigma = 0.3;
-    tool->SetDefaultSigma(MatTwo(subs_sigma*subs_sigma, 0, 0, subs_sigma*subs_sigma));
-    tool->SetMergeDistance(0.05);
+    cout << "Constituents: " << particles_for_jets.size();
 
-    // Fuzzy Jets: mGMMs --------------------
-    vector<vector<double> > mGMMs_particle_weights;
-    vector<MatTwo> mGMMs_jets_params;
-    vector<double> mGMMs_weights;
-    vecPseudoJet mGMMs_jets;
-    int lead_mGMMs_index;
-    double max_pT_mGMMs;
-    if(mGMMs_on) {
-        DoMGMMJetFinding(particles_for_jets, particles_for_jets,
-                         f_learn_weights, true, true,
-                         lead_mGMMs_index, max_pT_mGMMs,
-                         tool, mGMMs_jets, mGMMs_particle_weights,
-                         mGMMs_jets_params, mGMMs_weights);
-    }
+    unsigned int max_num_clusters = 5;
+    for (unsigned int num_clusters = 2; num_clusters <= max_num_clusters; num_clusters++) {
+        vecPseudoJet random_seeds = randomSubvector(particles_for_jets, num_clusters);
 
-    // Fuzzy Jets: mGMMc --------------------
-    vector<vector<double> > mGMMc_particle_weights;
-    vector<MatTwo> mGMMc_jets_params;
-    vector<double> mGMMc_weights;
-    vecPseudoJet mGMMc_jets;
-    int lead_mGMMc_index;
-    double max_pT_mGMMc;
-    if(mGMMc_on) {
-        DoMGMMCJetFinding(particles_for_jets, particles_for_jets,
-                          f_learn_weights, true,
-                          lead_mGMMc_index, max_pT_mGMMc,
-                          tool, mGMMc_jets, mGMMc_particle_weights,
-                          mGMMc_jets_params, mGMMc_weights);
-    }
+        bool mUMM_on = true;
+        bool mGMM_on = true;
+        bool mGMMc_on = true;
+        bool mGMMs_on = true;
+        bool mTGMM_on = true;
+        bool mTGMMs_on = true;
+        
+        double subs_sigma = 0.3;
+        tool->SetDefaultSigma(MatTwo(subs_sigma*subs_sigma, 0, 0, subs_sigma*subs_sigma));
+        tool->SetMergeDistance(0.05);
+        
+        // Fuzzy Jets: mGMMs --------------------
+        vector<vector<double> > mGMMs_particle_weights;
+        vector<MatTwo> mGMMs_jets_params;
+        vector<double> mGMMs_weights;
+        vecPseudoJet mGMMs_jets;
+        int lead_mGMMs_index;
+        double max_pT_mGMMs;
+        if(mGMMs_on) {
+            DoMGMMJetFinding(particles_for_jets, random_seeds,
+                             f_learn_weights, true, false,
+                             lead_mGMMs_index, max_pT_mGMMs,
+                             tool, mGMMs_jets, mGMMs_particle_weights,
+                             mGMMs_jets_params, mGMMs_weights);
+        }
+        
+        // Fuzzy Jets: mGMMc --------------------
+        vector<vector<double> > mGMMc_particle_weights;
+        vector<MatTwo> mGMMc_jets_params;
+        vector<double> mGMMc_weights;
+        vecPseudoJet mGMMc_jets;
+        int lead_mGMMc_index;
+        double max_pT_mGMMc;
+        if(mGMMc_on) {
+            DoMGMMCJetFinding(particles_for_jets, random_seeds,
+                              f_learn_weights, false,
+                              lead_mGMMc_index, max_pT_mGMMc,
+                              tool, mGMMc_jets, mGMMc_particle_weights,
+                              mGMMc_jets_params, mGMMc_weights);
+        }
+        
+        // Fuzzy Jets: mTGMMs -------------------
+        vector<vector<double > > mTGMMs_particle_weights;
+        vector<MatTwo> mTGMMs_jets_params;
+        vector<double> mTGMMs_weights;
+        vecPseudoJet mTGMMs_jets;
+        int lead_mTGMMs_index;
+        double max_pT_mTGMMs;
+        if(mTGMMs_on) {
+            DoMTGMMJetFinding(particles_for_jets, random_seeds,
+                              f_learn_weights, true, false,
+                              f_size, lead_mTGMMs_index, max_pT_mTGMMs,
+                              tool, mTGMMs_jets, mTGMMs_particle_weights,
+                              mTGMMs_jets_params, mTGMMs_weights);
+        }
+        
+        // Fuzzy Jets: mGMM ---------------------
+        vector<vector<double> >mGMM_particle_weights;
+        vector<MatTwo> mGMM_jets_params;
+        vector<double> mGMM_weights;
+        vector<fastjet::PseudoJet> mGMM_jets;
+        int lead_mGMM_index;
+        double max_pT_mGMM;
+        if(mGMM_on) {
+            DoMGMMJetFinding(particles_for_jets, random_seeds,
+                             f_learn_weights, false, false,
+                             lead_mGMM_index, max_pT_mGMM,
+                             tool, mGMM_jets, mGMM_particle_weights,
+                             mGMM_jets_params, mGMM_weights);
+        }
+        
+        // Fuzzy Jets: mUMM ---------------------
+        vector<vector<double> > mUMM_particle_weights;
+        vector<double> mUMM_weights;
+        vecPseudoJet mUMM_jets;
+        
+        int lead_mUMM_index;
+        double max_pT_mUMM;
+        if(mUMM_on) {
+            DoMUMMJetFinding(particles_for_jets, random_seeds,
+                             f_learn_weights, f_size, false,
+                             lead_mUMM_index, max_pT_mUMM, tool, mUMM_jets,
+                             mUMM_particle_weights, mUMM_weights);
+        }
+        
+        // Fuzzy Jets: mTGMM --------------------
+        vector<vector<double> > mTGMM_particle_weights;
+        vector<double> mTGMM_weights;
+        vecPseudoJet mTGMM_jets;
+        vector<MatTwo> mTGMM_jets_params;
+        int lead_mTGMM_index;
+        double max_pT_mTGMM;
+        if(mTGMM_on) {
+            DoMTGMMJetFinding(particles_for_jets, random_seeds,
+                              f_learn_weights, false, false, f_size,
+                              lead_mTGMM_index, max_pT_mTGMM, tool, mTGMM_jets,
+                              mTGMM_particle_weights, mTGMM_jets_params, mTGMM_weights);
+        }
+        
+        if(!mGMM_weights.size()) {
+            mGMM_on = false;
+        }
+        if(!mGMMs_weights.size()) {
+            mGMMs_on = false;
+        }
+        if(!mGMMc_weights.size()) {
+            mGMMc_on = false;
+        }
+        if(!mTGMM_weights.size()) {
+            mTGMM_on = false;
+        }
+        if(!mTGMMs_weights.size()) {
+            mTGMMs_on = false;
+        }
+        if(!mUMM_weights.size()) {
+            mUMM_on = false;
+        }
+        
+        std::stringstream ss;
 
-    // Fuzzy Jets: mTGMMs -------------------
-    vector<vector<double > > mTGMMs_particle_weights;
-    vector<MatTwo> mTGMMs_jets_params;
-    vector<double> mTGMMs_weights;
-    vecPseudoJet mTGMMs_jets;
-    int lead_mTGMMs_index;
-    double max_pT_mTGMMs;
-    if(mTGMMs_on) {
-        DoMTGMMJetFinding(particles_for_jets, particles_for_jets,
-                          f_learn_weights, true, true,
-                          f_size, lead_mTGMMs_index, max_pT_mTGMMs,
-                          tool, mTGMMs_jets, mTGMMs_particle_weights,
-                          mTGMMs_jets_params, mTGMMs_weights);
-    }
-
-    // Fuzzy Jets: mGMM ---------------------
-    vector<vector<double> >mGMM_particle_weights;
-    vector<MatTwo> mGMM_jets_params;
-    vector<double> mGMM_weights;
-    vector<fastjet::PseudoJet> mGMM_jets;
-    int lead_mGMM_index;
-    double max_pT_mGMM;
-    if(mGMM_on) {
-        DoMGMMJetFinding(particles_for_jets, particles_for_jets,
-                         f_learn_weights, false, true,
-                         lead_mGMM_index, max_pT_mGMM,
-                         tool, mGMM_jets, mGMM_particle_weights,
-                         mGMM_jets_params, mGMM_weights);
-    }
-
-    // Fuzzy Jets: mUMM ---------------------
-    vector<vector<double> > mUMM_particle_weights;
-    vector<double> mUMM_weights;
-    vecPseudoJet mUMM_jets;
-
-    int lead_mUMM_index;
-    double max_pT_mUMM;
-    if(mUMM_on) {
-        DoMUMMJetFinding(particles_for_jets, particles_for_jets,
-                         f_learn_weights, f_size, true,
-                         lead_mUMM_index, max_pT_mUMM, tool, mUMM_jets,
-                         mUMM_particle_weights, mUMM_weights);
-    }
-
-    // Fuzzy Jets: mTGMM --------------------
-    vector<vector<double> > mTGMM_particle_weights;
-    vector<double> mTGMM_weights;
-    vecPseudoJet mTGMM_jets;
-    vector<MatTwo> mTGMM_jets_params;
-    int lead_mTGMM_index;
-    double max_pT_mTGMM;
-    if(mTGMM_on) {
-        DoMTGMMJetFinding(particles_for_jets, particles_for_jets,
-                          f_learn_weights, false, true, f_size,
-                          lead_mTGMM_index, max_pT_mTGMM, tool, mTGMM_jets,
-                          mTGMM_particle_weights, mTGMM_jets_params, mTGMM_weights);
-    }
-    
-    if(!mGMM_weights.size()) {
-        mGMM_on = false;
-    }
-    if(!mGMMs_weights.size()) {
-        mGMMs_on = false;
-    }
-    if(!mGMMc_weights.size()) {
-        mGMMc_on = false;
-    }
-    if(!mTGMM_weights.size()) {
-        mTGMM_on = false;
-    }
-    if(!mTGMMs_weights.size()) {
-        mTGMMs_on = false;
-    }
-    if(!mUMM_weights.size()) {
-        mUMM_on = false;
-    }
-
-    // do event displays
-    if (mGMM_on) {
-        tool->SubsEventDisplay(particles_for_jets, mGMM_jets, mGMM_particle_weights,
-                               lead_mGMM_index, mGMM_jets_params, "mGMM", event_iter);                               
-    }
-    if (mGMMs_on) {
-        tool->SubsEventDisplay(particles_for_jets, mGMMs_jets, mGMMs_particle_weights,
-                               lead_mGMMs_index, mGMMs_jets_params, "mGMMs", event_iter);
-    }
-    if (mGMMc_on) {
-        tool->SubsEventDisplay(particles_for_jets, mGMMc_jets, mGMMc_particle_weights,
-                               lead_mGMMc_index, mGMMc_jets_params, "mGMMc", event_iter);
-    }
-    if (mTGMM_on) {
-        tool->SubsEventDisplay(particles_for_jets, mTGMM_jets, mTGMM_particle_weights,
-                               lead_mTGMM_index, mTGMM_jets_params, "mTGMM", event_iter);
-    }
-    if (mTGMMs_on) {
-        tool->SubsEventDisplay(particles_for_jets, mTGMMs_jets, mTGMMs_particle_weights,
-                               lead_mTGMMs_index, mTGMMs_jets_params, "mTGMMs", event_iter);
+        // do event displays
+        if (mGMM_on) {
+            ss.str(std::string());
+            ss << directory_prefix << "SubstructureEvent" << "_mGMM_" << event_iter;
+            if (num_clusters == 2) {
+                ss << ".pdf(";
+            } else {
+                if (num_clusters == max_num_clusters) {
+                    ss << ".pdf)";
+                } else {
+                ss << ".pdf";
+                }
+            }
+            std::string file = ss.str();
+            ss.str(std::string());
+            ss << "Substructure mGMM k=" << num_clusters;
+            std::string title = ss.str();
+            
+            tool->SubsEventDisplay(particles_for_jets, mGMM_jets, mGMM_particle_weights,
+                                   lead_mGMM_index, mGMM_jets_params, file, title);                               
+        }
+        if (mGMMs_on) {
+            ss.str(std::string());
+            ss << directory_prefix << "SubstructureEvent" << "_mGMMs_" << event_iter;
+            if (num_clusters == 2) {
+                ss << ".pdf(";
+            } else {
+                if (num_clusters == max_num_clusters) {
+                    ss << ".pdf)";
+            } else {
+                ss << ".pdf";
+                }
+            }
+            std::string file = ss.str();
+            ss.str(std::string());
+            ss << "Substructure mGMMs k=" << num_clusters;
+            std::string title = ss.str();
+            tool->SubsEventDisplay(particles_for_jets, mGMMs_jets, mGMMs_particle_weights,
+                                   lead_mGMMs_index, mGMMs_jets_params, file, title);
+        }
+        if (mGMMc_on) {
+            ss.str(std::string());
+            ss << directory_prefix << "SubstructureEvent" << "_mGMMc_" << event_iter;
+            if (num_clusters == 2) {
+                ss << ".pdf(";
+            } else {
+                if (num_clusters == max_num_clusters) {
+                    ss << ".pdf)";
+            } else {
+                ss << ".pdf";
+                }
+            }
+            std::string file = ss.str();
+            ss.str(std::string());
+            ss << "Substructure mGMMc k=" << num_clusters;
+            std::string title = ss.str();
+            tool->SubsEventDisplay(particles_for_jets, mGMMc_jets, mGMMc_particle_weights,
+                                   lead_mGMMc_index, mGMMc_jets_params, file, title);
+        }
+        if (mTGMM_on) {
+            ss.str(std::string());
+            ss << directory_prefix << "SubstructureEvent" << "_mTGMM_" << event_iter;
+            if (num_clusters == 2) {
+                ss << ".pdf(";
+            } else {
+                if (num_clusters == max_num_clusters) {
+                    ss << ".pdf)";
+            } else {
+                ss << ".pdf";
+                }
+            }
+            std::string file = ss.str();
+            ss.str(std::string());
+            ss << "Substructure mTGMM k=" << num_clusters;
+            std::string title = ss.str();
+            tool->SubsEventDisplay(particles_for_jets, mTGMM_jets, mTGMM_particle_weights,
+                                   lead_mTGMM_index, mTGMM_jets_params, file, title);
+        }
+        if (mTGMMs_on) {
+            ss.str(std::string());
+            ss << directory_prefix << "SubstructureEvent" << "_mTGMMs_" << event_iter;
+            if (num_clusters == 2) {
+                ss << ".pdf(";
+            } else {
+                if (num_clusters == max_num_clusters) {
+                    ss << ".pdf)";
+            } else {
+                ss << ".pdf";
+                }
+            }
+            std::string file = ss.str();
+            ss.str(std::string());
+            ss << "Substructure mTGMMs k=" << num_clusters;
+            std::string title = ss.str();
+            tool->SubsEventDisplay(particles_for_jets, mTGMMs_jets, mTGMMs_particle_weights,
+                                   lead_mTGMMs_index, mTGMMs_jets_params, file, title);
+        }
     }
 }
 
@@ -778,10 +903,15 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         fTantikt_m_pu_trimmed_three = JetPuMassFastjet(lead_akt_filter_three);
     }
 
-    if (false && !batched && event_iter < 10 && my_jets_large_r_antikt.size() != 0 &&
-        my_jets_large_r_ca.size() != 0) {
-        cout << "HERE" << endl;
-        SubstructureStudy(my_jets_large_r_ca, my_jets_large_r_antikt, event_iter);
+    if (!batched && event_iter < 10) {
+        // generate particles for use in the substructure stuff
+        fastjet::ClusterSequence cs_vlarge_r_antikt(particles_for_jets, *m_jet_def_vlarge_r_antikt);
+        fastjet::ClusterSequence cs_vlarge_r_ca(particles_for_jets, *m_jet_def_vlarge_r_ca);
+        vecPseudoJet my_jets_vlarge_r_antikt = fastjet::sorted_by_pt(cs_vlarge_r_antikt.inclusive_jets(pT_min));
+        vecPseudoJet my_jets_vlarge_r_ca = fastjet::sorted_by_pt(cs_vlarge_r_ca.inclusive_jets(pT_min));
+        if (!my_jets_vlarge_r_antikt.size() || !my_jets_vlarge_r_ca.size()) return;
+
+        SubstructureStudy(my_jets_vlarge_r_ca, my_jets_vlarge_r_antikt, event_iter);
         return;
     }
     

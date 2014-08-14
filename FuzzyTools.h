@@ -237,8 +237,8 @@ class FuzzyTools {
                           vector<vector<double> > const& weights,
                           int lead_mGMM_index,
                           vector<MatTwo> const& mGMM_jets_params,
-                          std::string const& label,
-                          int event_iter);
+                          std::string const& file_name,
+                          std::string const& title);
 
 
     void EventDisplay(vecPseudoJet const& particles,
