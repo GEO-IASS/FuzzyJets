@@ -1,0 +1,4 @@
+# Configure pythia to run QCD
+HardQCD:all = on
+PhaseSpace:pTHatMin = 300
+PhaseSpace:pTHatMax = 700
