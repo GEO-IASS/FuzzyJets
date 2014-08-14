@@ -7,6 +7,7 @@
 #include <unordered_map>
 
 #include <TColor.h>
+#include <TLine.h>
 
 #include "AnalyzeFuzzyTools.h"
 #include "AtlasStyle.h"
@@ -128,6 +129,175 @@ void sanityTests() {
     }
 }
 
+void doFancyWeightHisto(std::string alg, int do_rec, int npv, int learn, int size,
+                        std::string out_dir, file_map_t file_m, int num) {
+    std::string file_name = file_m[std::make_tuple(size, learn, npv, do_rec)];
+
+    std::vector<float> antikt_trimmed_pufracs = 
+        loadSingleBranch<float>(file_name, "antikt_pufrac_trimmed_three");
+    float antikt_pufrac = 0;
+    for (unsigned int antikt_iter = 0; antikt_iter < antikt_trimmed_pufracs.size(); antikt_iter++) {
+        antikt_pufrac += antikt_trimmed_pufracs[antikt_iter];
+    }
+    antikt_pufrac /= antikt_trimmed_pufracs.size();
+
+    std::stringstream ss;
+    ss << "Hard Scatter Weights " << alg;
+    std::string hs_hist_name = ss.str();
+    ss.str(std::string());
+    ss << "Pileup Weights " << alg;
+    std::string pu_hist_name = ss.str();
+
+    TFile *f = new TFile(file_name.c_str());
+    TH1F *pu_hist = (TH1F *)f->Get(pu_hist_name.c_str());
+    TH1F *hs_hist = (TH1F *)f->Get(hs_hist_name.c_str());
+    TH1F *pu_hist_int = new TH1F("pu_int", "", 48, 0.04, 1);
+    TH1F *hs_hist_int = new TH1F("hs_int", "", 48, 0.04, 1);
+    TH1F *total_hist_int = new TH1F("total_int", "", 48, 0.04, 1);
+    TH1F *pu_frac_hist = new TH1F("pu_frac", "", 48, 0.04, 1);
+    Float_t pu_sum = 0;
+    Float_t hs_sum = 0;
+    for (Int_t iter = 48; iter >= 1; iter--) {
+        pu_sum += pu_hist->GetBinContent(iter);
+        hs_sum += hs_hist->GetBinContent(iter);
+        pu_hist_int->SetBinContent(iter, pu_sum);
+        hs_hist_int->SetBinContent(iter, hs_sum);
+    }
+    total_hist_int->Add(pu_hist_int, hs_hist_int, 1., 1.);
+    pu_frac_hist->Divide(pu_hist_int, total_hist_int, 1., 1., "b");
+        
+    if(!(hs_hist->Integral(-1, hs_hist->GetNbinsX()+1) > 0) ||
+       !(pu_hist->Integral(-1, pu_hist->GetNbinsX()+1) > 0)) {
+        std::cout << "PU OR HS HIST HAS NO CONTENT." << std::endl;
+        return;
+    }
+    
+    pu_hist->Scale(1./pu_hist->Integral(-1, pu_hist->GetNbinsX()+1));
+    hs_hist->Scale(1./hs_hist->Integral(-1, hs_hist->GetNbinsX()+1));
+    
+    TCanvas *c = new TCanvas("", "Particle Composition by Weight Comp. Antikt", 800, 800);
+    TLine *antikt_pufrac_l = new TLine(c->GetUxmin(), antikt_pufrac, c->GetUxmax(), antikt_pufrac);
+    antikt_pufrac_l->SetLineColor(kBlack);
+    antikt_pufrac_l->SetLineStyle(2);
+    
+    pu_frac_hist->SetLineColor(kBlue);
+    pu_frac_hist->SetFillStyle(3004);
+    pu_frac_hist->SetFillColor(kBlue);
+    pu_frac_hist->GetYaxis()->SetRangeUser(0, 1);
+    
+    pu_frac_hist->Draw("");
+    antikt_pufrac_l->Draw("same");
+    
+    TLegend *leggaa = new TLegend(0.6, 0.7, 0.9, 0.8);
+    leggaa->SetTextFont(42);
+    leggaa->AddEntry(pu_frac_hist, "Pu part. frac w/ w > bin", "l");
+    leggaa->AddEntry(antikt_pufrac_l, "Antikt pu part. frac", "l");
+
+    leggaa->SetFillStyle(0);
+    leggaa->SetFillColor(0);
+    leggaa->SetBorderSize(0);
+    leggaa->Draw();
+    //DrawAtlasLabel("Particle Comp");
+    
+    ss.str(std::string());
+    ss << out_dir << num << "_Pufrac_antikt_" << alg << "_sz_" << size << "_lw_" << learn 
+       << "_mu_" << npv << "_rec_" << do_rec << ".pdf";
+    std::string out_file_name = ss.str();
+    c->Print(out_file_name.c_str());
+    
+    delete leggaa;
+    delete c;
+
+    // also do the cumulative version of the old plot
+    c = new TCanvas("", "PU and HS Integral by Weight", 800, 800);
+    pu_hist->SetLineColor(kBlue);
+    pu_hist->SetFillStyle(3004);
+    pu_hist->SetFillColor(kBlue);
+    pu_hist->SetMinimum(0);
+
+    hs_hist->SetLineColor(kRed);
+    hs_hist->SetFillStyle(3004);
+    hs_hist->SetFillColor(kRed);
+    hs_hist->SetMinimum(0);
+    
+    hs_hist->Draw("");
+    pu_hist->Draw("same");
+    
+    leggaa = new TLegend(0.6, 0.7, 0.9, 0.8);
+    leggaa->SetTextFont(42);
+    leggaa->AddEntry(pu_hist, "PU Integral", "l");
+    leggaa->AddEntry(hs_hist, "HS Integral", "l");
+
+    leggaa->SetFillStyle(0);
+    leggaa->SetFillColor(0);
+    leggaa->SetBorderSize(0);
+    leggaa->Draw();
+    //DrawAtlasLabel(c_dec.title);
+
+    ss.str(std::string());
+    ss << out_dir << (num+1) << "_Cumul_norm_pufrac_" << alg << "_sz_" << size << "_lw_" << learn 
+       << "_mu_" << npv << "_rec_" << do_rec << ".pdf";
+    out_file_name = ss.str();
+    c->Print(out_file_name.c_str());
+
+    delete leggaa;
+    delete c;
+
+    delete pu_hist;
+    delete hs_hist;
+    delete pu_hist_int;
+    delete hs_hist_int;
+    delete total_hist_int;
+    delete pu_frac_hist;
+    delete antikt_pufrac_l;
+}
+
+int fancyWeightHistos() {
+    SetAtlasStyle();
+    SetupATLASStyle();
+
+    static const int sizes_arr[] = {7, 8, 9, 10};
+    static const int NPVs_arr[] = {5};
+    static const int learns_arr[] = {0, 1};
+    static const int do_recs_arr[] = {0};
+    static const std::string algs_arr[] = {"mGMM", "mGMMs", "mGMMc", "mUMM", "mTGMM", "mTGMMs"};
+
+    //static const Int_t colors_arr[] = {kMagenta + 3, kViolet + 9, kTeal - 5, kGray + 3};
+    //static const Style_t styles_arr[] = {kFullCircle, kFullSquare, kFullTriangleUp, kFullTriangleDown};
+
+    std::vector<int> sizes(sizes_arr, sizes_arr+sizeof(sizes_arr) / sizeof(sizes_arr[0]));
+    std::vector<int> NPVs(NPVs_arr, NPVs_arr+sizeof(NPVs_arr) / sizeof(NPVs_arr[0]));
+    std::vector<int> learns(learns_arr, learns_arr+sizeof(learns_arr) / sizeof(learns_arr[0]));
+    std::vector<int> do_recs(do_recs_arr, do_recs_arr+sizeof(do_recs_arr) / sizeof(do_recs_arr[0]));
+    std::vector<std::string> algs(algs_arr, algs_arr+sizeof(algs_arr) / sizeof(algs_arr[0]));
+    int num = 0;
+    
+    std::string file_prefix = "/u/at/chstan/nfs/summer_2014/ForConrad/files/20kevts_wprime_mu0_and_mu5_norec/2014_08_13_14h24m44s/";
+
+    file_map_t file_m = constructFileMap(sizes, learns, do_recs, NPVs, file_prefix);    
+   
+    std::string out_dir = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/20kevts_wprime_mu0_and_mu5_norec/";
+
+    for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
+        for (unsigned int do_rec_iter = 0; do_rec_iter < do_recs.size(); do_rec_iter++) {
+            for (unsigned int npv_iter = 0; npv_iter < NPVs.size(); npv_iter++) {
+                for (unsigned int learn_iter = 0; learn_iter < learns.size(); learn_iter++) {
+                    for (unsigned int size_iter = 0; size_iter < sizes.size(); size_iter++) {
+                        std::string alg = algs[alg_iter];
+                        int do_rec = do_recs[do_rec_iter];
+                        int npv = NPVs[npv_iter];
+                        int learn = learns[learn_iter];
+                        int size = sizes[size_iter];
+                        doFancyWeightHisto(alg, do_rec, npv, learn, size, out_dir, file_m, num);
+                        num += 2;
+                    }
+                }
+            }
+        }
+    }
+    return num;
+}
+
 int main(int argc, char *argv[]) {
     std::cout << "Called as: ";
     for (int i = 0; i < argc; i++) {
@@ -148,12 +318,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    int current_hist = fancyWeightHistos();
+
     SetAtlasStyle();
 
     static const int sizes_arr[] = {7, 8, 9, 10};
-    static const int NPVs_arr[] = {0};
+    static const int NPVs_arr[] = {0, 5};
     static const int learns_arr[] = {0, 1};
-    static const int do_recs_arr[] = {0, 1};
+    static const int do_recs_arr[] = {0};
     static const std::string algs_arr[] = {"mGMM", "mGMMs", "mGMMc", "mUMM", "mTGMM", "mTGMMs"};
 
     static const Int_t colors_arr[] = {kMagenta + 3, kViolet + 9, kTeal - 5, kGray + 3};
@@ -165,7 +337,7 @@ int main(int argc, char *argv[]) {
     std::vector<int> do_recs(do_recs_arr, do_recs_arr+sizeof(do_recs_arr) / sizeof(do_recs_arr[0]));
     std::vector<std::string> algs(algs_arr, algs_arr+sizeof(algs_arr) / sizeof(algs_arr[0]));
 
-    std::string file_prefix = "/u/at/chstan/nfs/summer_2014/ForConrad/files/100kevts_mu0_bothrec/2014_08_12_22h15m36s/";
+    std::string file_prefix = "/u/at/chstan/nfs/summer_2014/ForConrad/files/20kevts_wprime_mu0_and_mu5_norec/2014_08_13_14h24m44s/";
 
     file_map_t file_m = constructFileMap(sizes, learns, do_recs, NPVs, file_prefix);
 
@@ -173,7 +345,7 @@ int main(int argc, char *argv[]) {
       std::cout << ":" << iter->second << std::endl;
     }
 
-    std::string out_dir = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/100kevts_mu0_bothrec/";
+    std::string out_dir = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/20kevts_wprime_mu0_and_mu5_norec/";
     
     // KEYS ARE BUILT BY (SIZE, LEARN, PILEUP)
     // DO PILEUP COMPARISONS: MASS RESOLUTION
@@ -182,7 +354,6 @@ int main(int argc, char *argv[]) {
     std::stringstream ss;
 
     int n_bins = 100;
-    int current_hist = 0;
 
     std::string draw_opt = "p";
     std::string draw_opt_ref = "";
