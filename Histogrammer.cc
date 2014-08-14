@@ -18,6 +18,9 @@ namespace po = boost::program_options;
 
 typedef std::tuple<int, int, int, int> map_key_t;
 
+int mass_low = 0;
+int mass_high = 200;
+
 struct key_hash : public std::unary_function<map_key_t, std::size_t> {
     std::size_t operator()(const map_key_t& key) const {
         return std::get<0>(key) ^ std::get<1>(key) ^ std::get<2>(key) ^ std::get<3>(key);
@@ -69,8 +72,8 @@ void doSanityPlot(std::string branch, std::string old_loc, std::string new_loc, 
     std::vector<HistHelper> v_hist_decs;
     CanvasHelper c_dec("X", "", title, out, 800, 800);
     c_dec.diff_scale = false;
-    HistHelper h_one(old_loc, branch, "OLD", 510, 0, 400, 25, StyleTypes::STRIPED, kMagenta + 3, 20, "");
-    HistHelper h_two(new_loc, branch, "NEW", 510, 0, 400, 25, StyleTypes::STRIPED, kViolet + 9, 20, "");
+    HistHelper h_one(old_loc, branch, "OLD", 510, mass_low, mass_high, 25, StyleTypes::STRIPED, kMagenta + 3, 20, "");
+    HistHelper h_two(new_loc, branch, "NEW", 510, mass_low, mass_high, 25, StyleTypes::STRIPED, kViolet + 9, 20, "");
     v_hist_decs.push_back(h_one);
     v_hist_decs.push_back(h_two);
     prettyHist<float>(v_hist_decs, c_dec);
@@ -387,14 +390,14 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_m";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, 0, 400, n_bins, 
+                                                    branch, title, 510, mass_low, mass_high, n_bins, 
                                                     options, colors_arr[npv_iter],
                                                     styles_arr[npv_iter], draw_opt);
                         v_hist_decs.push_back(hist_helper_temp);
                     }
                     HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, 0, do_rec)],
                                                 "antikt_m_trimmed_three", "Anti-kt Trimmed Mass - PuV 0", 
-                                                510, 0, 400, n_bins, options_ref, kBlue,
+                                                510, mass_low, mass_high, n_bins, options_ref, kBlue,
                                                 kFullCircle, draw_opt_ref);
                     v_hist_decs.push_back(hist_helper_temp);
                     prettyHist<float>(v_hist_decs, c_dec);
@@ -429,14 +432,14 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_m";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, 0, 400, n_bins, 
+                                                    branch, title, 510, mass_low, mass_high, n_bins, 
                                                     options, colors_arr[size_iter],
                                                     styles_arr[size_iter], draw_opt);
                         v_hist_decs.push_back(hist_helper_temp);
                     }
                     HistHelper hist_helper_temp(file_m[std::make_tuple(10, learn, npv, do_rec)],
                                                 "antikt_m_trimmed_three", "Anti-kt trimmed Mass", 
-                                                510, 0, 400, n_bins, options_ref, kBlue,
+                                                510, mass_low, mass_high, n_bins, options_ref, kBlue,
                                                 kFullCircle, draw_opt_ref);
                     v_hist_decs.push_back(hist_helper_temp);
                     prettyHist<float>(v_hist_decs, c_dec);
@@ -471,14 +474,14 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_m";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, 0, 400, n_bins, 
+                                                    branch, title, 510, mass_low, mass_high, n_bins, 
                                                     options, colors_arr[learn_iter],
                                                     styles_arr[learn_iter], draw_opt);
                         v_hist_decs.push_back(hist_helper_temp);
                     }
                     HistHelper hist_helper_temp(file_m[std::make_tuple(size, 0, npv, do_rec)],
                                                 "antikt_m_trimmed_three", "Anti-kt trimmed Mass", 
-                                                510, 0, 400, n_bins, options_ref, kBlue,
+                                                510, mass_low, mass_high, n_bins, options_ref, kBlue,
                                                 kFullCircle, draw_opt_ref);
                     v_hist_decs.push_back(hist_helper_temp);
                     prettyHist<float>(v_hist_decs, c_dec);
@@ -514,14 +517,14 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_m";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, 0, 400, n_bins, 
+                                                    branch, title, 510, mass_low, mass_high, n_bins, 
                                                     options, colors_arr[do_rec_iter],
                                                     styles_arr[do_rec_iter], draw_opt);
                         v_hist_decs.push_back(hist_helper_temp);
                     }
                     HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, 0)],
                                                 "antikt_m_trimmed_three", "Anti-kt trimmed Mass", 
-                                                510, 0, 400, n_bins, options_ref, kBlue,
+                                                510, mass_low, mass_high, n_bins, options_ref, kBlue,
                                                 kFullCircle, draw_opt_ref);
                     v_hist_decs.push_back(hist_helper_temp);
                     prettyHist<float>(v_hist_decs, c_dec);
@@ -557,14 +560,14 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_m_soft";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, 0, 400, n_bins, 
+                                                    branch, title, 510, mass_low, mass_high, n_bins, 
                                                     options, colors_arr[npv_iter],
                                                     styles_arr[npv_iter], draw_opt);
                         v_hist_decs.push_back(hist_helper_temp);
                     }
                     HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, 0, do_rec)],
                                                 "antikt_m_trimmed_three", "Anti-kt Trimmed Mass - PuV 0", 
-                                                510, 0, 400, n_bins, options_ref, kBlue,
+                                                510, mass_low, mass_high, n_bins, options_ref, kBlue,
                                                 kFullCircle, draw_opt_ref);
                     v_hist_decs.push_back(hist_helper_temp);
                     prettyHist<float>(v_hist_decs, c_dec);
@@ -599,14 +602,14 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_m_soft";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, 0, 400, n_bins, 
+                                                    branch, title, 510, mass_low, mass_high, n_bins, 
                                                     options, colors_arr[size_iter],
                                                     styles_arr[size_iter], draw_opt);
                         v_hist_decs.push_back(hist_helper_temp);
                     }
                     HistHelper hist_helper_temp(file_m[std::make_tuple(10, learn, npv, do_rec)],
                                                 "antikt_m_trimmed_three", "Anti-kt trimmed Mass", 
-                                                510, 0, 400, n_bins, options_ref, kBlue,
+                                                510, mass_low, mass_high, n_bins, options_ref, kBlue,
                                                 kFullCircle, draw_opt_ref);
                     v_hist_decs.push_back(hist_helper_temp);
                     prettyHist<float>(v_hist_decs, c_dec);
@@ -641,14 +644,14 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_m_soft";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, 0, 400, n_bins, 
+                                                    branch, title, 510, mass_low, mass_high, n_bins, 
                                                     options, colors_arr[learn_iter],
                                                     styles_arr[learn_iter], draw_opt);
                         v_hist_decs.push_back(hist_helper_temp);
                     }
                     HistHelper hist_helper_temp(file_m[std::make_tuple(size, 0, npv, do_rec)],
                                                 "antikt_m_trimmed_three", "Anti-kt trimmed Mass", 
-                                                510, 0, 400, n_bins, options_ref, kBlue,
+                                                510, mass_low, mass_high, n_bins, options_ref, kBlue,
                                                 kFullCircle, draw_opt_ref);
                     v_hist_decs.push_back(hist_helper_temp);
                     prettyHist<float>(v_hist_decs, c_dec);
@@ -684,14 +687,14 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_m_soft";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, 0, 400, n_bins, 
+                                                    branch, title, 510, mass_low, mass_high, n_bins, 
                                                     options, colors_arr[do_rec_iter],
                                                     styles_arr[do_rec_iter], draw_opt);
                         v_hist_decs.push_back(hist_helper_temp);
                     }
                     HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, 0)],
                                                 "antikt_m_trimmed_three", "Anti-kt trimmed Mass", 
-                                                510, 0, 400, n_bins, options_ref, kBlue,
+                                                510, mass_low, mass_high, n_bins, options_ref, kBlue,
                                                 kFullCircle, draw_opt_ref);
                     v_hist_decs.push_back(hist_helper_temp);
                     prettyHist<float>(v_hist_decs, c_dec);
