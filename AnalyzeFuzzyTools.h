@@ -213,12 +213,12 @@ std::vector<TH1D *> v_hists;
             current_hist->SetFillColor(hist_dec.color);
         }
         std::string postfix;
+        if (c_dec.diff_scale) {
+            current_hist->Scale(1./current_hist->Integral(-1, current_hist->GetNbinsX()+1));
+        } else {
+            current_hist->GetYaxis()->SetRangeUser(0, RoundDoubleUp(all_max*1.2, 10));
+        }
         if (hist_iter == 0) {
-            if (c_dec.diff_scale) {
-                current_hist->Scale(1./current_hist->Integral(-1, current_hist->GetNbinsX()+1));
-            } else {
-                current_hist->GetYaxis()->SetRangeUser(0, RoundDoubleUp(all_max*1.2, 10));
-            }
             current_hist->GetXaxis()->SetTitle(c_dec.x_label.c_str());
             postfix = "";
         } else {
@@ -239,7 +239,11 @@ std::vector<TH1D *> v_hists;
     TLegend *leggaa = new TLegend(0.6, 0.7, 0.9, 0.8);
     leggaa->SetTextFont(42);
     for (size_t hist_iter = 0; hist_iter < n_hists; hist_iter++) {
-        leggaa->AddEntry(v_hists[hist_iter], hist_decs[hist_iter].legend_label.c_str(), "f");
+        if (hist_decs[hist_iter].draw_opts == "p") {
+            leggaa->AddEntry(v_hists[hist_iter], hist_decs[hist_iter].legend_label.c_str(), "p");
+        } else {
+            leggaa->AddEntry(v_hists[hist_iter], hist_decs[hist_iter].legend_label.c_str(), "f");
+        }
     }
     leggaa->SetFillStyle(0);
     leggaa->SetFillColor(0);
