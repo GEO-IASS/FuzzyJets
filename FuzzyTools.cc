@@ -403,8 +403,8 @@ FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet const& particles,
 
             // if the matrix is looking singular...
             if (sigma_update.xx+sigma_update.yy+sigma_update.xy < 0.01){
-                sigma_update.xx=0.1*0.1;
-                sigma_update.yy=0.1*0.1;
+                sigma_update.xx=0.5*0.5;
+                sigma_update.yy=0.5*0.5;
             }
 
              // updated sigma is junk if it had almost no contained pT
@@ -565,8 +565,8 @@ FuzzyTools::UpdateJetsGaussian(vecPseudoJet const& particles,
 
             // if the matrix is looking singular...
             if (sigma_update.xx+sigma_update.yy+sigma_update.xy < 0.01){
-                sigma_update.xx=0.1*0.1;
-                sigma_update.yy=0.1*0.1;
+                sigma_update.xx=0.5*0.5;
+                sigma_update.yy=0.5*0.5;
             }
 
             // updated sigma is junk if it had almost no contained pT
