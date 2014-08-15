@@ -817,6 +817,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     for (int pileup_idx = 0; pileup_idx < NPV; ++pileup_idx) {
         for (unsigned int particle_idx = 0; particle_idx < (unsigned)pythia_MB->event.size(); ++particle_idx) {
             if (!pythia_MB->event[particle_idx].isFinal()) continue;
+            if (fabs(pythia_MB->event[particle_idx].id())==11) continue;
             if (fabs(pythia_MB->event[particle_idx].id())==12) continue;
             if (fabs(pythia_MB->event[particle_idx].id())==14) continue;
             if (fabs(pythia_MB->event[particle_idx].id())==13) continue;
@@ -856,6 +857,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
 
         // prune uninteresting particles
         if (!pythia8->event[particle_idx].isFinal() )      continue; // only final state
+        if (fabs(pythia8->event[particle_idx].id())  ==11) continue; // ...   electron
         if (fabs(pythia8->event[particle_idx].id())  ==12) continue; // prune nu-e
         if (fabs(pythia8->event[particle_idx].id())  ==13) continue; // ...   mu
         if (fabs(pythia8->event[particle_idx].id())  ==14) continue; // ...   nu-mu
