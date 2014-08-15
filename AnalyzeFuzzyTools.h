@@ -242,7 +242,11 @@ std::vector<TH1D *> v_hists;
         if (hist_decs[hist_iter].draw_opts == "p") {
             leggaa->AddEntry(v_hists[hist_iter], hist_decs[hist_iter].legend_label.c_str(), "p");
         } else {
-            leggaa->AddEntry(v_hists[hist_iter], hist_decs[hist_iter].legend_label.c_str(), "f");
+            if (hist_decs[hist_iter].options == StyleTypes::STRIPED) {
+                leggaa->AddEntry(v_hists[hist_iter], hist_decs[hist_iter].legend_label.c_str(), "f");
+            } else {
+                leggaa->AddEntry(v_hists[hist_iter], hist_decs[hist_iter].legend_label.c_str(), "l");
+            }
         }
     }
     leggaa->SetFillStyle(0);
