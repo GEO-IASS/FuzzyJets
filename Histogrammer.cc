@@ -301,6 +301,69 @@ int fancyWeightHistos() {
     return num;
 }
 
+void pTOverlay() {
+    SetAtlasStyle();
+    SetupATLASStyle();
+    
+    static const std::string datasets_arr[] = {
+        "/u/at/chstan/nfs/summer_2014/ForConrad/files/20kevts_wprime_mu0_and_mu5_norec/2014_08_13_14h24m44s/",
+        "/u/at/chstan/nfs/summer_2014/ForConrad/files/20kevts_qcd_mu0_and_mu5_norec/2014_08_13_14h28m03s/",
+        "/u/at/chstan/nfs/summer_2014/ForConrad/files/500kevts_mu0_bothrec/2014_08_11_19h46m58s/"};
+   
+    static const std::string dataset_names_arr[] = {"W' m 600 GeV", "QCD: pT 300-700 GeV", "Z' m 1500 GeV"};
+
+    std::vector<std::string> datasets(datasets_arr, datasets_arr + sizeof(datasets_arr) / sizeof(datasets_arr[0]));
+ 
+    std::string out_dir = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/ptcomp/";
+
+    static const Int_t colors_arr[] = {kMagenta + 3, kViolet + 9, kTeal - 5, kGray + 3};
+
+    CanvasHelper c_dec_trimmed("pT [GeV]", "", "pT Comparison, W', Z', QCD", out_dir, 800, 800);
+    c_dec_trimmed.diff_scale = true;
+
+    std::vector<HistHelper> v_hist_decs;
+    for (unsigned int dataset_iter = 0; dataset_iter < datasets.size(); dataset_iter++) {
+        std::string dataset = datasets[dataset_iter];
+        std::string dataset_name = dataset_names_arr[dataset_iter];
+
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << dataset_name << ": anti-kt trimmed pT";
+        std::string title = ss.str();
+        ss.str(std::string());
+        ss << dataset << "10s_0mu_0lw_0rec.root";
+        std::string file_location = ss.str();
+        HistHelper hist_helper_temp(file_location, 
+                                    "antikt_pt_trimmed_three", title, 510, 0, 800, 100,
+                                    StyleTypes::NONE, colors_arr[dataset_iter], kFullCircle, "");
+        v_hist_decs.push_back(hist_helper_temp);
+    }
+    prettyHist<float>(v_hist_decs, c_dec_trimmed);
+
+    v_hist_decs.clear();
+
+    CanvasHelper c_dec_untrimmed("pT [GeV]", "", "Untrimmed pT Comparison, W', Z', QCD", out_dir, 800, 800);
+    c_dec_untrimmed.diff_scale = true;
+
+    for (unsigned int dataset_iter = 0; dataset_iter < datasets.size(); dataset_iter++) {
+        std::string dataset = datasets[dataset_iter];
+        std::string dataset_name = dataset_names_arr[dataset_iter];
+
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << dataset_name << ": anti-kt untrimmed pT";
+        std::string title = ss.str();
+        ss.str(std::string());
+        ss << dataset << "10s_0mu_0lw_0rec.root";
+        std::string file_location = ss.str();
+        HistHelper hist_helper_temp(file_location, 
+                                    "antikt_pt", title, 510, 0, 800, 100,
+                                    StyleTypes::NONE, colors_arr[dataset_iter], kFullCircle, "");
+        v_hist_decs.push_back(hist_helper_temp);
+    }
+    prettyHist<float>(v_hist_decs, c_dec_untrimmed);
+}
+
 int main(int argc, char *argv[]) {
     std::cout << "Called as: ";
     for (int i = 0; i < argc; i++) {
@@ -321,9 +384,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    int current_hist = fancyWeightHistos();
+
 
     SetAtlasStyle();
+
+    pTOverlay();
+    return 0;
+
+    int current_hist = fancyWeightHistos();
 
     static const int sizes_arr[] = {7, 8, 9, 10};
     static const int NPVs_arr[] = {0, 5};
