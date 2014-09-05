@@ -31,6 +31,7 @@ class FuzzyAnalysis{
     int  f_test;
     int  f_debug;
     double  f_size;
+    float pT_min;
     bool f_learn_weights;
     bool batched;
     bool should_print;
@@ -40,6 +41,24 @@ class FuzzyAnalysis{
 
     std::map<string, float*> tree_vars;
     std::map<string, std::vector<float> > map_weight_vecs;
+
+    std::vector<float> mGMM_weight_vec;
+    std::vector<float> mGMMs_weight_vec;
+    std::vector<float> mGMMc_weight_vec;
+    std::vector<float> mTGMM_weight_vec;
+    std::vector<float> mTGMMs_weight_vec;
+    std::vector<float> mUMM_weight_vec;
+
+    std::vector<float> mGMM_distance_vec;
+    std::vector<float> mGMMs_distance_vec;
+    std::vector<float> mGMMc_distance_vec;
+    std::vector<float> mTGMM_distance_vec;
+    std::vector<float> mTGMMs_distance_vec;
+    std::vector<float> mUMM_distance_vec;
+
+    std::vector<bool> is_pileup_vec;
+    std::vector<bool> is_lead_antikt_constituent_vec;
+    std::vector<bool> is_lead_antikt_trimmed_two_constituent_vec;
 
     #ifdef WITHROOT
     TFile *t_f;
@@ -57,18 +76,29 @@ class FuzzyAnalysis{
     float fTCA_m;
     float fTCA_pufrac;
     float fTCA_m_pu;
+    float fTCA_dr;
+    float fTCA_area;
+    std::vector<float> CA_nsubjettiness;
 
     float fTantikt_m;
-    float fTantikt_pt;
-    float fTantikt_m_trimmed_two;
-    float fTantikt_pt_trimmed_two;
-    float fTantikt_m_trimmed_three;
-    float fTantikt_pt_trimmed_three;
-    float fTantikt_pufrac_trimmed_two;
-    float fTantikt_pufrac_trimmed_three;
     float fTantikt_m_pu;
+    float fTantikt_pt;
+    float fTantikt_pufrac;
+    float fTantikt_dr;
+    float fTantikt_area;
+    std::vector<float> antikt_nsubjettiness;
+
+    float fTantikt_m_trimmed_two;
     float fTantikt_m_pu_trimmed_two;
+    float fTantikt_pt_trimmed_two;
+    float fTantikt_pufrac_trimmed_two;
+    float fTantikt_area_trimmed_two;
+
+    float fTantikt_m_trimmed_three;
     float fTantikt_m_pu_trimmed_three;
+    float fTantikt_pt_trimmed_three;
+    float fTantikt_pufrac_trimmed_three;
+    float fTantikt_area_trimmed_three;
 
     float fTmUMM_m;
     float fTmUMM_pt;
@@ -89,6 +119,9 @@ class FuzzyAnalysis{
     float fTmUMM_pufrac_hard;
     float fTmUMM_m_pu_soft;
     float fTmUMM_m_pu_hard;
+    float fTmUMM_dr;
+    std::vector<float> fTmUMM_etas;
+    std::vector<float> fTmUMM_phis;
 
     float fTmGMMs_m;
     float fTmGMMs_pt;
@@ -109,6 +142,9 @@ class FuzzyAnalysis{
     float fTmGMMs_pufrac_hard;
     float fTmGMMs_m_pu_soft;
     float fTmGMMs_m_pu_hard;
+    float fTmGMMs_dr;
+    std::vector<float> fTmGMMs_etas;
+    std::vector<float> fTmGMMs_phis;
 
     float fTmGMMc_m;
     float fTmGMMc_pt;
@@ -129,10 +165,15 @@ class FuzzyAnalysis{
     float fTmGMMc_pufrac_hard;
     float fTmGMMc_m_pu_soft;
     float fTmGMMc_m_pu_hard;
+    float fTmGMMc_dr;
+    std::vector<float> fTmGMMc_etas;
+    std::vector<float> fTmGMMc_phis;
     
     float fTmGMMc_r;
     float fTmGMMc_r_avg;
     float fTmGMMc_r_weighted_avg;
+    float fTmGMMc_r_second;
+    float fTmGMMc_r_third;
 
     float fTmTGMMs_m;
     float fTmTGMMs_pt;
@@ -153,6 +194,9 @@ class FuzzyAnalysis{
     float fTmTGMMs_pufrac_hard;
     float fTmTGMMs_m_pu_soft;
     float fTmTGMMs_m_pu_hard;
+    float fTmTGMMs_dr;
+    std::vector<float> fTmTGMMs_etas;
+    std::vector<float> fTmTGMMs_phis;
 
     float fTmGMM_m;
     float fTmGMM_pt;
@@ -173,6 +217,9 @@ class FuzzyAnalysis{
     float fTmGMM_pufrac_hard;
     float fTmGMM_m_pu_soft;
     float fTmGMM_m_pu_hard;
+    float fTmGMM_dr;
+    std::vector<float> fTmGMM_etas;
+    std::vector<float> fTmGMM_phis;
 
     float fTmTGMM_m;
     float fTmTGMM_pt;
@@ -193,12 +240,17 @@ class FuzzyAnalysis{
     float fTmTGMM_pufrac_hard;
     float fTmTGMM_m_pu_soft;
     float fTmTGMM_m_pu_hard;
+    float fTmTGMM_dr;
+    std::vector<float> fTmTGMM_etas;
+    std::vector<float> fTmTGMM_phis;
 
     fastjet::JetDefinition     *m_jet_def;
     fastjet::JetDefinition     *m_jet_def_large_r_antikt;
     fastjet::JetDefinition     *m_jet_def_large_r_ca;
     fastjet::JetDefinition     *m_jet_def_vlarge_r_antikt;
     fastjet::JetDefinition     *m_jet_def_vlarge_r_ca;
+
+    
 
  public:
     FuzzyAnalysis ();
@@ -208,12 +260,16 @@ class FuzzyAnalysis{
     void SetupHistosMap();
     void WriteHistosMap();
     void SubstructureStudy(vecPseudoJet ca_jets, vecPseudoJet antikt_jets, int event_iter);
+    void AnalyzeEventNew(int i_evt, Pythia8::Pythia *pythia8, Pythia8::Pythia *pythia_MB, int NPV);
     void AnalyzeEvent(int i_evt, Pythia8::Pythia *pythia8, Pythia8::Pythia *pythia_MB, int NPV);
     void End();
     void DeclareBranches();
     void ResetBranches();
     void Debug(int debug){
         f_debug = debug;
+    }
+    void SetPtMin(float p) {
+        pT_min = p;
     }
     void SetOutName(string outname){
         f_out_name = outname;

@@ -15,7 +15,7 @@ void ATLAS_LABEL(Double_t x,Double_t y,Color_t color)
     l.SetNDC();
     l.SetTextFont(72);
     l.SetTextColor(color);
-    l.DrawLatex(x,y,"ATLAS");
+    l.DrawLatex(x,y,"PYTHIA 8");
 }
 
 TGraphErrors* myTGraphErrorsDivide(TGraphErrors* g1,TGraphErrors* g2) {

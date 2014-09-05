@@ -2,5 +2,6 @@
 #define ROOTCONF_H
 
 #define WITHROOT
+//#define NEW
 
 #endif

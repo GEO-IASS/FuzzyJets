@@ -6,11 +6,13 @@
 #include <utility>
 #include <unordered_map>
 
+#include <TROOT.h>
 #include <TColor.h>
 #include <TLine.h>
 
 #include "AnalyzeFuzzyTools.h"
 #include "AtlasStyle.h"
+#include "Event.h"
 
 #include "boost/program_options.hpp"
 
@@ -364,6 +366,107 @@ void pTOverlay() {
     prettyHist<float>(v_hist_decs, c_dec_untrimmed);
 }
 
+void EventTest() {
+    //std::string qcd_location = "/u/at/chstan/nfs/summer_2014/ForConrad/files/200kevts_qcd_mu0/2014_08_23_21h38m37s/10s_0mu_0lw_0rec.root";
+    //std::string wprime_location = "/u/at/chstan/nfs/summer_2014/ForConrad/files/200kevts_wprime_mu0/2014_08_23_20h48m29s/10s_0mu_0lw_0rec.root";
+    //std::string zprime_location = "/u/at/chstan/nfs/summer_2014/ForConrad/files/200kevts_zprime_mu0/2014_08_23_20h39m44s/10s_0mu_0lw_0rec.root";
+
+    std::string qcd_location = "/u/at/chstan/nfs/summer_2014/ForConrad/files/200kevts_qcd_mu0/2014_08_25_17h11m54s/10s_0mu_0lw_1rec.root";
+    std::string wprime_location = "/u/at/chstan/nfs/summer_2014/ForConrad/files/200kevts_wprime_mu0/2014_08_25_14h46m21s/10s_0mu_0lw_1rec.root";
+    std::string zprime_location = "/u/at/chstan/nfs/summer_2014/ForConrad/files/200kevts_zprime_mu0/2014_08_25_14h59m29s/10s_0mu_0lw_1rec.root";
+
+    static const std::vector<std::string> all_algs {"mGMM", "mGMMs", "mGMMc", "mTGMM", "mTGMMs", "mUMM", "CA", "antikt"};
+    static const std::vector<std::string> algs {"mGMM", "mGMMs", "mGMMc", "mTGMM", "mTGMMs", "mUMM"};
+    static const std::vector<std::string> event_labels {"qcd", "wprime", "zprime"};
+
+    static const std::vector<float> pT_bins {0, 250, 300, 350, 400, 450, 500, 550, 600, 700, 1000};
+
+    EventManager manager;
+    manager.SetQCDLocation(qcd_location);
+    manager.SetWprimeLocation(wprime_location);
+    manager.SetZprimeLocation(zprime_location);
+
+    // INSTALL HISTOGRAMS
+    // SOME TESTS FIRST
+    manager << new FuzzyAntiktPtCorrelation()
+
+    // RADIUS PLOTS
+            << new RadiusComparisonHistogram()
+            << new AverageRadiusComparisonHistogram()
+
+
+    // POSTER STUFF
+            << new SigmaJetSizeCorrelationPoster()
+            << new SigmaEfficiencyPosterPlot()
+            << new SkewEfficiencyPlot()
+            << new SkewHistogram();
+
+    // Tagging efficiencies using sigma
+    for (unsigned int event_label_iter = 0; event_label_iter < event_labels.size(); event_label_iter++) {
+        for (unsigned int other_event_label_iter = 0; other_event_label_iter < event_labels.size(); other_event_label_iter++) {
+            for (unsigned int pT_bin_iter = 0; pT_bin_iter < pT_bins.size() - 1; pT_bin_iter++) {
+                if (event_label_iter == other_event_label_iter) continue;
+                std::string event_label = event_labels[event_label_iter];
+                std::string other_event_label = event_labels[other_event_label_iter];
+                float cut_low = pT_bins[pT_bin_iter];
+                float cut_high = pT_bins[pT_bin_iter + 1];
+                manager << new SigmaEfficiencyPlot(event_label, other_event_label, cut_low, cut_high);
+                for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
+                    std::string alg = algs[alg_iter];
+                    manager << new FuzzyJetMassEfficiencyPlot(event_label, other_event_label, alg, cut_low, cut_high);
+                }
+            }
+        }
+    }
+
+    // DeltaR plots
+    for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
+        std::string alg = algs[alg_iter];
+        manager << new DeltaRHistogram(alg);
+    }
+
+    // Weight distance correlation plots
+    for (unsigned int event_label_iter = 0; event_label_iter < event_labels.size(); event_label_iter++) {
+        for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
+            std::string event_label = event_labels[event_label_iter];
+            std::string alg = algs[alg_iter];
+            manager << new WeightDistanceCorrelation(event_label, alg);
+        }
+    }
+    
+    // Mass and pT correlation plots
+    for (unsigned int event_label_iter = 0; event_label_iter < event_labels.size(); event_label_iter++) {
+        for (unsigned int alg_iter = 0; alg_iter < all_algs.size(); alg_iter++) {
+            for (unsigned int other_alg_iter = 0; other_alg_iter < all_algs.size(); other_alg_iter++) {
+                std::string event_label = event_labels[event_label_iter];
+                std::string alg = all_algs[alg_iter];
+                std::string other_alg = all_algs[other_alg_iter];
+                manager << new MassCorrelation(event_label, alg, other_alg);
+                manager << new PtCorrelation(event_label, alg, other_alg);
+            }
+        }
+    }
+    
+    for (unsigned int event_label_iter = 0; event_label_iter < event_labels.size(); event_label_iter++) {
+        for (unsigned int alg_iter = 0; alg_iter < all_algs.size(); alg_iter++) {
+                std::string event_label = event_labels[event_label_iter];
+                std::string alg = all_algs[alg_iter];
+                manager << new SigmaJetSizeCorrelation(event_label, alg);
+        }
+    }
+
+    // Start running the analysis
+    manager.SetEventCount(40000);
+    manager.Init();
+    manager.PreparePtReweighting();
+
+    manager.StartUpdaters();
+    while (manager.NextEvent()) {
+        manager.UpdateUpdaters();
+    }
+    manager.FinishUpdaters();
+}
+
 int main(int argc, char *argv[]) {
     std::cout << "Called as: ";
     for (int i = 0; i < argc; i++) {
@@ -388,8 +491,11 @@ int main(int argc, char *argv[]) {
 
     SetAtlasStyle();
 
-    pTOverlay();
+    gROOT->ProcessLine("#include <vector>");
+    EventTest();
     return 0;
+
+    pTOverlay();
 
     int current_hist = fancyWeightHistos();
 

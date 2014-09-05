@@ -6,8 +6,8 @@
 # Note: source setup.sh before make             #
 # --------------------------------------------- #
 OPTIMIZATION = -O3
-CXXFLAGS = -Wall -Wextra -equal -Wshadow -Werror -Wno-shadow -fstack-protector-all
-CXXFLAGSEXTRA = -std=c++0x -g
+CXXFLAGS = -Wall -Wextra -equal -Werror -Wno-shadow -fstack-protector-all -Wno-unused-but-set-variable
+CXXFLAGSEXTRA = -g -std=c++0x
 CXX = g++
 
 # Are we profiling?
@@ -32,17 +32,25 @@ FASTJETFLAGS = `$(FASTJETLOCATION)/bin/fastjet-config --cxxflags --plugins`
 
 all: Fuzzy Histogrammer
 
-Histogrammer: Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so
-	$(CXX) Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so -o $@ \
+Histogrammer: Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so Event.so Histogram.so
+	$(CXX) Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so Event.so Histogram.so -o $@ \
 	$(CXXFLAGS) $(CXXFLAGSEXTRA) $(ROOTLIBSREAL) \
 	-L$(BOOSTLIBLOCATION) -lboost_program_options
 
-Histogrammer.so: Histogrammer.cc AnalyzeFuzzyTools.so AtlasUtils.so
+Histogrammer.so: Histogrammer.cc AnalyzeFuzzyTools.so AtlasUtils.so Event.so Histogram.so
 	$(CXX) -o $@ -c $< \
 	$(CXXFLAGS) $(CXXFLAGSEXTRA) -fPIC -shared $(ROOTFLAGSREAL) \
 	-isystem $(BOOSTINCDIR)
 
 AnalyzeFuzzyTools.so: AnalyzeFuzzyTools.cc AnalyzeFuzzyTools.h
+	$(CXX) -o $@ -c $<  \
+	$(CXXFLAGS) $(CXXFLAGSEXTRA) -fPIC -shared $(ROOTFLAGSREAL) \
+
+Event.so: Event.cc Event.h
+	$(CXX) -o $@ -c $<  \
+	$(CXXFLAGS) $(CXXFLAGSEXTRA) -fPIC -shared $(ROOTFLAGSREAL) \
+
+Histogram.so: Histogram.cc Histogram.h
 	$(CXX) -o $@ -c $<  \
 	$(CXXFLAGS) $(CXXFLAGSEXTRA) -fPIC -shared $(ROOTFLAGSREAL) \
 
@@ -71,7 +79,7 @@ FuzzyTools.so : FuzzyTools.cc FuzzyTools.h
 FuzzyAnalysis.so : FuzzyAnalysis.cc FuzzyAnalysis.h
 	$(CXX) -o $@ -c $< $(PROFILER) \
 	$(CXXFLAGS) $(OPTIMIZATION) -fPIC -shared $(FASTJETFLAGS) \
-	-isystem $(PYTHIA8LOCATION)/include $(ROOTFLAGS)
+	-isystem $(PYTHIA8LOCATION)/include $(ROOTFLAGS) -INsubjettiness
 
 clean:
 	rm -rf *.exe

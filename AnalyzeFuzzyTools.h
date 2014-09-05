@@ -152,7 +152,7 @@ std::string fileify(std::string text);
 
 void SetupATLASStyle();
 
-void DrawAtlasLabel(std::string title);
+void DrawAtlasLabel(std::string title, double x = 0.2, double y = 0.88);
 
 
 // pretty mass histograms

@@ -45,6 +45,77 @@ public:
     }
 };
 
+#ifdef NEW
+class FuzzyTools;
+
+class AbstractKernel {
+protected:
+    std::vector<double> _weights;
+    double _mu_x, _mu_y;
+    double _weight;
+public:
+    AbstractKernel() {}
+    
+    virtual ~AbstractKernel() {}
+
+    virtual double PDF(double x, double y) = 0;
+
+    virtual void SetParticleWeight(int index, double value) {
+        _weights.at(index) = value;
+    }
+
+    virtual void AdditionalUpdate(vecPseudoJet const& particles,
+                                  FuzzyTools const& tool,
+                                  double cluster_weighted_pt) = 0;
+
+    double Weight() {
+        return _weight;
+    }
+
+    void SetLocation(double mu_x, double mu_y) {
+        _mu_x = mu_x;
+        _mu_y = mu_y;
+    }
+
+    void SetWeight(double new_weight) {
+        _weight = new_weight;
+    }
+
+    std::vector<double> const& ParticleWeights() {
+        return _weights;
+    }
+};
+
+class GaussianKernel : public AbstractKernel {
+    double _mu_x, _mu_y;
+    MatTwo _sigma;
+    
+public:
+    GaussianKernel(double weight, double mu_x, double mu_y, MatTwo sigma) 
+        :_mu_x(mu_x), _mu_y(mu_y), _sigma(sigma) {
+        _weight = weight;
+    }
+
+    ~GaussianKernel() {}
+
+    virtual double PDF(double x, double y);
+
+    virtual void AdditionalUpdate(vecPseudoJet const& particles,
+                                  FuzzyTools const& tool,
+                                  double cluster_weighted_pt);
+};
+
+void ClusterFuzzy(vecPseudoJet const& particles,
+                  vector<AbstractKernel *> & jets,
+                  FuzzyTools const& tool);
+
+set<unsigned int> ClustersForRemoval(FuzzyTools const& tool,
+                                     vector<AbstractKernel *>& jets);
+
+vector<GaussianKernel *>
+MakeGaussianKernels(FuzzyTools const& tool);
+#endif
+
 /* TODO:
  * There is no need to pass around constants giving cluster size etc,
  * as they can be extracted locally out of the C++ vector, which gives
@@ -146,6 +217,30 @@ class FuzzyTools {
 
     void SetAlpha(double a) {
         alpha = a;
+    }
+
+    double GetAlpha() const {
+        return alpha;
+    }
+
+    MatTwo GetDefaultSigma() const {
+        return default_sigma;
+    }
+
+    vecPseudoJet const& GetSeeds() const {
+        return seeds;
+    }
+
+    int GetMaxIters() const {
+        return max_iters;
+    }
+
+    bool GetLearnWeights() const {
+        return learn_weights;
+    }
+
+    Mode GetClusteringMode() const {
+        return clustering_mode;
     }
 
     set<unsigned int> ClustersForRemovalGaussian(vecPseudoJet const& mGMM_jets,
@@ -252,6 +347,17 @@ class FuzzyTools {
                       int iter);
 
     void NewEventDisplay(vecPseudoJet const& particles,
+                         vecPseudoJet const& ca_jets,
+                         vecPseudoJet const& tops,
+                         vecPseudoJet const& mGMM_jets,
+                         vector<vector<double> > const& weights,
+                         int which,
+                         vector<MatTwo> const& mGMM_jets_params,
+                         vector<double> const& mGMM_weights,
+                         std::string const& out,
+                         int iter);
+
+    void NewEventDisplayPoster(vecPseudoJet const& particles,
                          vecPseudoJet const& ca_jets,
                          vecPseudoJet const& tops,
                          vecPseudoJet const& mGMM_jets,

@@ -25,6 +25,7 @@
 #include "ROOTConf.h"
 
 #ifdef WITHROOT
+#include "TROOT.h"
 #include "TString.h"
 #include "TSystem.h"
 #include "TError.h"
@@ -51,6 +52,11 @@ void eventLoop (int n_events, Pythia8::Pythia *pythia8,
 }
 
 int main(int argc, char* argv[]){
+    // Make sure we can write vectors
+    #ifdef WITHROOT
+    gROOT->ProcessLine("#include <vector>");
+    #endif
+
     // argument parsing  ------------------------
     cout << "Called as: ";
     for(int ii=0; ii<argc; ++ii){
@@ -63,6 +69,7 @@ int main(int argc, char* argv[]){
     int f_debug  = 0;
     int NPV = -1;
     double size = -1;
+    float pT_min = 5;
     bool learn_weights = false;
     bool is_batch = false;
     bool do_recombination = true;
@@ -80,6 +87,7 @@ int main(int argc, char* argv[]){
         ("Size",    po::value<double>(&size)->default_value(-1), "Internal size variable for Fuzzy Clustering")
         ("LearnWeights", po::value<bool>(&learn_weights)->default_value(false), "Whether to learn cluster weights")
         ("PythiaConfig", po::value<string>(&pythia_config_name)->default_value("configs/default.pythia"), "Pythia configuration file location")
+        ("pTMin", po::value<float>(&pT_min)->default_value(5), "Minimum pT for standard jets. (Including those used as seeds")
         ("Batch",   po::value<bool>(&is_batch)->default_value(false), "Is this running on the batch?")
         ("Recombination", po::value<bool>(&do_recombination)->default_value(true), "Should we use fixed clusters or all particles with recombination?")
         ("Directory", po::value<string>(&directory)->default_value("results/tmp/"), "Directory in which to place results (.root files etc.)");
@@ -159,7 +167,7 @@ int main(int argc, char* argv[]){
             ss.clear();
             ss.str("");
             ss << current_npv << ".root";
-
+            analysis->SetPtMin(pT_min);
             analysis->SetRecombination(do_recombination);
             analysis->SetOutName(ss.str());
             analysis->SetPrefix(directory);
@@ -186,6 +194,7 @@ int main(int argc, char* argv[]){
             analysis->SetPrefix(directory);
             analysis->SetBatched(false);
         }
+        analysis->SetPtMin(pT_min);
         analysis->SetRecombination(do_recombination);
         analysis->SetShouldPrint(false);
         analysis->SetSize(size);
