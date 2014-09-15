@@ -11,7 +11,7 @@ setup_ROOT() {
 }
 
 setup_fastjet() {
-    export FASTJETLOCATION=/u/at/pnef/Work/Code/fastjet-install/
+    export FASTJETLOCATION=/u/at/chstan/nfs/src/fastjet-install/
     export LD_LIBRARY_PATH=${FASTJETPATH}lib/:$LD_LIBRARY_PATH
 }
 

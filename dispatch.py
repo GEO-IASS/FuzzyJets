@@ -33,12 +33,12 @@ def submit_fuzzy(mu, size, lw, rec, cut, n_events, i, unique_id):
               "--NPV", str(mu),  "--Size", str(size_s),
               "--PythiaConfig", pythia_conf,
               "--LearnWeights", lw_flag, "--Recombination", rec_flag,
-              "pTMin", cut, "--Batch", "1"]
+              "--pTMin", str(cut), "--Batch", "1"]
     subprocess.call(submit)
 
 workdir = "/u/at/chstan/nfs/summer_2014/ForConrad/"
 
-pythia_conf = workdir + "configs/qcd_batch.pythia"
+pythia_conf = workdir + "configs/default_batch.pythia"
 
 cwd = os.getcwd() + "/"
 subfile = cwd + "_batchSingleSub.sh"
@@ -50,7 +50,7 @@ n_jobs = 10
 n_jobs_patch = 5
 queue = 'xlong'
 
-name = '200kevts_qcd_mu0'
+name = '50kevts_zprime_mu0'
 outdir = cwd + 'files/' + name + '/' + time_postfix
 safe_mkdir(outdir)
 
@@ -67,7 +67,7 @@ for current_mu in NPVs:
     for current_size in sizes:
         for current_lw in learnWeights:
             for current_rec in recombinations:
-                for pT_cut in pT_cuts:
+                for current_pT_cut in pT_cuts:
                     out_base = file_name(outdir, False, current_size, current_lw, current_mu, current_rec, current_pT_cut)
                     cleanup_base = file_name(outdir, True, current_size, current_lw, current_mu, current_rec, current_pT_cut)
                     cleanup_command = "hadd " + out_base + ".root" + " " \
@@ -83,7 +83,7 @@ for current_mu in NPVs:
     for current_size in sizes:
         for current_lw in learnWeights:
             for current_rec in recombinations:
-                for pT_cut in pT_cuts:
+                for current_pT_cut in pT_cuts:
                     for current_job in range(n_jobs_patch):
                         submit_fuzzy(current_mu, current_size, current_lw, current_rec, current_pT_cut, events_per_job, current_job, j)
                         j += 1

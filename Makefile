@@ -63,7 +63,8 @@ Fuzzy:  Fuzzy.so FuzzyTools.so FuzzyAnalysis.so
 	$(CXXFLAGS) $(OPTIMIZATION) $(ROOTLIBS) \
 	-L$(FASTJETLOCATION)/lib $(FASTJETLIBS) \
 	-L$(PYTHIA8LOCATION)/lib -lpythia8 -llhapdfdummy \
-	-L$(BOOSTLIBLOCATION) -lboost_program_options
+	-L$(BOOSTLIBLOCATION) -lboost_program_options -lNsubjettiness
+
 
 Fuzzy.so: Fuzzy.C    FuzzyTools.so FuzzyAnalysis.so
 	$(CXX) -o $@ -c $< $(PROFILER)  \
