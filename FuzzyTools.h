@@ -155,6 +155,8 @@ class FuzzyTools {
     double merge_dist;
     double min_weight;
     double min_sigma;
+   
+    double log_log_likelihood_limit;
 
     int cluster_count;
     Mode clustering_mode;
@@ -171,6 +173,10 @@ class FuzzyTools {
 
     void SetDefaultSigma(MatTwo s) {
         default_sigma = s;
+    }
+   
+    void SetLogLogLikelihoodLimit(double l) {
+        log_log_likelihood_limit = l;
     }
 
     void SetLearnWeights(bool b) {
@@ -326,6 +332,20 @@ class FuzzyTools {
                                        vector<vector<double> >* weights,
                                        vector<MatTwo>* mTGMM_jets_params_out,
                                        vector<double>* mTGMM_weights);
+
+    double LogLikelihoodGaussian(vecPseudoJet const& particles,
+                                 vecPseudoJet const& mGMM_jets,
+                                 vector<MatTwo> const& mGMM_jets_params,
+                                 vector<double> const& mGMM_weights);
+
+    double LogLikelihoodTruncGaus(vecPseudoJet const& particles,
+                                  vecPseudoJet const& mTGMM_jets,
+                                  vector<MatTwo> const& mTGMM_jets_params,
+                                  vector<double> const& mTGMM_weights);
+
+    double LogLikelihoodUniform(vecPseudoJet const& particles,
+                                vecPseudoJet const& mUMM_jets,
+                                vector<double> const& mUMM_weights);
 
     void SubsEventDisplay(vecPseudoJet const& particles,
                           vecPseudoJet const& mGMM_jets,

@@ -11,6 +11,7 @@
 #include "fastjet/tools/Filter.hh"
 #include "fastjet/Selector.hh"
 #include "fastjet/contrib/Nsubjettiness.hh"
+#include "fastjet/contrib/Njettiness.hh"
 
 #include "Pythia8/Pythia.h"
 
@@ -905,6 +906,7 @@ void FuzzyAnalysis::AnalyzeEventNew(int event_iter, Pythia8::Pythia* pythia8, Py
     tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
     tool->SetSeeds(particles_for_jets);
     tool->SetR(1.0);
+    tool->SetLogLogLikelihoodLimit(-10);
     vector<GaussianKernel *> gaussian_jets = MakeGaussianKernels(*tool);
 }
 #endif
@@ -998,9 +1000,9 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     fastjet::AreaDefinition area_def(fastjet::active_area, area_spec);
 
     // N Subjettiness
-    NSubjettiness n_subjettiness_1(1, NJettiness::kt_axes, 1, 1, 1);
-    NSubjettiness n_subjettiness_2(2, NJettiness::kt_axes, 1, 1, 1);
-    NSubjettiness n_subjettiness_3(3, NJettiness::kt_axes, 1, 1, 1);
+    fastjet::contrib::Nsubjettiness n_subjettiness_1(1, fastjet::contrib::Njettiness::kt_axes, 1, 1, 1);
+    fastjet::contrib::Nsubjettiness n_subjettiness_2(2, fastjet::contrib::Njettiness::kt_axes, 1, 1, 1);
+    fastjet::contrib::Nsubjettiness n_subjettiness_3(3, fastjet::contrib::Njettiness::kt_axes, 1, 1, 1);
 
     // large-R jets: C/A --------------------
     fastjet::ClusterSequenceArea cs_large_r_ca(particles_for_jets, *m_jet_def_large_r_ca, area_def);
