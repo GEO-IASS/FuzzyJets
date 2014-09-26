@@ -1,4 +1,7 @@
+#include <sstream>
+
 #include "Event.h"
+
 #include <TH2.h>
 #include <TStyle.h>
 
@@ -19,6 +22,40 @@ void EventBuffer::Init()
    is_pileup_vec = 0;
    is_lead_antikt_constituent_vec = 0;
    is_lead_antikt_trimmed_two_constituent_vec = 0;
+
+   CA_nsubjettiness = 0;
+   antikt_nsubjettiness = 0;
+   
+   mGMM_etas = 0;
+   mGMM_phis = 0;
+   mGMMc_etas = 0;
+   mGMMc_phis = 0;
+   mGMMs_etas = 0;
+   mGMMs_phis = 0;
+   mTGMM_etas = 0;
+   mTGMM_phis = 0;
+   mTGMMs_etas = 0;
+   mTGMMs_phis = 0;
+   mUMM_etas = 0;
+   mUMM_phis = 0;
+
+   _tree->SetBranchAddress("CA_area", &CA_area, &b_CA_area);
+   _tree->SetBranchAddress("antikt_area", &antikt_area, &b_antikt_area);
+   _tree->SetBranchAddress("antikt_area_trimmed_two", &antikt_area_trimmed_two, &b_antikt_area_trimmed_two);
+   _tree->SetBranchAddress("antikt_area_trimmed_three", &antikt_area_trimmed_three, &b_antikt_area_trimmed_three);
+
+   _tree->SetBranchAddress("mGMM_etas", &mGMM_etas, &b_mGMM_etas);
+   _tree->SetBranchAddress("mGMM_phis", &mGMM_phis, &b_mGMM_phis);
+   _tree->SetBranchAddress("mGMMc_etas", &mGMMc_etas, &b_mGMMc_etas);
+   _tree->SetBranchAddress("mGMMc_phis", &mGMMc_phis, &b_mGMMc_phis);
+   _tree->SetBranchAddress("mGMMs_etas", &mGMMs_etas, &b_mGMMs_etas);
+   _tree->SetBranchAddress("mGMMs_phis", &mGMMs_phis, &b_mGMMs_phis);
+   _tree->SetBranchAddress("mTGMM_etas", &mTGMM_etas, &b_mTGMM_etas);
+   _tree->SetBranchAddress("mTGMM_phis", &mTGMM_phis, &b_mTGMM_phis);
+   _tree->SetBranchAddress("mTGMMs_etas", &mTGMMs_etas, &b_mTGMMs_etas);
+   _tree->SetBranchAddress("mTGMMs_phis", &mTGMMs_phis, &b_mTGMMs_phis);
+   _tree->SetBranchAddress("mUMM_etas", &mUMM_etas, &b_mUMM_etas);
+   _tree->SetBranchAddress("mUMM_phis", &mUMM_phis, &b_mUMM_phis);
 
    _tree->SetBranchAddress("EventNumber", &EventNumber, &b_EventNumber);
    _tree->SetBranchAddress("NPV", &NPV, &b_NPV);
@@ -181,6 +218,24 @@ void EventBuffer::Init()
    _tree->SetBranchAddress("mUMM_pufrac_soft", &mUMM_pufrac_soft, &b_mUMM_pufrac_soft);
    _tree->SetBranchAddress("mUMM_ucpu", &mUMM_ucpu, &b_mUMM_ucpu);
    _tree->SetBranchAddress("toppt", &toppt, &b_toppt);
+}
+
+void EventManager::InstallEvent(std::string name, std::string location) {
+    std::stringstream ss;
+    ss.str(std::string());
+    ss << "_pT_spectrum_" << name; 
+    TH1F *spectrum = new TH1F(ss.str().c_str(), "", _n_pT_bins, _pT_low, _pT_high);
+    _pT_spectra.push_back(spectrum);
+    _pT_spectrum_map[name] = spectrum;
+    TFile *f = TFile::Open(location.c_str(), "READ");
+    TTree *t = (TTree *) f->Get("EventTree");
+    
+    EventBuffer *buffer = new EventBuffer();
+    buffer->SetTree(t);
+    _event_buffers.push_back(buffer);
+    _event_buffer_map[name] = buffer;
+    _event_buffer_labels.push_back(name);
+    _event_buffer_locations.push_back(location);
 }
 
 EventManager& operator<< (EventManager &manager, UpdatesOnEvent* updater) {

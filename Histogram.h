@@ -235,6 +235,55 @@ public:
     void Update(EventManager const* event_manager);
 };
 
+class ScatterBase : public UpdatesOnEvent {
+protected:
+    Color_t _color;
+    Style_t _style;
+    
+    std::string _title;
+    std::string _outfile_name;
+    
+    unsigned int _canvas_x, _canvas_y;
+
+    std::vector<float> _xs, _ys;
+
+    std::string _x_label, _y_label;
+
+    ScatterBase() {
+        _outfile_name = "UNNAMED.PDF";
+        _title = "UNTITLED";
+        
+        _x_label = "X_LABEL";
+        _y_label = "Y_LABEL";
+        
+        _canvas_x = _canvas_y = 800;        
+    }
+public:
+    virtual void Finish(EventManager const* event_manager);
+};
+
+class JetMultiplicityPtCut : public ScatterBase {
+protected:
+    std::string _event_label_base;
+    std::vector<float> _ns;
+public:
+    JetMultiplicityPtCut(std::string event_label_base) {
+        _event_label_base = event_label_base;
+        _xs = {5, 15, 25, 50};
+        _ys = {0, 0, 0, 0};
+        _ns = {0, 0, 0, 0}; // need to keep track of moving averages
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << _event_label_base << "_JetMultiplicityPtCut.pdf";
+        _outfile_name = ss.str();
+        _x_label = "p_{T} Cut";
+        _y_label = "Average CA Jet Multiplicity";
+        _color = kBlack;
+        _style = 20;
+    }
+    void Update(EventManager const* event_manager);
+};
+
 class StackedHistogramBase : public UpdatesOnEvent {
 protected:
     const static unsigned int _root_name_length = 20;
@@ -291,6 +340,7 @@ public:
             _hists.push_back(new TH1F(_root_names.at(iter), _title.c_str(), _n_bins, _low, _high));
         }
     }
+
     virtual void Finish(EventManager const* event_manager);
 };
 
@@ -498,6 +548,47 @@ public:
         _title = "Z'#rightarrow t#bar{t}";
         _outfile_name = "SigmaSizeCorrelationPoster.pdf";
     }
+    void Update(EventManager const* event_manager);
+};
+
+class SigmaAreaCorrelation : public CorrelationBase {
+protected:
+    std::string _event_label;
+    std::string _alg_branch;
+public:
+    SigmaAreaCorrelation(std::string event_label, std::string alg) {
+        _event_label = event_label;
+        
+        if (alg == "antikt") {
+            _x_low = 0;
+            _x_high = 1.2;
+            _y_low = 2.8;
+            _y_high = 3.6;
+        } else {
+            _x_low = 0;
+            _x_high = 1;
+            _y_low = 0.5;
+            _y_high = 4.5;
+        }
+
+        _canvas_x = 1200;
+        _canvas_y = 1200;
+        
+        _n_bins_x = _n_bins_y = 20;
+        _x_label = "Leading jet #sigma^{2}";
+        _y_label = alg + " jet area";
+
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << _event_label << "_" << alg << "_SigmaAreaCorrelation.pdf";
+        _outfile_name = ss.str();
+        _title = _event_label;
+
+        ss.str(std::string());
+        ss << alg << "_area";
+        _alg_branch = ss.str();
+    }
+
     void Update(EventManager const* event_manager);
 };
 

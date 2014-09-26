@@ -37,6 +37,28 @@ public:
    std::vector<bool>    *is_pileup_vec;
    std::vector<bool>    *is_lead_antikt_constituent_vec;
    std::vector<bool>    *is_lead_antikt_trimmed_two_constituent_vec;
+
+   std::vector<float>   *CA_nsubjettiness;
+   std::vector<float>   *antikt_nsubjettiness;
+
+   std::vector<float>   *mGMM_etas;
+   std::vector<float>   *mGMM_phis;
+   std::vector<float>   *mGMMc_etas;
+   std::vector<float>   *mGMMc_phis;
+   std::vector<float>   *mGMMs_etas;
+   std::vector<float>   *mGMMs_phis;
+   std::vector<float>   *mTGMM_etas;
+   std::vector<float>   *mTGMM_phis;
+   std::vector<float>   *mTGMMs_etas;
+   std::vector<float>   *mTGMMs_phis;
+   std::vector<float>   *mUMM_etas;
+   std::vector<float>   *mUMM_phis;
+
+   Float_t         CA_area;
+   Float_t         antikt_area;
+   Float_t         antikt_area_trimmed_two;
+   Float_t         antikt_area_trimmed_three;
+
    Float_t         CA_dr;
    Float_t         CA_m;
    Float_t         CA_m_pu;
@@ -200,6 +222,28 @@ public:
    TBranch        *b_is_pileup_vec;   //!
    TBranch        *b_is_lead_antikt_constituent_vec;   //!
    TBranch        *b_is_lead_antikt_trimmed_two_constituent_vec;   //!
+
+   TBranch        *b_mGMM_etas;
+   TBranch        *b_mGMM_phis;
+   TBranch        *b_mGMMc_etas;
+   TBranch        *b_mGMMc_phis;
+   TBranch        *b_mGMMs_etas;
+   TBranch        *b_mGMMs_phis;
+   TBranch        *b_mTGMM_etas;
+   TBranch        *b_mTGMM_phis;
+   TBranch        *b_mTGMMs_etas;
+   TBranch        *b_mTGMMs_phis;
+   TBranch        *b_mUMM_etas;
+   TBranch        *b_mUMM_phis;
+
+   TBranch        *b_CA_nsubjettiness;
+   TBranch        *b_antikt_nsubjettiness;
+
+   TBranch        *b_CA_area;
+   TBranch        *b_antikt_area;
+   TBranch        *b_antikt_area_trimmed_two;
+   TBranch        *b_antikt_area_trimmed_three;
+
    TBranch        *b_CA_dr;   //!
    TBranch        *b_CA_m;   //!
    TBranch        *b_CA_m_pu;   //!
@@ -346,6 +390,27 @@ public:
    TBranch        *b_toppt;   //!
 
    EventBuffer() {
+       _raw_member_locations["CA_area"] = &CA_area;
+       _raw_member_locations["antikt_area"] = &antikt_area;
+       _raw_member_locations["antikt_area_trimmed_two"] = &antikt_area_trimmed_two;
+       _raw_member_locations["antikt_area_trimmed_three"] = &antikt_area_trimmed_three;
+
+       _raw_member_locations["CA_nsubjettiness"] = &CA_nsubjettiness;
+       _raw_member_locations["antikt_nsubjettiness"] = &antikt_nsubjettiness;
+
+       _raw_member_locations["mGMM_etas"] = &mGMM_etas;
+       _raw_member_locations["mGMM_phis"] = &mGMM_phis;
+       _raw_member_locations["mGMMc_etas"] = &mGMMc_etas;
+       _raw_member_locations["mGMMc_phis"] = &mGMMc_phis;
+       _raw_member_locations["mGMMs_etas"] = &mGMMs_etas;
+       _raw_member_locations["mGMMs_phis"] = &mGMMs_phis;
+       _raw_member_locations["mTGMM_etas"] = &mTGMM_etas;
+       _raw_member_locations["mTGMM_phis"] = &mTGMM_phis;
+       _raw_member_locations["mTGMMs_etas"] = &mTGMMs_etas;
+       _raw_member_locations["mTGMMs_phis"] = &mTGMMs_phis;
+       _raw_member_locations["mUMM_etas"] = &mUMM_etas;
+       _raw_member_locations["mUMM_phis"] = &mUMM_phis;
+
        _raw_member_locations["EventNumber"] = &EventNumber;
        _raw_member_locations["NPV"] = &NPV;
        _raw_member_locations["mGMM_weight_vec"] = &mGMM_weight_vec;
@@ -528,124 +593,100 @@ class EventManager {
 protected:
     std::vector<UpdatesOnEvent*> _to_update;
     
-    TH1F *_pT_spectrum_qcd;
-    TH1F *_pT_spectrum_wprime;
-    TH1F *_pT_spectrum_zprime;
+    std::vector<EventBuffer*> _event_buffers;
+    std::vector<std::string> _event_buffer_locations;
+    std::vector<std::string> _event_buffer_labels;
+    std::map<std::string, EventBuffer*> _event_buffer_map;
     
+    std::vector<TH1F *> _pT_spectra;
+    std::map<std::string, TH1F *> _pT_spectrum_map;
+
     unsigned int _n_pT_bins;
     
     float _pT_low;
     float _pT_high;
 
+    std::string _reweight_rel;
+
 public:
     unsigned int _n_events;
     unsigned int _event_iter;
 
-    EventBuffer _qcd_event;
-    EventBuffer _wprime_event;
-    EventBuffer _zprime_event;
-
     bool _do_reweighting;
-
-    std::string _qcd_location;
-    std::string _wprime_location;
-    std::string _zprime_location;
 
     EventManager() {
         _n_events = 0;
 
         _do_reweighting = false;
+        
+        _reweight_rel = "";
 
         _n_pT_bins = 100;
         _pT_low = 0;
         _pT_high = 500;
-
-        _pT_spectrum_qcd = new TH1F("_pT_spectrum_qcd", "", _n_pT_bins, _pT_low, _pT_high);
-        _pT_spectrum_wprime = new TH1F("_pT_spectrum_wprime", "", _n_pT_bins, _pT_low, _pT_high);
-        _pT_spectrum_zprime = new TH1F("_pT_spectrum_zprime", "", _n_pT_bins, _pT_low, _pT_high);
     }
 
     ~EventManager() {
         for (unsigned int iter = 0; iter < _to_update.size(); iter++) {
             delete _to_update[iter];
         }
-
-        delete _pT_spectrum_qcd;
-        delete _pT_spectrum_wprime;
-        delete _pT_spectrum_zprime;
+        for (unsigned int iter = 0; iter < _pT_spectra.size(); iter++) {
+            delete _pT_spectra[iter];
+        }
+        for (unsigned int iter = 0; iter < _event_buffers.size(); iter++) {
+            delete _event_buffers[iter];
+        }
     }
 
     float Reweight(std::string event_name) const {
         if (!_do_reweighting) return 1;
-        if (event_name == "qcd") return 1;
-        if (event_name == "wprime") {
-            double pT = _wprime_event.antikt_pt;
-            Int_t bin_number = _pT_spectrum_wprime->FindBin(pT);
-            return _pT_spectrum_qcd->GetBinContent(bin_number) / 
-                _pT_spectrum_wprime->GetBinContent(bin_number);
+        if (event_name == _reweight_rel) return 1;
+        auto it = _event_buffer_map.find(event_name);
+        if (it == _event_buffer_map.end()) {
+            assert(0 && "No event found with supplied name.");
         }
-        if (event_name == "zprime") {
-            double pT = _zprime_event.antikt_pt;
-            Int_t bin_number = _pT_spectrum_zprime->FindBin(pT);
-            return _pT_spectrum_qcd->GetBinContent(bin_number) / 
-                _pT_spectrum_zprime->GetBinContent(bin_number);
-        }
-        assert(0 && "No event found with supplied name.");
-        return 1;
+
+        TH1F *pT_spectrum = _pT_spectrum_map.find(event_name)->second;
+        double pT = it->second->antikt_pt;
+        Int_t bin_number = pT_spectrum->FindBin(pT);
+        return _pT_spectrum_map.find(_reweight_rel)->second->GetBinContent(bin_number) /
+            pT_spectrum->GetBinContent(bin_number);
     }
 
-    void PreparePtReweighting() {
+    void PreparePtReweighting(std::string relative) {
         assert(_n_events);
+
+        _reweight_rel = relative;
         _do_reweighting = true;
 
-        _qcd_event._tree->SetBranchStatus("*", 0);
-        _wprime_event._tree->SetBranchStatus("*", 0);
-        _zprime_event._tree->SetBranchStatus("*", 0);
-        _qcd_event._tree->SetBranchStatus("antikt_pt", 1);
-        _wprime_event._tree->SetBranchStatus("antikt_pt", 1);
-        _zprime_event._tree->SetBranchStatus("antikt_pt", 1);
-
-        for (unsigned int temp_event_iter = 0; temp_event_iter < _n_events; temp_event_iter++) {
-            _qcd_event.LoadEvent(temp_event_iter);
-            _wprime_event.LoadEvent(temp_event_iter);
-            _zprime_event.LoadEvent(temp_event_iter);
-            _pT_spectrum_qcd->Fill(_qcd_event.antikt_pt);
-            _pT_spectrum_wprime->Fill(_wprime_event.antikt_pt);
-            _pT_spectrum_zprime->Fill(_zprime_event.antikt_pt);
+        for(unsigned int iter = 0; iter < _event_buffers.size(); iter++) {
+            _event_buffers.at(iter)->_tree->SetBranchStatus("*", 0);
+            _event_buffers.at(iter)->_tree->SetBranchStatus("antikt_pt", 1);
         }
 
-        _qcd_event._tree->SetBranchStatus("*", 1);
-        _wprime_event._tree->SetBranchStatus("*", 1);
-        _zprime_event._tree->SetBranchStatus("*", 1);
+        for (unsigned int temp_event_iter = 0; temp_event_iter < _n_events; temp_event_iter++) {
+            for(unsigned int iter = 0; iter < _event_buffers.size(); iter++) {
+                _event_buffers.at(iter)->LoadEvent(temp_event_iter);
+                _pT_spectra.at(iter)->Fill(_event_buffers.at(iter)->antikt_pt);
+            }
+        }
+
+        for(unsigned int iter = 0; iter < _event_buffers.size(); iter++) {
+            _event_buffers.at(iter)->_tree->SetBranchStatus("*", 1);
+        }
     }
 
     EventBuffer const& GetEventByName(std::string name) const {
-        if (name == "qcd") {
-            return _qcd_event;
+        auto it = _event_buffer_map.find(name);
+        if (it != _event_buffer_map.end()) {
+            return *(it->second);
         }
-        if (name == "wprime") {
-            return _wprime_event;
-        }
-        if (name == "zprime") {
-            return _zprime_event;
-        }
-
         assert(0 && "No event found with supplied name.");
 
         // shuts up gcc
-        return _qcd_event;
+        return *(_event_buffers.at(0));
     }
         
-    void SetQCDLocation(std::string loc) {
-        _qcd_location = loc;
-    }
-    void SetWprimeLocation(std::string loc) {
-        _wprime_location = loc;
-    }
-    void SetZprimeLocation(std::string loc) {
-        _zprime_location = loc;
-    }
-
     void SetEventCount(unsigned int n_events) {
         _n_events = n_events;
         _event_iter = 0;
@@ -685,31 +726,24 @@ public:
     }
 
     void Init() {
-        TFile *f_qcd = TFile::Open(_qcd_location.c_str(), "READ");
-        TFile *f_wprime = TFile::Open(_wprime_location.c_str(), "READ");
-        TFile *f_zprime =  TFile::Open(_zprime_location.c_str(), "READ");
-        TTree *t_qcd = (TTree *) f_qcd->Get("EventTree");
-        TTree *t_wprime = (TTree *) f_wprime->Get("EventTree");
-        TTree *t_zprime = (TTree *) f_zprime->Get("EventTree");
-        _qcd_event.SetTree(t_qcd);
-        _wprime_event.SetTree(t_wprime);
-        _zprime_event.SetTree(t_zprime);
-        _qcd_event.Init();
-        _wprime_event.Init();
-        _zprime_event.Init();
+        for (unsigned int iter = 0; iter < _event_buffers.size(); iter++) {
+            _event_buffers.at(iter)->Init();
+        }
     }
 
     int LoadEvent(Long64_t entry) {
         int read_bytes = 0;
-        read_bytes += _qcd_event.LoadEvent(entry);
-        read_bytes += _wprime_event.LoadEvent(entry);
-        read_bytes += _zprime_event.LoadEvent(entry);
+        for (unsigned int iter = 0; iter < _event_buffers.size(); iter++) {
+            read_bytes += _event_buffers.at(iter)->LoadEvent(entry);
+        }
         return read_bytes;
     }
 
     EventBuffer const& operator[] (const std::string name) const {
         return GetEventByName(name);
     }
+    
+    void InstallEvent(std::string name, std::string loation);
 };
 
 EventManager& operator<< (EventManager &manager, UpdatesOnEvent* updater);

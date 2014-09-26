@@ -1014,6 +1014,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         fTCA_pt = my_jets_large_r_ca[0].pt();
         fTCA_pufrac = JetPuFracFastjet(my_jets_large_r_ca[0]);
         fTCA_m_pu = JetPuMassFastjet(my_jets_large_r_ca[0]);
+        fTCA_area = my_jets_large_r_ca[0].area();
         if (my_jets_large_r_ca.size() >= 2) {
             fTCA_dr = my_jets_large_r_ca[0].delta_R(my_jets_large_r_ca[1]);
         }
@@ -1033,6 +1034,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         fastjet::PseudoJet lead_akt = my_jets_large_r_antikt[0];
         fastjet::PseudoJet lead_akt_filter_two = filter_two(lead_akt);
         fastjet::PseudoJet lead_akt_filter_three = filter_three(lead_akt);
+
+        fTantikt_area = lead_akt.area();
         fTantikt_m = lead_akt.m();
         fTantikt_m_pu = JetPuMassFastjet(lead_akt);
         fTantikt_pt = lead_akt.pt();

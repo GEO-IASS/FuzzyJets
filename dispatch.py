@@ -38,7 +38,7 @@ def submit_fuzzy(mu, size, lw, rec, cut, n_events, i, unique_id):
 
 workdir = "/u/at/chstan/nfs/summer_2014/ForConrad/"
 
-pythia_conf = workdir + "configs/default_batch.pythia"
+pythia_conf = workdir + "configs/qcd_batch.pythia"
 
 cwd = os.getcwd() + "/"
 subfile = cwd + "_batchSingleSub.sh"
@@ -50,7 +50,7 @@ n_jobs = 10
 n_jobs_patch = 5
 queue = 'xlong'
 
-name = '50kevts_zprime_mu0'
+name = '50kevts_qcd_mu0'
 outdir = cwd + 'files/' + name + '/' + time_postfix
 safe_mkdir(outdir)
 

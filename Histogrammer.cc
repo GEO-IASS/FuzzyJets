@@ -367,24 +367,41 @@ void pTOverlay() {
 }
 
 void EventTest() {
-    //std::string qcd_location = "/u/at/chstan/nfs/summer_2014/ForConrad/files/200kevts_qcd_mu0/2014_08_23_21h38m37s/10s_0mu_0lw_0rec.root";
-    //std::string wprime_location = "/u/at/chstan/nfs/summer_2014/ForConrad/files/200kevts_wprime_mu0/2014_08_23_20h48m29s/10s_0mu_0lw_0rec.root";
-    //std::string zprime_location = "/u/at/chstan/nfs/summer_2014/ForConrad/files/200kevts_zprime_mu0/2014_08_23_20h39m44s/10s_0mu_0lw_0rec.root";
-
-    std::string qcd_location = "/u/at/chstan/nfs/summer_2014/ForConrad/files/200kevts_qcd_mu0/2014_08_25_17h11m54s/10s_0mu_0lw_1rec.root";
-    std::string wprime_location = "/u/at/chstan/nfs/summer_2014/ForConrad/files/200kevts_wprime_mu0/2014_08_25_14h46m21s/10s_0mu_0lw_1rec.root";
-    std::string zprime_location = "/u/at/chstan/nfs/summer_2014/ForConrad/files/200kevts_zprime_mu0/2014_08_25_14h59m29s/10s_0mu_0lw_1rec.root";
+    std::string qcd_location_5 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_qcd_mu0/2014_09_15_19h10m00s/10s_0mu_0lw_0rec_5cut.root";
+    std::string qcd_location_15 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_qcd_mu0/2014_09_15_19h10m00s/10s_0mu_0lw_0rec_15cut.root";
+    std::string qcd_location_25 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_qcd_mu0/2014_09_15_19h10m00s/10s_0mu_0lw_0rec_25cut.root";
+    std::string qcd_location_50 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_qcd_mu0/2014_09_15_19h10m00s/10s_0mu_0lw_0rec_50cut.root";
+    std::string wprime_location_5 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_wprime_mu0/2014_09_15_17h58m40s/10s_0mu_0lw_0rec_5cut.root";
+    std::string wprime_location_15 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_wprime_mu0/2014_09_15_17h58m40s/10s_0mu_0lw_0rec_15cut.root";
+    std::string wprime_location_25 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_wprime_mu0/2014_09_15_17h58m40s/10s_0mu_0lw_0rec_25cut.root";
+    std::string wprime_location_50 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_wprime_mu0/2014_09_15_17h58m40s/10s_0mu_0lw_0rec_50cut.root";
+    std::string zprime_location_5 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_zprime_mu0/2014_09_15_17h53m29s/10s_0mu_0lw_0rec_5cut.root";
+    std::string zprime_location_15 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_zprime_mu0/2014_09_15_17h53m29s/10s_0mu_0lw_0rec_15cut.root";
+    std::string zprime_location_25 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_zprime_mu0/2014_09_15_17h53m29s/10s_0mu_0lw_0rec_25cut.root";
+    std::string zprime_location_50 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_zprime_mu0/2014_09_15_17h53m29s/10s_0mu_0lw_0rec_50cut.root";
 
     static const std::vector<std::string> all_algs {"mGMM", "mGMMs", "mGMMc", "mTGMM", "mTGMMs", "mUMM", "CA", "antikt"};
+    static const std::vector<std::string> cs_algs {"CA", "antikt"};
     static const std::vector<std::string> algs {"mGMM", "mGMMs", "mGMMc", "mTGMM", "mTGMMs", "mUMM"};
     static const std::vector<std::string> event_labels {"qcd", "wprime", "zprime"};
 
     static const std::vector<float> pT_bins {0, 250, 300, 350, 400, 450, 500, 550, 600, 700, 1000};
 
     EventManager manager;
-    manager.SetQCDLocation(qcd_location);
-    manager.SetWprimeLocation(wprime_location);
-    manager.SetZprimeLocation(zprime_location);
+    manager.InstallEvent("qcd_5", qcd_location_5);
+    manager.InstallEvent("qcd_15", qcd_location_15);
+    manager.InstallEvent("qcd_25", qcd_location_25);
+    manager.InstallEvent("qcd_50", qcd_location_50);
+
+    manager.InstallEvent("wprime_5", wprime_location_5);
+    manager.InstallEvent("wprime_15", wprime_location_15);
+    manager.InstallEvent("wprime_25", wprime_location_25);
+    manager.InstallEvent("wprime_50", wprime_location_50);
+
+    manager.InstallEvent("zprime_5", zprime_location_5);
+    manager.InstallEvent("zprime_15", zprime_location_15);
+    manager.InstallEvent("zprime_25", zprime_location_25);
+    manager.InstallEvent("zprime_50", zprime_location_50);
 
     // INSTALL HISTOGRAMS
     // SOME TESTS FIRST
@@ -410,10 +427,14 @@ void EventTest() {
                 std::string other_event_label = event_labels[other_event_label_iter];
                 float cut_low = pT_bins[pT_bin_iter];
                 float cut_high = pT_bins[pT_bin_iter + 1];
-                manager << new SigmaEfficiencyPlot(event_label, other_event_label, cut_low, cut_high);
+                manager << new SigmaEfficiencyPlot(event_label + "_5",
+                                                   other_event_label + "_5",
+                                                   cut_low, cut_high);
                 for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
                     std::string alg = algs[alg_iter];
-                    manager << new FuzzyJetMassEfficiencyPlot(event_label, other_event_label, alg, cut_low, cut_high);
+                    manager << new FuzzyJetMassEfficiencyPlot(event_label + "_5", 
+                                                              other_event_label + "_5", 
+                                                              alg, cut_low, cut_high);
                 }
             }
         }
@@ -425,12 +446,22 @@ void EventTest() {
         manager << new DeltaRHistogram(alg);
     }
 
-    // Weight distance correlation plots
+    // Weight distance correlation plots + jet multiplicity
     for (unsigned int event_label_iter = 0; event_label_iter < event_labels.size(); event_label_iter++) {
+        std::string event_label = event_labels[event_label_iter];
+        manager << new JetMultiplicityPtCut(event_label); // deliberately no cut postfix, see ::Update
         for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
-            std::string event_label = event_labels[event_label_iter];
             std::string alg = algs[alg_iter];
-            manager << new WeightDistanceCorrelation(event_label, alg);
+            manager << new WeightDistanceCorrelation(event_label + "_5", alg);
+        }
+    }
+
+    // Sigma Area Correlation
+    for (unsigned int event_label_iter = 0; event_label_iter < event_labels.size(); event_label_iter++) {
+        for (unsigned int cs_alg_iter = 0; cs_alg_iter < cs_algs.size(); cs_alg_iter++) {
+            std::string event_label = event_labels.at(event_label_iter);
+            std::string cs_alg = cs_algs.at(cs_alg_iter);
+            manager << new SigmaAreaCorrelation(event_label + "_5", cs_alg);
         }
     }
     
@@ -441,8 +472,8 @@ void EventTest() {
                 std::string event_label = event_labels[event_label_iter];
                 std::string alg = all_algs[alg_iter];
                 std::string other_alg = all_algs[other_alg_iter];
-                manager << new MassCorrelation(event_label, alg, other_alg);
-                manager << new PtCorrelation(event_label, alg, other_alg);
+                manager << new MassCorrelation(event_label + "_5", alg, other_alg);
+                manager << new PtCorrelation(event_label + "_5", alg, other_alg);
             }
         }
     }
@@ -451,14 +482,14 @@ void EventTest() {
         for (unsigned int alg_iter = 0; alg_iter < all_algs.size(); alg_iter++) {
                 std::string event_label = event_labels[event_label_iter];
                 std::string alg = all_algs[alg_iter];
-                manager << new SigmaJetSizeCorrelation(event_label, alg);
+                manager << new SigmaJetSizeCorrelation(event_label + "_5", alg);
         }
     }
 
     // Start running the analysis
-    manager.SetEventCount(40000);
+    manager.SetEventCount(10000);
     manager.Init();
-    manager.PreparePtReweighting();
+    manager.PreparePtReweighting("qcd_5");
 
     manager.StartUpdaters();
     while (manager.NextEvent()) {

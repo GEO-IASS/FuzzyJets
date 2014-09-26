@@ -154,6 +154,44 @@ void StackedHistogramBase::Finish(__attribute__((unused)) EventManager const* ev
     delete legend;
 }
 
+void ScatterBase::Finish(__attribute__((unused)) EventManager const* event_manager) {
+    SetupATLASStyle();
+    
+    gStyle->SetOptStat(0);
+    gStyle->SetPalette(1);
+
+    TCanvas canvas("temporary", "", 0, 0, _canvas_x, _canvas_y);
+    
+    TMultiGraph *multi = new TMultiGraph();
+    TGraph *g = new TGraph(_xs.size(), &_xs.at(0), &_ys.at(0));
+    g->SetMarkerColor(_color);
+    g->SetMarkerStyle(_style);
+    multi->Add(g);
+
+    TLegend *legend = new TLegend(0.65, 0.75, 0.9, 0.85);
+    legend->SetTextFont(42);
+    legend->SetFillStyle(0);
+    legend->SetFillColor(0);
+    legend->SetBorderSize(0);
+
+    multi->Draw("ap");
+    multi->GetXaxis()->SetTitle(_x_label.c_str());
+    multi->GetYaxis()->SetTitle(_y_label.c_str());
+    
+    canvas.Update();
+    //legend->Draw();
+
+    //DrawAtlasLabel(_title, 0.2, 0.48);
+    
+    std::stringstream ss;
+    ss << plot_prefix << _outfile_name;
+    std::string out = ss.str();
+    canvas.Print(out.c_str());
+
+    delete legend;
+    delete multi;
+}
+
 void CorrelationBase::Finish(__attribute__((unused)) EventManager const* event_manager) {
     SetupATLASStyle();
 
@@ -188,9 +226,9 @@ void CorrelationBase::Finish(__attribute__((unused)) EventManager const* event_m
 }
 
 void SigmaJetSizeCorrelationPoster::Update(EventManager const* event_manager) {
-    float reweight = event_manager->Reweight("zprime");
-    _hist->Fill(event_manager->_zprime_event.antikt_m/event_manager->_zprime_event.antikt_pt,
-                event_manager->_zprime_event.mGMMc_r,
+    float reweight = event_manager->Reweight("zprime_5");
+    _hist->Fill((*event_manager)["zprime_5"].antikt_m/(*event_manager)["zprime_5"].antikt_pt,
+                (*event_manager)["zprime_5"].mGMMc_r,
                 reweight);
 }
 
@@ -231,17 +269,17 @@ void PtCorrelation::Update(EventManager const* event_manager) {
 }
 
 void SigmaEfficiencyPosterPlot::Update(EventManager const* event_manager) {
-    float qcd_reweight = event_manager->Reweight("qcd");
-    float wprime_reweight = event_manager->Reweight("wprime");
+    float qcd_reweight = event_manager->Reweight("qcd_5");
+    float wprime_reweight = event_manager->Reweight("wprime_5");
 
-    _signal_hists.at(0)->Fill(event_manager->_wprime_event.mGMMc_r, wprime_reweight);
-    _background_hists.at(0)->Fill(event_manager->_qcd_event.mGMMc_r, qcd_reweight);
+    _signal_hists.at(0)->Fill((*event_manager)["wprime_5"].mGMMc_r, wprime_reweight);
+    _background_hists.at(0)->Fill((*event_manager)["qcd_5"].mGMMc_r, qcd_reweight);
 
-    _signal_hists.at(1)->Fill(event_manager->_wprime_event.mGMMc_m, wprime_reweight);
-    _background_hists.at(1)->Fill(event_manager->_qcd_event.mGMMc_m, qcd_reweight);
+    _signal_hists.at(1)->Fill((*event_manager)["wprime_5"].mGMMc_m, wprime_reweight);
+    _background_hists.at(1)->Fill((*event_manager)["qcd_5"].mGMMc_m, qcd_reweight);
 
-    _signal_hists.at(2)->Fill(event_manager->_wprime_event.antikt_m, wprime_reweight);
-    _background_hists.at(2)->Fill(event_manager->_qcd_event.antikt_m, qcd_reweight);
+    _signal_hists.at(2)->Fill((*event_manager)["wprime_5"].antikt_m, wprime_reweight);
+    _background_hists.at(2)->Fill((*event_manager)["qcd_5"].antikt_m, qcd_reweight);
 }
 
 void SigmaEfficiencyPlot::Update(EventManager const* event_manager) {
@@ -266,11 +304,11 @@ void SigmaEfficiencyPlot::Update(EventManager const* event_manager) {
 }
 
 void SkewEfficiencyPlot::Update(EventManager const* event_manager) {
-    float qcd_reweight = event_manager->Reweight("qcd");
-    float zprime_reweight = event_manager->Reweight("zprime");
+    float qcd_reweight = event_manager->Reweight("qcd_5");
+    float zprime_reweight = event_manager->Reweight("zprime_5");
     
-    _signal_hists.at(0)->Fill(event_manager->_zprime_event.mGMMc_m_skew, zprime_reweight);
-    _background_hists.at(0)->Fill(event_manager->_qcd_event.mGMMc_m_skew, qcd_reweight);
+    _signal_hists.at(0)->Fill((*event_manager)["zprime_5"].mGMMc_m_skew, zprime_reweight);
+    _background_hists.at(0)->Fill((*event_manager)["qcd_5"].mGMMc_m_skew, qcd_reweight);
 }
 
 void FuzzyJetMassEfficiencyPlot::Update(EventManager const* event_manager) {
@@ -334,10 +372,10 @@ void SigmaJetSizeCorrelation::Update(EventManager const* event_manager) {
 }
 
 void SkewHistogram::Update(EventManager const* event_manager) {
-    float zprime_reweight = event_manager->Reweight("zprime");
-    float qcd_reweight = event_manager->Reweight("qcd");
-    _hists[0]->Fill(event_manager->_zprime_event.mGMMc_m_skew, zprime_reweight);
-    _hists[1]->Fill(event_manager->_qcd_event.mGMMc_m_skew, qcd_reweight);
+    float zprime_reweight = event_manager->Reweight("zprime_5");
+    float qcd_reweight = event_manager->Reweight("qcd_5");
+    _hists[0]->Fill((*event_manager)["zprime_5"].mGMMc_m_skew, zprime_reweight);
+    _hists[1]->Fill((*event_manager)["qcd_5"].mGMMc_m_skew, qcd_reweight);
 }
 
 void DeltaRHistogram::Update(EventManager const* event_manager) {
@@ -345,13 +383,13 @@ void DeltaRHistogram::Update(EventManager const* event_manager) {
     
     ss.str(std::string());
     ss << _alg_label << "_dr";
-    Float_t zprime_dr = (*event_manager)["zprime"].Get<Float_t>(ss.str());
-    Float_t wprime_dr = (*event_manager)["wprime"].Get<Float_t>(ss.str());
-    Float_t qcd_dr = (*event_manager)["qcd"].Get<Float_t>(ss.str());
+    Float_t zprime_dr = (*event_manager)["zprime_5"].Get<Float_t>(ss.str());
+    Float_t wprime_dr = (*event_manager)["wprime_5"].Get<Float_t>(ss.str());
+    Float_t qcd_dr = (*event_manager)["qcd_5"].Get<Float_t>(ss.str());
 
-    float zprime_reweight = event_manager->Reweight("zprime");
-    float wprime_reweight = event_manager->Reweight("wprime");
-    float qcd_reweight = event_manager->Reweight("qcd");
+    float zprime_reweight = event_manager->Reweight("zprime_5");
+    float wprime_reweight = event_manager->Reweight("wprime_5");
+    float qcd_reweight = event_manager->Reweight("qcd_5");
 
     _hists[0]->Fill(zprime_dr, zprime_reweight);
     _hists[1]->Fill(wprime_dr, wprime_reweight);
@@ -359,26 +397,59 @@ void DeltaRHistogram::Update(EventManager const* event_manager) {
 }
 
 void FuzzyAntiktPtCorrelation::Update(EventManager const* event_manager) {
-    float reweight = event_manager->Reweight("zprime");
-    _hist->Fill(event_manager->_zprime_event.antikt_pt, event_manager->_zprime_event.mGMMc_pt, reweight);
+    float reweight = event_manager->Reweight("zprime_5");
+    _hist->Fill((*event_manager)["zprime_5"].antikt_pt, (*event_manager)["zprime_5"].mGMMc_pt, reweight);
 }
 
 void RadiusComparisonHistogram::Update(EventManager const* event_manager) {
-    float zprime_reweight = event_manager->Reweight("zprime");
-    float wprime_reweight = event_manager->Reweight("wprime");
-    float qcd_reweight = event_manager->Reweight("qcd");    
+    float zprime_reweight = event_manager->Reweight("zprime_5");
+    float wprime_reweight = event_manager->Reweight("wprime_5");
+    float qcd_reweight = event_manager->Reweight("qcd_5");    
 
-    _hists[0]->Fill(event_manager->_zprime_event.mGMMc_r, zprime_reweight);
-    _hists[1]->Fill(event_manager->_wprime_event.mGMMc_r, wprime_reweight);
-    _hists[2]->Fill(event_manager->_qcd_event.mGMMc_r, qcd_reweight);
+    _hists[0]->Fill((*event_manager)["zprime_5"].mGMMc_r, zprime_reweight);
+    _hists[1]->Fill((*event_manager)["wprime_5"].mGMMc_r, wprime_reweight);
+    _hists[2]->Fill((*event_manager)["qcd_5"].mGMMc_r, qcd_reweight);
 }
 
 void AverageRadiusComparisonHistogram::Update(EventManager const* event_manager) {
-    float zprime_reweight = event_manager->Reweight("zprime");
-    float wprime_reweight = event_manager->Reweight("wprime");
-    float qcd_reweight = event_manager->Reweight("qcd");    
+    float zprime_reweight = event_manager->Reweight("zprime_5");
+    float wprime_reweight = event_manager->Reweight("wprime_5");
+    float qcd_reweight = event_manager->Reweight("qcd_5");    
 
-    _hists[0]->Fill(event_manager->_zprime_event.mGMMc_r_avg, zprime_reweight);
-    _hists[1]->Fill(event_manager->_wprime_event.mGMMc_r_avg, wprime_reweight);
-    _hists[2]->Fill(event_manager->_qcd_event.mGMMc_r_avg, qcd_reweight);
+    _hists[0]->Fill((*event_manager)["zprime_5"].mGMMc_r_avg, zprime_reweight);
+    _hists[1]->Fill((*event_manager)["wprime_5"].mGMMc_r_avg, wprime_reweight);
+    _hists[2]->Fill((*event_manager)["qcd_5"].mGMMc_r_avg, qcd_reweight);
+}
+
+void SigmaAreaCorrelation::Update(EventManager const* event_manager) {
+    float e_reweight = event_manager->Reweight(_event_label);
+    float sigma = (*event_manager)[_event_label].mGMMc_r;
+    float area = (*event_manager)[_event_label].Get<Float_t>(_alg_branch);
+    _hist->Fill(sigma * sigma, area, e_reweight);
+}
+
+void JetMultiplicityPtCut::Update(EventManager const* event_manager) {
+    float multiplicity = (*event_manager)[_event_label_base + "_5"].mGMM_etas->size();
+    float reweight = event_manager->Reweight(_event_label_base + "_5");
+    _ys[0] = (reweight * multiplicity + _ns[0]*_ys[0]) / (reweight + _ns[0]);
+    _ns[0] += reweight;
+    if(_ns[0] == 0) _ys[0] = 0;
+
+    multiplicity = (*event_manager)[_event_label_base + "_15"].mGMM_etas->size();
+    reweight = event_manager->Reweight(_event_label_base + "_15");
+    _ys[1] = (reweight * multiplicity + _ns[1]*_ys[1]) / (reweight + _ns[1]);
+    _ns[1] += reweight;
+    if(_ns[1] == 0) _ys[1] = 0;
+
+    multiplicity = (*event_manager)[_event_label_base + "_25"].mGMM_etas->size();
+    reweight = event_manager->Reweight(_event_label_base + "_25");
+    _ys[2] = (reweight * multiplicity + _ns[2]*_ys[2]) / (reweight + _ns[2]);
+    _ns[2] += reweight;
+    if(_ns[2] == 0) _ys[2] = 0;
+
+    multiplicity = (*event_manager)[_event_label_base + "_50"].mGMM_etas->size();
+    reweight = event_manager->Reweight(_event_label_base + "_50");
+    _ys[3] = (reweight * multiplicity + _ns[3]*_ys[3]) / (reweight + _ns[3]);
+    _ns[3] += reweight;
+    if(_ns[3] == 0) _ys[3] = 0;
 }
