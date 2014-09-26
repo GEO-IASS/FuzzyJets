@@ -39,6 +39,9 @@ void EventBuffer::Init()
    mUMM_etas = 0;
    mUMM_phis = 0;
 
+   _tree->SetBranchAddress("antikt_nsubjettiness", &antikt_nsubjettiness, &b_antikt_nsubjettiness);
+   _tree->SetBranchAddress("CA_nsubjettiness", &CA_nsubjettiness, &b_CA_nsubjettiness);
+
    _tree->SetBranchAddress("CA_area", &CA_area, &b_CA_area);
    _tree->SetBranchAddress("antikt_area", &antikt_area, &b_antikt_area);
    _tree->SetBranchAddress("antikt_area_trimmed_two", &antikt_area_trimmed_two, &b_antikt_area_trimmed_two);
