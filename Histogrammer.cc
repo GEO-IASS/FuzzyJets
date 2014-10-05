@@ -57,11 +57,11 @@ constructFileMap(std::vector<int> const& sizes, std::vector<int> const& learns,
                   int current_size = sizes[size_iter];
                   int current_learn = learns[learn_iter];
                   int current_n_pileup = pileup_vertices[pileup_iter];
-                  TString file_location = buildFileLocation(current_size, current_learn, 
+                  TString file_location = buildFileLocation(current_size, current_learn,
                                                             current_n_pileup, current_do_rec,
                                                             prefix);
                   map_key_t new_key = std::make_tuple(current_size, current_learn, current_n_pileup, current_do_rec);
-                  m[new_key] = file_location;                                           
+                  m[new_key] = file_location;
               }
           }
       }
@@ -90,7 +90,7 @@ void sanityTests() {
     static const int learns[] = {0, 1};
     static const int NPVs[] = {0, 10, 20, 30};
     static const std::string sporadic[] =
-        { "CA_m", "CA_pt", "toppt", "antikt_m", "antikt_pt" }; 
+        { "CA_m", "CA_pt", "toppt", "antikt_m", "antikt_pt" };
     static const std::string algs[] = { "mGMM", "mGMMs", "mUMM", "mTGMM", "mTGMMs" };
     static const std::string vars[] = { "_m", "_pt", "_m_soft", "_pt_soft" };
     for (unsigned int size_iter = 0; size_iter < 2; size_iter++) {
@@ -107,11 +107,11 @@ void sanityTests() {
                 ss.str("");
                 ss << new_data_pref << size << "s_" << npv << "mu_" << learn << ".root";
                 std::string new_loc = ss.str();
-                
+
                 for (unsigned int sporadic_iter = 0; sporadic_iter < 5; sporadic_iter++) {
                     ss.str("");
-                    ss << "SANITY CHECK MU " << npv << " SZ " 
-                       << size << " LEARN " << learn << " BRANCH " 
+                    ss << "SANITY CHECK MU " << npv << " SZ "
+                       << size << " LEARN " << learn << " BRANCH "
                        << sporadic[sporadic_iter];
                     std::string title = ss.str();
                     doSanityPlot(sporadic[sporadic_iter], old_loc, new_loc, title, sanity_out);
@@ -123,7 +123,7 @@ void sanityTests() {
                         std::string branch_name = ss.str();
                         ss.str("");
                         ss << "SANITY CHECK MU " << npv << " SZ "
-                           << size << " LEARN " << learn << " BRANCH " 
+                           << size << " LEARN " << learn << " BRANCH "
                            << branch_name;
                         std::string title = ss.str();
                         doSanityPlot(branch_name, old_loc, new_loc, title, sanity_out);
@@ -138,7 +138,7 @@ void doFancyWeightHisto(std::string alg, int do_rec, int npv, int learn, int siz
                         std::string out_dir, file_map_t file_m, int num) {
     std::string file_name = file_m[std::make_tuple(size, learn, npv, do_rec)];
 
-    std::vector<float> antikt_trimmed_pufracs = 
+    std::vector<float> antikt_trimmed_pufracs =
         loadSingleBranch<float>(file_name, "antikt_pufrac_trimmed_three");
     float antikt_pufrac = 0;
     for (unsigned int antikt_iter = 0; antikt_iter < antikt_trimmed_pufracs.size(); antikt_iter++) {
@@ -170,29 +170,29 @@ void doFancyWeightHisto(std::string alg, int do_rec, int npv, int learn, int siz
     }
     total_hist_int->Add(pu_hist_int, hs_hist_int, 1., 1.);
     pu_frac_hist->Divide(pu_hist_int, total_hist_int, 1., 1., "b");
-        
+
     if(!(hs_hist->Integral(-1, hs_hist->GetNbinsX()+1) > 0) ||
        !(pu_hist->Integral(-1, pu_hist->GetNbinsX()+1) > 0)) {
         std::cout << "PU OR HS HIST HAS NO CONTENT." << std::endl;
         return;
     }
-    
+
     pu_hist->Scale(1./pu_hist->Integral(-1, pu_hist->GetNbinsX()+1));
     hs_hist->Scale(1./hs_hist->Integral(-1, hs_hist->GetNbinsX()+1));
-    
+
     TCanvas *c = new TCanvas("", "Particle Composition by Weight Comp. Antikt", 800, 800);
     TLine *antikt_pufrac_l = new TLine(c->GetUxmin(), antikt_pufrac, c->GetUxmax(), antikt_pufrac);
     antikt_pufrac_l->SetLineColor(kBlack);
     antikt_pufrac_l->SetLineStyle(2);
-    
+
     pu_frac_hist->SetLineColor(kBlue);
     pu_frac_hist->SetFillStyle(3004);
     pu_frac_hist->SetFillColor(kBlue);
     pu_frac_hist->GetYaxis()->SetRangeUser(0, 1);
-    
+
     pu_frac_hist->Draw("");
     antikt_pufrac_l->Draw("same");
-    
+
     TLegend *leggaa = new TLegend(0.6, 0.7, 0.9, 0.8);
     leggaa->SetTextFont(42);
     leggaa->AddEntry(pu_frac_hist, "Pu part. frac w/ w > bin", "l");
@@ -203,13 +203,13 @@ void doFancyWeightHisto(std::string alg, int do_rec, int npv, int learn, int siz
     leggaa->SetBorderSize(0);
     leggaa->Draw();
     //DrawAtlasLabel("Particle Comp");
-    
+
     ss.str(std::string());
-    ss << out_dir << num << "_Pufrac_antikt_" << alg << "_sz_" << size << "_lw_" << learn 
+    ss << out_dir << num << "_Pufrac_antikt_" << alg << "_sz_" << size << "_lw_" << learn
        << "_mu_" << npv << "_rec_" << do_rec << ".pdf";
     std::string out_file_name = ss.str();
     c->Print(out_file_name.c_str());
-    
+
     delete leggaa;
     delete c;
 
@@ -224,10 +224,10 @@ void doFancyWeightHisto(std::string alg, int do_rec, int npv, int learn, int siz
     hs_hist->SetFillStyle(3004);
     hs_hist->SetFillColor(kRed);
     hs_hist->SetMinimum(0);
-    
+
     hs_hist->Draw("");
     pu_hist->Draw("same");
-    
+
     leggaa = new TLegend(0.6, 0.7, 0.9, 0.8);
     leggaa->SetTextFont(42);
     leggaa->AddEntry(pu_hist, "PU Integral", "l");
@@ -240,7 +240,7 @@ void doFancyWeightHisto(std::string alg, int do_rec, int npv, int learn, int siz
     //DrawAtlasLabel(c_dec.title);
 
     ss.str(std::string());
-    ss << out_dir << (num+1) << "_Cumul_norm_pufrac_" << alg << "_sz_" << size << "_lw_" << learn 
+    ss << out_dir << (num+1) << "_Cumul_norm_pufrac_" << alg << "_sz_" << size << "_lw_" << learn
        << "_mu_" << npv << "_rec_" << do_rec << ".pdf";
     out_file_name = ss.str();
     c->Print(out_file_name.c_str());
@@ -276,11 +276,11 @@ int fancyWeightHistos() {
     std::vector<int> do_recs(do_recs_arr, do_recs_arr+sizeof(do_recs_arr) / sizeof(do_recs_arr[0]));
     std::vector<std::string> algs(algs_arr, algs_arr+sizeof(algs_arr) / sizeof(algs_arr[0]));
     int num = 0;
-    
+
     std::string file_prefix = "/u/at/chstan/nfs/summer_2014/ForConrad/files/20kevts_wprime_mu0_and_mu5_norec/2014_08_13_14h24m44s/";
 
-    file_map_t file_m = constructFileMap(sizes, learns, do_recs, NPVs, file_prefix);    
-   
+    file_map_t file_m = constructFileMap(sizes, learns, do_recs, NPVs, file_prefix);
+
     std::string out_dir = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/20kevts_wprime_mu0_and_mu5_norec/";
 
     for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
@@ -306,16 +306,16 @@ int fancyWeightHistos() {
 void pTOverlay() {
     SetAtlasStyle();
     SetupATLASStyle();
-    
+
     static const std::string datasets_arr[] = {
         "/u/at/chstan/nfs/summer_2014/ForConrad/files/20kevts_wprime_mu0_and_mu5_norec/2014_08_13_14h24m44s/",
         "/u/at/chstan/nfs/summer_2014/ForConrad/files/20kevts_qcd_mu0_and_mu5_norec/2014_08_13_14h28m03s/",
         "/u/at/chstan/nfs/summer_2014/ForConrad/files/500kevts_mu0_bothrec/2014_08_11_19h46m58s/"};
-   
+
     static const std::string dataset_names_arr[] = {"W' m 600 GeV", "QCD: pT 300-700 GeV", "Z' m 1500 GeV"};
 
     std::vector<std::string> datasets(datasets_arr, datasets_arr + sizeof(datasets_arr) / sizeof(datasets_arr[0]));
- 
+
     std::string out_dir = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/ptcomp/";
 
     static const Int_t colors_arr[] = {kMagenta + 3, kViolet + 9, kTeal - 5, kGray + 3};
@@ -335,7 +335,7 @@ void pTOverlay() {
         ss.str(std::string());
         ss << dataset << "10s_0mu_0lw_0rec.root";
         std::string file_location = ss.str();
-        HistHelper hist_helper_temp(file_location, 
+        HistHelper hist_helper_temp(file_location,
                                     "antikt_pt_trimmed_three", title, 510, 0, 800, 100,
                                     StyleTypes::NONE, colors_arr[dataset_iter], kFullCircle, "");
         v_hist_decs.push_back(hist_helper_temp);
@@ -358,7 +358,7 @@ void pTOverlay() {
         ss.str(std::string());
         ss << dataset << "10s_0mu_0lw_0rec.root";
         std::string file_location = ss.str();
-        HistHelper hist_helper_temp(file_location, 
+        HistHelper hist_helper_temp(file_location,
                                     "antikt_pt", title, 510, 0, 800, 100,
                                     StyleTypes::NONE, colors_arr[dataset_iter], kFullCircle, "");
         v_hist_decs.push_back(hist_helper_temp);
@@ -406,6 +406,7 @@ void EventTest() {
     // INSTALL HISTOGRAMS
     // SOME TESTS FIRST
     manager << new FuzzyAntiktPtCorrelation()
+            << new EfficiencyGenTest()
 
     // RADIUS PLOTS
             << new RadiusComparisonHistogram()
@@ -430,10 +431,16 @@ void EventTest() {
                 manager << new SigmaEfficiencyPlot(event_label + "_5",
                                                    other_event_label + "_5",
                                                    cut_low, cut_high);
+                manager << new SigmaNSubjettinessEfficiencyPlot(event_label + "_5",
+                                                                other_event_label + "_5",
+                                                                cut_low, cut_high);
+                manager << new SigmaImprovementEfficiency(event_label + "_5",
+                                                          other_event_label + "_5",
+                                                          cut_low, cut_high);
                 for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
                     std::string alg = algs[alg_iter];
-                    manager << new FuzzyJetMassEfficiencyPlot(event_label + "_5", 
-                                                              other_event_label + "_5", 
+                    manager << new FuzzyJetMassEfficiencyPlot(event_label + "_5",
+                                                              other_event_label + "_5",
                                                               alg, cut_low, cut_high);
                 }
             }
@@ -464,7 +471,7 @@ void EventTest() {
             manager << new SigmaAreaCorrelation(event_label + "_5", cs_alg);
         }
     }
-    
+
     // Mass and pT correlation plots
     for (unsigned int event_label_iter = 0; event_label_iter < event_labels.size(); event_label_iter++) {
         for (unsigned int alg_iter = 0; alg_iter < all_algs.size(); alg_iter++) {
@@ -477,7 +484,7 @@ void EventTest() {
             }
         }
     }
-    
+
     for (unsigned int event_label_iter = 0; event_label_iter < event_labels.size(); event_label_iter++) {
         for (unsigned int alg_iter = 0; alg_iter < all_algs.size(); alg_iter++) {
                 std::string event_label = event_labels[event_label_iter];
@@ -487,7 +494,7 @@ void EventTest() {
     }
 
     // Start running the analysis
-    manager.SetEventCount(10000);
+    manager.SetEventCount(50000);
     manager.Init();
     manager.PreparePtReweighting("qcd_5");
 
@@ -554,7 +561,7 @@ int main(int argc, char *argv[]) {
     }
 
     std::string out_dir = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/20kevts_wprime_mu0_and_mu5_norec/";
-    
+
     // KEYS ARE BUILT BY (SIZE, LEARN, PILEUP)
     // DO PILEUP COMPARISONS: MASS RESOLUTION
     std::vector<HistHelper> v_hist_decs;
@@ -595,13 +602,13 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_m";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, mass_low, mass_high, n_bins, 
+                                                    branch, title, 510, mass_low, mass_high, n_bins,
                                                     options, colors_arr[npv_iter],
                                                     styles_arr[npv_iter], draw_opt);
                         v_hist_decs.push_back(hist_helper_temp);
                     }
                     HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, 0, do_rec)],
-                                                "antikt_m_trimmed_three", "Anti-kt Trimmed Mass - PuV 0", 
+                                                "antikt_m_trimmed_three", "Anti-kt Trimmed Mass - PuV 0",
                                                 510, mass_low, mass_high, n_bins, options_ref, kBlue,
                                                 kFullCircle, draw_opt_ref);
                     v_hist_decs.push_back(hist_helper_temp);
@@ -617,7 +624,7 @@ int main(int argc, char *argv[]) {
             for (unsigned int npv_iter = 0; npv_iter < NPVs.size(); npv_iter++) {
                 for(unsigned int learn_iter = 0; learn_iter < learns.size(); learn_iter++) {
                     v_hist_decs.clear();
-                    
+
                     int do_rec = do_recs[do_rec_iter];
                     int learn = learns[learn_iter];
                     int npv = NPVs[npv_iter];
@@ -637,13 +644,13 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_m";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, mass_low, mass_high, n_bins, 
+                                                    branch, title, 510, mass_low, mass_high, n_bins,
                                                     options, colors_arr[size_iter],
                                                     styles_arr[size_iter], draw_opt);
                         v_hist_decs.push_back(hist_helper_temp);
                     }
                     HistHelper hist_helper_temp(file_m[std::make_tuple(10, learn, npv, do_rec)],
-                                                "antikt_m_trimmed_three", "Anti-kt trimmed Mass", 
+                                                "antikt_m_trimmed_three", "Anti-kt trimmed Mass",
                                                 510, mass_low, mass_high, n_bins, options_ref, kBlue,
                                                 kFullCircle, draw_opt_ref);
                     v_hist_decs.push_back(hist_helper_temp);
@@ -659,7 +666,7 @@ int main(int argc, char *argv[]) {
             for (unsigned int npv_iter = 0; npv_iter < NPVs.size(); npv_iter++) {
                 for(unsigned int size_iter = 0; size_iter < sizes.size(); size_iter++) {
                     v_hist_decs.clear();
-                    
+
                     int do_rec = do_recs[do_rec_iter];
                     int size = sizes[size_iter];
                     int npv = NPVs[npv_iter];
@@ -679,13 +686,13 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_m";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, mass_low, mass_high, n_bins, 
+                                                    branch, title, 510, mass_low, mass_high, n_bins,
                                                     options, colors_arr[learn_iter],
                                                     styles_arr[learn_iter], draw_opt);
                         v_hist_decs.push_back(hist_helper_temp);
                     }
                     HistHelper hist_helper_temp(file_m[std::make_tuple(size, 0, npv, do_rec)],
-                                                "antikt_m_trimmed_three", "Anti-kt trimmed Mass", 
+                                                "antikt_m_trimmed_three", "Anti-kt trimmed Mass",
                                                 510, mass_low, mass_high, n_bins, options_ref, kBlue,
                                                 kFullCircle, draw_opt_ref);
                     v_hist_decs.push_back(hist_helper_temp);
@@ -701,7 +708,7 @@ int main(int argc, char *argv[]) {
             for (unsigned int npv_iter = 0; npv_iter < NPVs.size(); npv_iter++) {
                 for(unsigned int size_iter = 0; size_iter < sizes.size(); size_iter++) {
                     v_hist_decs.clear();
-                    
+
                     int learn = learns[learn_iter];
                     int size = sizes[size_iter];
                     int npv = NPVs[npv_iter];
@@ -722,13 +729,13 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_m";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, mass_low, mass_high, n_bins, 
+                                                    branch, title, 510, mass_low, mass_high, n_bins,
                                                     options, colors_arr[do_rec_iter],
                                                     styles_arr[do_rec_iter], draw_opt);
                         v_hist_decs.push_back(hist_helper_temp);
                     }
                     HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, 0)],
-                                                "antikt_m_trimmed_three", "Anti-kt trimmed Mass", 
+                                                "antikt_m_trimmed_three", "Anti-kt trimmed Mass",
                                                 510, mass_low, mass_high, n_bins, options_ref, kBlue,
                                                 kFullCircle, draw_opt_ref);
                     v_hist_decs.push_back(hist_helper_temp);
@@ -765,13 +772,13 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_m_soft";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, mass_low, mass_high, n_bins, 
+                                                    branch, title, 510, mass_low, mass_high, n_bins,
                                                     options, colors_arr[npv_iter],
                                                     styles_arr[npv_iter], draw_opt);
                         v_hist_decs.push_back(hist_helper_temp);
                     }
                     HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, 0, do_rec)],
-                                                "antikt_m_trimmed_three", "Anti-kt Trimmed Mass - PuV 0", 
+                                                "antikt_m_trimmed_three", "Anti-kt Trimmed Mass - PuV 0",
                                                 510, mass_low, mass_high, n_bins, options_ref, kBlue,
                                                 kFullCircle, draw_opt_ref);
                     v_hist_decs.push_back(hist_helper_temp);
@@ -787,7 +794,7 @@ int main(int argc, char *argv[]) {
             for (unsigned int npv_iter = 0; npv_iter < NPVs.size(); npv_iter++) {
                 for(unsigned int learn_iter = 0; learn_iter < learns.size(); learn_iter++) {
                     v_hist_decs.clear();
-                    
+
                     int do_rec = do_recs[do_rec_iter];
                     int learn = learns[learn_iter];
                     int npv = NPVs[npv_iter];
@@ -807,13 +814,13 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_m_soft";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, mass_low, mass_high, n_bins, 
+                                                    branch, title, 510, mass_low, mass_high, n_bins,
                                                     options, colors_arr[size_iter],
                                                     styles_arr[size_iter], draw_opt);
                         v_hist_decs.push_back(hist_helper_temp);
                     }
                     HistHelper hist_helper_temp(file_m[std::make_tuple(10, learn, npv, do_rec)],
-                                                "antikt_m_trimmed_three", "Anti-kt trimmed Mass", 
+                                                "antikt_m_trimmed_three", "Anti-kt trimmed Mass",
                                                 510, mass_low, mass_high, n_bins, options_ref, kBlue,
                                                 kFullCircle, draw_opt_ref);
                     v_hist_decs.push_back(hist_helper_temp);
@@ -829,7 +836,7 @@ int main(int argc, char *argv[]) {
             for (unsigned int npv_iter = 0; npv_iter < NPVs.size(); npv_iter++) {
                 for(unsigned int size_iter = 0; size_iter < sizes.size(); size_iter++) {
                     v_hist_decs.clear();
-                    
+
                     int do_rec = do_recs[do_rec_iter];
                     int size = sizes[size_iter];
                     int npv = NPVs[npv_iter];
@@ -849,13 +856,13 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_m_soft";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, mass_low, mass_high, n_bins, 
+                                                    branch, title, 510, mass_low, mass_high, n_bins,
                                                     options, colors_arr[learn_iter],
                                                     styles_arr[learn_iter], draw_opt);
                         v_hist_decs.push_back(hist_helper_temp);
                     }
                     HistHelper hist_helper_temp(file_m[std::make_tuple(size, 0, npv, do_rec)],
-                                                "antikt_m_trimmed_three", "Anti-kt trimmed Mass", 
+                                                "antikt_m_trimmed_three", "Anti-kt trimmed Mass",
                                                 510, mass_low, mass_high, n_bins, options_ref, kBlue,
                                                 kFullCircle, draw_opt_ref);
                     v_hist_decs.push_back(hist_helper_temp);
@@ -871,7 +878,7 @@ int main(int argc, char *argv[]) {
             for (unsigned int npv_iter = 0; npv_iter < NPVs.size(); npv_iter++) {
                 for(unsigned int size_iter = 0; size_iter < sizes.size(); size_iter++) {
                     v_hist_decs.clear();
-                    
+
                     int learn = learns[learn_iter];
                     int size = sizes[size_iter];
                     int npv = NPVs[npv_iter];
@@ -892,13 +899,13 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_m_soft";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, mass_low, mass_high, n_bins, 
+                                                    branch, title, 510, mass_low, mass_high, n_bins,
                                                     options, colors_arr[do_rec_iter],
                                                     styles_arr[do_rec_iter], draw_opt);
                         v_hist_decs.push_back(hist_helper_temp);
                     }
                     HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, 0)],
-                                                "antikt_m_trimmed_three", "Anti-kt trimmed Mass", 
+                                                "antikt_m_trimmed_three", "Anti-kt trimmed Mass",
                                                 510, mass_low, mass_high, n_bins, options_ref, kBlue,
                                                 kFullCircle, draw_opt_ref);
                     v_hist_decs.push_back(hist_helper_temp);
@@ -909,7 +916,7 @@ int main(int argc, char *argv[]) {
     }
 
     /// ======================RADIUS LEARNING STUDIES========================
-    static const std::string branches_arr[] = 
+    static const std::string branches_arr[] =
         {"mGMMc_r", "mGMMc_r_avg", "mGMMc_r_weighted_avg"};
     static const std::string radius_titles_arr[] =
         {"Lead jet radius", "Average jet radius", "Weighted average jet radius"};
@@ -919,14 +926,14 @@ int main(int argc, char *argv[]) {
                 for (unsigned int npv_iter = 0; npv_iter < NPVs.size(); npv_iter++) {
                     for (unsigned int branch_iter = 0; branch_iter < 3; branch_iter++) {
                         v_hist_decs.clear();
-                        
+
                         int do_rec = do_recs[do_rec_iter];
                         int size = sizes[size_iter];
                         int learn = learns[learn_iter];
                         int npv = NPVs[npv_iter];
                         std::string branch = branches_arr[branch_iter];
                         std::string partial_title = radius_titles_arr[branch_iter];
-                        
+
                         ss.str(std::string());
                         ss << current_hist << " " << partial_title << " mGMMc jets sz "
                            << size << " lw " << learn << " rec " << do_rec << " pu " << npv;
@@ -948,11 +955,11 @@ int main(int argc, char *argv[]) {
     }
 
     /// ========================FUZZINESS STUDIES============================
-    static const std::string branch_postfix_arr[] = 
+    static const std::string branch_postfix_arr[] =
         {"_m_mean", "_m_var", "_m_skew", "_pt_mean", "_pt_var", "_pt_skew"};
     static const std::string fuzzy_titles_arr[] =
         {"Mass Mean ", "Mass Variance ", "Mass Skew ", "pT Mean ", "pT Variance ", "pT Skew"};
-    static const double low_edges[] = 
+    static const double low_edges[] =
         {0, -20, -20, 0, -20, 20};
     static const double high_edges[] =
         {400, 20, 20, 800, 20, 20};
@@ -964,17 +971,17 @@ int main(int argc, char *argv[]) {
                     for (unsigned int npv_iter = 0; npv_iter < NPVs.size(); npv_iter++) {
                         for (unsigned int branch_iter = 0; branch_iter < 6; branch_iter++) {
                             v_hist_decs.clear();
-                            
+
                             int do_rec = do_recs[do_rec_iter];
                             int size = sizes[size_iter];
-                            int learn = learns[learn_iter];                   
+                            int learn = learns[learn_iter];
                             int npv = NPVs[npv_iter];
                             std::string alg = algs[alg_iter];
                             double low_edge = low_edges[branch_iter];
                             double high_edge = high_edges[branch_iter];
-                            
+
                             ss.str(std::string());
-                            ss << current_hist << " " << fuzzy_titles_arr[branch_iter] << alg << " jets sz " 
+                            ss << current_hist << " " << fuzzy_titles_arr[branch_iter] << alg << " jets sz "
                                << size << " lw " << learn << " rec " << do_rec << " pu " << npv;
                             current_hist++;
                             std::string canvas_title = ss.str();
@@ -984,7 +991,7 @@ int main(int argc, char *argv[]) {
                             ss << alg << branch_postfix_arr[branch_iter];
                             std::string branch = ss.str();
                             HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                        branch, fuzzy_titles_arr[branch_iter], 510, 
+                                                        branch, fuzzy_titles_arr[branch_iter], 510,
                                                         low_edge, high_edge, n_bins,
                                                         options_ref, kBlue, kFullCircle, draw_opt_ref);
                             v_hist_decs.push_back(hist_helper_temp);
@@ -1002,7 +1009,7 @@ int main(int argc, char *argv[]) {
             for (unsigned int size_iter = 0; size_iter < sizes.size(); size_iter++) {
                 for(unsigned int learn_iter = 0; learn_iter < learns.size(); learn_iter++) {
                     v_hist_decs.clear();
-                    
+
                     int do_rec = do_recs[do_rec_iter];
                     int size = sizes[size_iter];
                     int learn = learns[learn_iter];
@@ -1014,7 +1021,7 @@ int main(int argc, char *argv[]) {
                     CanvasHelper c_dec("Fraction of Clustered Particles", "", canvas_title, out_dir, 800, 800);
                     c_dec.diff_scale = false;
                     for(unsigned int npv_iter = 1; npv_iter < NPVs.size(); npv_iter++) {
-        
+
                         int npv = NPVs[npv_iter];
                         ss.str(std::string());
                         ss << alg << " - PuV " << npv;
@@ -1023,7 +1030,7 @@ int main(int argc, char *argv[]) {
                         ss << alg << "_ucpu";
                         std::string branch = ss.str();
                         HistHelper hist_helper_temp(file_m[std::make_tuple(size, learn, npv, do_rec)],
-                                                    branch, title, 510, 0, 1, n_bins, 
+                                                    branch, title, 510, 0, 1, n_bins,
                                                     options, colors_arr[npv_iter],
                                                     styles_arr[npv_iter], draw_opt_ref);
                         v_hist_decs.push_back(hist_helper_temp);
@@ -1033,6 +1040,6 @@ int main(int argc, char *argv[]) {
             }
         }
     }
-    
+
     return 0;
 }

@@ -6,7 +6,8 @@
 #include <TStyle.h>
 #include <TCanvas.h>
 
-
+#include <math.h>
+#include <numeric>
 #include <sstream>
 #include <iostream>
 #include <stdlib.h>
@@ -27,8 +28,100 @@ public:
 
 void gen_string(char* s, const unsigned int len);
 
+class StackedEfficiencyHistogramGen : public UpdatesOnEvent {
+protected:
+    std::vector<std::vector<float>> _signals;
+    std::vector<std::vector<float>> _backgrounds;
+
+    std::vector<Color_t> _colors;
+    std::vector<std::string> _labels;
+
+    std::vector<std::vector<float>> _lows;
+    std::vector<std::vector<float>> _highs;
+
+    std::string _title;
+    std::string _outfile_name;
+
+    unsigned int _canvas_x, _canvas_y;
+    std::vector<unsigned int> _n_points;
+
+    size_t _ticks;
+
+    std::string _x_label;
+    std::string _y_label;
+
+    unsigned int _dimension; // inferred
+
+    StackedEfficiencyHistogramGen() {
+        _outfile_name = "UNNAMED.PDF";
+
+        _title = "UNTITLED";
+
+        _x_label = "X_LABEL";
+        _y_label = "Y_LABEL";
+
+        _canvas_x = _canvas_y = 800;
+        _ticks = 505;
+    }
+
+    unsigned int determineBin(float val, float low, float high, unsigned int bin_count) {
+        float n_val = (val - low) / (high - low);
+        int bin = (int) floor(n_val * bin_count);
+        if (bin < 0) return 0;
+        if (bin >= (int) bin_count) return bin_count - 1;
+        return (unsigned int) bin;
+    }
+
+    void fill(unsigned int attr_idx, std::vector<float> point, float weight, bool sig) {
+        unsigned int raw_index = 0;
+        unsigned int scalar = 1;
+        for (unsigned int dimension_iter = 0; dimension_iter < _dimension; dimension_iter++) {
+            unsigned int index = determineBin(point.at(dimension_iter),
+                                              _lows.at(attr_idx).at(dimension_iter),
+                                              _highs.at(attr_idx).at(dimension_iter),
+                                              _n_points.at(dimension_iter));
+            raw_index += index * scalar;
+            scalar *= _n_points.at(dimension_iter);
+        }
+        if (sig) {
+            _signals.at(attr_idx).at(raw_index) += weight;
+        } else {
+            _backgrounds.at(attr_idx).at(raw_index) += weight;
+        }
+    }
+
+    void fillSignal(unsigned int attr_idx, std::vector<float> point, float weight) {
+        fill(attr_idx, point, weight, true);
+    }
+    void fillBackground(unsigned int attr_idx, std::vector<float> point, float weight) {
+        fill(attr_idx, point, weight, false);
+    }
+
+public:
+    void Start(__attribute__((unused)) EventManager const* event_manager) {
+        unsigned int attribute_count = _colors.size();
+        _dimension = _lows.at(0).size();
+        for(unsigned int attribute_iter = 0; attribute_iter < attribute_count; attribute_iter++) {
+            std::vector<float> v;
+            std::vector<float> w;
+            unsigned int count_max = 1;
+            for(unsigned int iter = 0; iter < _dimension; iter++) {
+                count_max *= _n_points.at(iter);
+            }
+            for(unsigned int iter = 0; iter < count_max; iter++) {
+                v.push_back(0);
+                w.push_back(0);
+            }
+            _signals.push_back(v);
+            _backgrounds.push_back(w);
+        }
+    }
+
+    virtual void Finish(__attribute__((unused)) EventManager const* event_manager);
+};
+
 class StackedEfficiencyHistogramBase : public UpdatesOnEvent {
-protected:    
+protected:
     const static unsigned int _root_name_length = 20;
     std::vector<char *> _root_names_signal;
     std::vector<char *> _root_names_background;
@@ -46,9 +139,9 @@ protected:
 
     unsigned int _canvas_x, _canvas_y;
     unsigned int _n_points;
-    
 
-    
+
+
     size_t _ticks;
 
     std::string _x_label;
@@ -61,10 +154,10 @@ protected:
 
         _x_label = "X_LABEL";
         _y_label = "Y_LABEL";
-        
+
         _canvas_x = _canvas_y = 800;
         _n_points = 200;
-        
+
         _ticks = 505;
     }
 
@@ -92,6 +185,66 @@ public:
     virtual void Finish(__attribute__((unused)) EventManager const* event_manager);
 };
 
+class SigmaImprovementEfficiency : public StackedEfficiencyHistogramGen {
+protected:
+    std::string _event_signal;
+    std::string _event_background;
+
+    float _cut_low;
+    float _cut_high;
+
+public:
+    SigmaImprovementEfficiency (std::string event_signal,
+                                std::string event_background,
+                                float cut_low,
+                                float cut_high) {
+        _event_signal = event_signal;
+        _event_background = event_background;
+
+        _cut_low = cut_low;
+        _cut_high = cut_high;
+
+        _title = "";
+        _x_label = _event_signal + " Efficiency";
+        _y_label = "1 - " + _event_background + " Efficiency";
+
+        _n_points = {20, 20};
+
+        _colors = {kRed, kBlue, kGreen, kBlack};
+        _labels = {"#tau_{3} / #tau_{2}", "#tau_{2} / #tau_{1}",
+                   "#sigma", "#tau_{3} / #tau_{2}, #sigma"};
+
+        _ticks = 405;
+        _lows = {{0, 0}, {0, 0}, {0, 0}, {0, 0}};
+        _highs = {{1, 1}, {1, 1}, {1.5, 1.5}, {1, 1.5}};
+
+        _outfile_name = "SigmaImprovementEfficiency_" + event_signal +
+            "_" + event_background + "_" + std::to_string((long long int) _cut_low) +
+            "_to_" + std::to_string((long long int) _cut_high) + "pT.pdf";
+    }
+    void Update(EventManager const* event_manager);
+};
+
+class EfficiencyGenTest : public StackedEfficiencyHistogramGen {
+public:
+    EfficiencyGenTest() {
+        _title = "";
+        _x_label = "W' Efficiency";
+        _y_label = "1 - QCD Efficiency";
+        _outfile_name = "EfficiencyGenTest.pdf";
+        _n_points = {500};
+
+        _colors = {kRed, kBlue, kBlack};
+        _labels = {"Fuzzy #sigma", "Fuzzy Mass", "Anti-k_{T} Mass"};
+
+        _ticks = 405;
+
+        _lows = {{0}, {0}, {0}};
+        _highs = {{1}, {400}, {400}};
+    }
+    void Update(EventManager const* event_manager);
+};
+
 class SigmaEfficiencyPosterPlot : public StackedEfficiencyHistogramBase {
 public:
     SigmaEfficiencyPosterPlot() {
@@ -100,13 +253,13 @@ public:
         _y_label = "1 - QCD Efficiency";
         _outfile_name = "SigmaEfficiencyPoster.pdf";
         _n_points = 500;
-        
+
         _colors = {kRed, kBlue, kBlack};
         _labels = {"Fuzzy #sigma", "Fuzzy Mass", "Anti-k_{T} Mass"};
         _signs = {-1, -1, -1};
 
         _ticks = 405;
-        
+
         _lows = {0, 0, 0};
         _highs = {1, 400, 400};
     }
@@ -117,11 +270,11 @@ class SigmaEfficiencyPlot : public StackedEfficiencyHistogramBase {
 protected:
     std::string _event_signal;
     std::string _event_background;
-    
+
     float _cut_low, _cut_high;
 
 public:
-    SigmaEfficiencyPlot(std::string event_signal, std::string event_background, 
+    SigmaEfficiencyPlot(std::string event_signal, std::string event_background,
                         float cut_low, float cut_high) {
         _event_signal = event_signal;
         _event_background = event_background;
@@ -133,7 +286,7 @@ public:
 
         std::stringstream ss;
         ss.str(std::string());
-        ss << "SigmaEfficiency_" << event_signal << "_" << event_background << "_" 
+        ss << "SigmaEfficiency_" << event_signal << "_" << event_background << "_"
            << (int) cut_low << "to" << (int) cut_high << "pT.pdf";
         _outfile_name = ss.str();
 
@@ -146,11 +299,10 @@ public:
         _y_label = ss.str();
 
         _n_points = 1000;
-        
         _colors = {kRed, kBlue};
         _labels = {"Fuzzy Sigma", "Anti-kt Mass"};
         _signs = {1, 1};
-        
+
         _ticks = 405;
 
         _lows = {0, 0};
@@ -173,11 +325,47 @@ public:
         _colors = {kRed};
         _labels = {"Fuzzy Jet Skew"};
         _signs = {1};
-        
+
         _ticks = 405;
-        
+
         _lows = {-1};
         _highs = {1};
+    }
+
+    void Update(EventManager const* event_manager);
+};
+
+class SigmaNSubjettinessEfficiencyPlot : public StackedEfficiencyHistogramBase {
+protected:
+    std::string _event_signal;
+    std::string _event_background;
+
+    float _cut_low, _cut_high;
+public:
+    SigmaNSubjettinessEfficiencyPlot(std::string event_signal, std::string event_background,
+                                float cut_low, float cut_high) {
+        _event_signal = event_signal;
+        _event_background = event_background;
+
+        _cut_low = cut_low;
+        _cut_high = cut_high;
+
+        _title = "";
+
+        _outfile_name = "SigmaNSubjettinessEfficiency_" + event_signal + "_" + event_background
+            + "_" + std::to_string((long long int) cut_low) + "_to_" + std::to_string((long long int) cut_high)
+            + "pT.pdf";
+        _x_label = _event_signal + " Efficiency";
+        _y_label = "1 - " + _event_background + " Efficiency";
+
+        _n_points = 1000;
+        _colors = {kRed, kBlue, kBlack, kGreen};
+        _labels = {"#tau_1", "#tau_2", "#tau_2 / #tau_1", "#sigma"};
+        _signs = {1, 1, 1, 1};
+
+        _ticks = 405;
+        _lows = {0, 0, 0, 0};
+        _highs = {1, 1, 1, 1};
     }
 
     void Update(EventManager const* event_manager);
@@ -188,7 +376,7 @@ protected:
     std::string _event_signal;
     std::string _event_background;
     std::string _alg;
-    
+
     float _cut_low, _cut_high;
 
 public:
@@ -205,8 +393,8 @@ public:
 
         std::stringstream ss;
         ss.str(std::string());
-        ss << "FuzzyJetMassEfficiency_" << event_signal << "_" << event_background << "_" 
-           << alg << "_" << (int) cut_low << "to" << (int) cut_high << "pT.pdf";
+        ss << "FuzzyJetMassEfficiency_" << event_signal << "_" << event_background << "_"
+           << alg << "_" << (int) cut_low << "_to_" << (int) cut_high << "pT.pdf";
         _outfile_name = ss.str();
 
         ss.str(std::string());
@@ -214,18 +402,18 @@ public:
         _x_label = ss.str();
 
         ss.str(std::string());
-        ss << _event_background << "1 - Efficiency";
+        ss << "1 - " << _event_background << " Efficiency";
         _y_label = ss.str();
 
         _n_points = 1000;
-        
+
         _colors = {kRed, kBlue};
 
         ss.str(std::string());
         ss << _alg << " Mass";
         _labels = {ss.str(), "Anti-kt Mass"};
         _signs = {1, 1};
-        
+
         _ticks = 405;
 
         _lows = {0, 0};
@@ -239,10 +427,10 @@ class ScatterBase : public UpdatesOnEvent {
 protected:
     Color_t _color;
     Style_t _style;
-    
+
     std::string _title;
     std::string _outfile_name;
-    
+
     unsigned int _canvas_x, _canvas_y;
 
     std::vector<float> _xs, _ys;
@@ -252,11 +440,11 @@ protected:
     ScatterBase() {
         _outfile_name = "UNNAMED.PDF";
         _title = "UNTITLED";
-        
+
         _x_label = "X_LABEL";
         _y_label = "Y_LABEL";
-        
-        _canvas_x = _canvas_y = 800;        
+
+        _canvas_x = _canvas_y = 800;
     }
 public:
     virtual void Finish(EventManager const* event_manager);
@@ -295,13 +483,13 @@ protected:
 
     std::string _title;
     std::string _outfile_name;
-    
+
     unsigned int _canvas_x, _canvas_y;
     unsigned int _n_bins;
     float _low, _high;
 
     size_t _ticks;
-    
+
     std::string _x_label;
     std::string _y_label;
 
@@ -330,13 +518,13 @@ protected:
             delete[] _root_names[iter];
         }
     }
-    
+
 public:
     void Start(__attribute__((unused)) EventManager const* event_manager) {
         for (unsigned int iter = 0; iter < _colors.size(); iter++) {
             _root_names.push_back(new char[_root_name_length + 1]);
             gen_string(_root_names.at(iter), _root_name_length);
-            
+
             _hists.push_back(new TH1F(_root_names.at(iter), _title.c_str(), _n_bins, _low, _high));
         }
     }
@@ -363,14 +551,14 @@ protected:
     TH2F *_hist;
 
     CorrelationBase() {
-        // prevent root from forgetting our damn histograms, 
+        // prevent root from forgetting our damn histograms,
         // would be better to use an UUID though
         gen_string(_root_name, _root_name_length);
 
         // sensible defaults
         _outfile_name = "UNNAMED.PDF";
         _title = "UNTITLED";
-        
+
         _x_label = "X_LABEL";
         _y_label = "Y_LABEL";
 
@@ -382,7 +570,7 @@ protected:
         _x_low = _y_low = 0;
     }
 
-    
+
     ~CorrelationBase() {
         delete _hist;
     }
@@ -400,7 +588,7 @@ protected:
     std::string _event_label;
     std::string _alg_label;
 
-public:    
+public:
     WeightDistanceCorrelation(std::string event_label, std::string alg_label) {
         _x_low = 0.05;
         _x_high = 1.0;
@@ -408,17 +596,17 @@ public:
 
         _n_bins_x = 19;
         _n_bins_y = 20;
-        
+
         _title = "Weight & Distance";
         _event_label = event_label;
         _alg_label = alg_label;
 
         _x_label = "Weight";
         _y_label = "Distance to Leading Jet";
-        
+
         std::stringstream ss;
         ss.str(std::string());
-        ss << "Weight_Distance_Correlation_" << event_label << "_" << alg_label << ".pdf"; 
+        ss << "Weight_Distance_Correlation_" << event_label << "_" << alg_label << ".pdf";
         _outfile_name = ss.str();
     }
     void Update(EventManager const* event_manager);
@@ -429,7 +617,7 @@ protected:
     std::string _event_label;
     std::string _alg_label;
     std::string _other_alg_label;
-    
+
 public:
     PtCorrelation(std::string event_label, std::string alg_label, std::string other_alg_label) {
         _event_label = event_label;
@@ -451,7 +639,7 @@ public:
         _title = ss.str();
 
         ss.str(std::string());
-        ss << "pT_correlation_" << event_label << "_" 
+        ss << "pT_correlation_" << event_label << "_"
            << alg_label << "_" << other_alg_label << ".pdf";
         _outfile_name = ss.str();
 
@@ -467,7 +655,7 @@ protected:
     std::string _event_label;
     std::string _alg_label;
     std::string _other_alg_label;
-    
+
 public:
     MassCorrelation(std::string event_label, std::string alg_label, std::string other_alg_label) {
         _event_label = event_label;
@@ -489,7 +677,7 @@ public:
         _title = ss.str();
 
         ss.str(std::string());
-        ss << "Mass_correlation_" << event_label << "_" 
+        ss << "Mass_correlation_" << event_label << "_"
            << alg_label << "_" << other_alg_label << ".pdf";
         _outfile_name = ss.str();
 
@@ -501,7 +689,7 @@ public:
 };
 
 class SigmaJetSizeCorrelation : public CorrelationBase {
-protected:    
+protected:
     std::string _event_label;
     std::string _alg_label;
 public:
@@ -514,7 +702,7 @@ public:
         _alg_label = alg_label;
 
         std::stringstream ss;
-        
+
         ss.str(std::string());
         ss << "Leading " << _alg_label << " Jet Mass/Jet pT";
         _x_label = ss.str();
@@ -522,11 +710,11 @@ public:
         ss.str(std::string());
         ss << "Learned sigma";
         _y_label = ss.str();
-        
+
         ss.str(std::string());
         ss << "Pythia8 " << _event_label;
         _title = ss.str();
-        
+
         ss.str(std::string());
         ss << "SigmaJetSizeCorrelation_" << _event_label << "_" << _alg_label << ".pdf";
         _outfile_name = ss.str();
@@ -558,7 +746,7 @@ protected:
 public:
     SigmaAreaCorrelation(std::string event_label, std::string alg) {
         _event_label = event_label;
-        
+
         if (alg == "antikt") {
             _x_low = 0;
             _x_high = 1.2;
@@ -573,7 +761,7 @@ public:
 
         _canvas_x = 1200;
         _canvas_y = 1200;
-        
+
         _n_bins_x = _n_bins_y = 20;
         _x_label = "Leading jet #sigma^{2}";
         _y_label = alg + " jet area";
@@ -615,14 +803,14 @@ public:
 
         _x_label = "Fuzzy Jet Mass Skew [GeV]";
         _y_label = "";
-        
+
         _title = "";
         _outfile_name = "SkewHistogram.pdf";
 
         _colors = {kBlue, kRed};
         _styles = {1, 1};
         _labels = {"Z'#rightarrow tt'", "QCD"};
-        
+
         _ticks = 210;
     }
     void Update(EventManager const* event_manager);
@@ -634,10 +822,10 @@ protected:
 public:
     DeltaRHistogram(std::string alg_label) {
         _alg_label = alg_label;
-         
+
         _high = 6;
         _n_bins = 20;
-        
+
         std::stringstream ss;
         ss.str(std::string());
         ss << "#Delta r between " << _alg_label << " jets";
@@ -656,7 +844,7 @@ public:
 
         _ticks = 505;
     }
-    
+
     void Update(EventManager const* event_manager);
 };
 
@@ -678,7 +866,7 @@ public:
 
         _ticks = 502;
     }
-    
+
     void Update(EventManager const* event_manager);
 };
 
@@ -699,7 +887,7 @@ public:
 
         _ticks = 502;
     }
-    
+
     void Update(EventManager const* event_manager);
 };
 
@@ -707,9 +895,9 @@ struct CustomSortPair {
 public:
     float signal;
     float background;
-    CustomSortPair(float s, float b) 
+    CustomSortPair(float s, float b)
         : signal(s), background(b) {}
-    
+
     bool operator < (const CustomSortPair& rhs) const {
         //        if (background == 0) return true;
         //        if (rhs.background == 0) return false;
