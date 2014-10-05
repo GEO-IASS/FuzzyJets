@@ -48,13 +48,13 @@ namespace {
     vecPseudoJet randomSubvector(vecPseudoJet const& origin, unsigned int how_many) {
         assert(origin.size() >= how_many);
         vecPseudoJet out;
-        
+
         std::vector<unsigned int> indices;
         for(unsigned int iter = 0; iter < origin.size(); iter++) {
             indices.push_back(iter);
         }
         std::random_shuffle(indices.begin(), indices.end());
-        
+
         for(unsigned int iter = 0; iter < how_many; iter++) {
             unsigned int index = indices.at(iter);
             out.push_back(origin[index]);
@@ -64,9 +64,9 @@ namespace {
             float rap = out.at(iter).rapidity() + randb() * randf(0.8, 1);
             float phi = out.at(iter).phi() + randb() * randf(0.8, 1);
             out.at(iter).reset_PtYPhiM(1.0, rap, phi, 0);
-            
+
         }
-        
+
         return out;
     }
 
@@ -263,7 +263,7 @@ namespace {
             unsigned int index;
 
         SortablePt(int input_index, float input_pT) : pT(input_pT), index(input_index) {}
-        
+
         bool operator < (const SortablePt& rhs) const {
             return (pT < rhs.pT);
         }
@@ -275,7 +275,7 @@ namespace {
                         FuzzyTools *tool,
                         vector<int>& indices,
                         double& pT) {
-    
+
         pT = -1;
         indices.clear();
         vector<SortablePt> pTs;
@@ -285,7 +285,7 @@ namespace {
                                        cluster_count, 0);
             pTs.push_back(SortablePt(i, holdpT));
         }
-        
+
         sort(pTs.begin(), pTs.end());
         // reverse the list of indices and push it back onto the output
         for (unsigned int iter = jets.size(); iter-- > 0;) {
@@ -386,7 +386,7 @@ namespace {
                                           &jet_weights);
         FindLeadingJet(particles, jets, particle_weights, tool, lead_indices, lead_pT);
     }
-                           
+
 
     void DoMGMMJetFinding(vecPseudoJet& particles,
                           vecPseudoJet& seeds,
@@ -433,7 +433,7 @@ FuzzyAnalysis::FuzzyAnalysis(){
 
     batched = false;
     should_print = true;
-    
+
     pT_min = 5;
 
     tool = new FuzzyTools();
@@ -469,7 +469,7 @@ void FuzzyAnalysis::Begin(){
     t_f = new TFile(fullName.c_str(), "RECREATE");
     t_t = new TTree("EventTree", "Event Tree for Fuzzy");
     #endif
-    
+
     if(!batched) {
         SetupHistosMap();
     }
@@ -482,7 +482,7 @@ void FuzzyAnalysis::Begin(){
     return;
 }
 
-void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets, 
+void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                                       __attribute__((unused)) vecPseudoJet antikt_jets,
                                       __attribute__((unused)) int event_iter) {
     vecPseudoJet particles_for_jets = ca_jets[0].constituents();
@@ -498,11 +498,11 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
         bool mGMMs_on = true;
         bool mTGMM_on = true;
         bool mTGMMs_on = true;
-        
+
         double subs_sigma = 0.3;
         tool->SetDefaultSigma(MatTwo(subs_sigma*subs_sigma, 0, 0, subs_sigma*subs_sigma));
         tool->SetMergeDistance(0.05);
-        
+
         // Fuzzy Jets: mGMMs --------------------
         vector<vector<double> > mGMMs_particle_weights;
         vector<MatTwo> mGMMs_jets_params;
@@ -519,7 +519,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
         }
         int lead_mGMMs_index = mGMMs_indices.size() ? mGMMs_indices.at(0) : -1;
 
-        
+
         // Fuzzy Jets: mGMMc --------------------
         vector<vector<double> > mGMMc_particle_weights;
         vector<MatTwo> mGMMc_jets_params;
@@ -535,7 +535,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                               mGMMc_jets_params, mGMMc_weights);
         }
         int lead_mGMMc_index = mGMMc_indices.size() ? mGMMc_indices.at(0) : -1;
-        
+
         // Fuzzy Jets: mTGMMs -------------------
         vector<vector<double > > mTGMMs_particle_weights;
         vector<MatTwo> mTGMMs_jets_params;
@@ -551,7 +551,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                               mTGMMs_jets_params, mTGMMs_weights);
         }
         int lead_mTGMMs_index = mTGMMs_indices.size() ? mTGMMs_indices.at(0) : -1;
-        
+
         // Fuzzy Jets: mGMM ---------------------
         vector<vector<double> >mGMM_particle_weights;
         vector<MatTwo> mGMM_jets_params;
@@ -567,7 +567,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                              mGMM_jets_params, mGMM_weights);
         }
         int lead_mGMM_index = mGMM_indices.size() ? mGMM_indices.at(0) : -1;
-        
+
         // Fuzzy Jets: mUMM ---------------------
         vector<vector<double> > mUMM_particle_weights;
         vector<double> mUMM_weights;
@@ -581,7 +581,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                              mUMM_particle_weights, mUMM_weights);
         }
         __attribute__((unused)) int lead_mUMM_index = mUMM_indices.size() ? mUMM_indices.at(0) : -1;
-        
+
         // Fuzzy Jets: mTGMM --------------------
         vector<vector<double> > mTGMM_particle_weights;
         vector<double> mTGMM_weights;
@@ -596,7 +596,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                               mTGMM_particle_weights, mTGMM_jets_params, mTGMM_weights);
         }
         int lead_mTGMM_index = mTGMM_indices.size() ? mTGMM_indices.at(0) : -1;
-        
+
         if(!mGMM_weights.size()) {
             mGMM_on = false;
         }
@@ -615,7 +615,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
         if(!mUMM_weights.size()) {
             mUMM_on = false;
         }
-        
+
         std::stringstream ss;
 
         // do event displays
@@ -635,9 +635,9 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
             ss.str(std::string());
             ss << "Substructure mGMM k=" << num_clusters;
             std::string title = ss.str();
-            
+
             tool->SubsEventDisplay(particles_for_jets, mGMM_jets, mGMM_particle_weights,
-                                   lead_mGMM_index, mGMM_jets_params, file, title);                               
+                                   lead_mGMM_index, mGMM_jets_params, file, title);
         }
         if (mGMMs_on) {
             ss.str(std::string());
@@ -719,7 +719,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
 }
 
 void FuzzyAnalysis::SetupHistosMap() {
-    static const std::string algs_arr[] = 
+    static const std::string algs_arr[] =
         {"mGMM", "mGMMs", "mGMMc", "mTGMM", "mTGMMs", "mUMM"};
     std::vector<std::string> algs(algs_arr, algs_arr+sizeof(algs_arr) / sizeof(algs_arr[0]));
     for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
@@ -728,17 +728,17 @@ void FuzzyAnalysis::SetupHistosMap() {
         ss.str(std::string());
         ss << algs[alg_iter] << "_hs";
         map_weight_vecs[ss.str()] = std::vector<float>();
-        
+
         ss.str(std::string());
         ss << algs[alg_iter] << "_pu";
         map_weight_vecs[ss.str()] = std::vector<float>();
-        
+
     }
 }
 
 void FuzzyAnalysis::WriteHistosMap() {
     #ifdef WITHROOT
-    static const std::string algs_arr[] = 
+    static const std::string algs_arr[] =
         {"mGMM", "mGMMs", "mGMMc", "mTGMM", "mTGMMs", "mUMM"};
     std::vector<std::string> algs(algs_arr, algs_arr+sizeof(algs_arr) / sizeof(algs_arr[0]));
     for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
@@ -771,7 +771,7 @@ void FuzzyAnalysis::WriteHistosMap() {
         // don't write canvases if we are on the batch,
         // we can do that later
         if (batched) continue;
-        
+
         TCanvas *c = new TCanvas(TString::Format("HSPU Weight Comparison %s", algs[alg_iter].c_str()),
                                  "Hard Scatter and Pileup Weight Comparison", 800, 800);
         pu_hist.SetLineColor(kBlue);
@@ -788,10 +788,10 @@ void FuzzyAnalysis::WriteHistosMap() {
         if(pu_hist.Integral(-1, pu_hist.GetNbinsX()+1) > 0) {
             pu_hist.Scale(1./pu_hist.Integral(-1, pu_hist.GetNbinsX()+1));
         }
-        
+
         hs_hist.Draw("");
         pu_hist.Draw("same");
-        
+
         TLegend *leggaa = new TLegend(0.6, 0.7, 0.9, 0.8);
         leggaa->SetTextFont(42);
         leggaa->AddEntry(&pu_hist, "Pileup weights", "l");
@@ -804,7 +804,7 @@ void FuzzyAnalysis::WriteHistosMap() {
         c->Write();
         delete c;
         delete leggaa;
-        
+
     }
     #endif
 }
@@ -815,7 +815,7 @@ void FuzzyAnalysis::End(){
     WriteHistosMap();
     t_t->Write();
     delete t_f;
-    #endif 
+    #endif
     return;
 }
 
@@ -1008,7 +1008,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     fastjet::ClusterSequenceArea cs_large_r_ca(particles_for_jets, *m_jet_def_large_r_ca, area_def);
     vecPseudoJet my_jets_large_r_ca = fastjet::sorted_by_pt(cs_large_r_ca.inclusive_jets(pT_min));
 
-    // this is a very temporary fix, it appears that there are no jets sometimes with pT at least 
+    // this is a very temporary fix, it appears that there are no jets sometimes with pT at least
     if (my_jets_large_r_ca.size() != 0) {
         fTCA_m = my_jets_large_r_ca[0].m();
         fTCA_pt = my_jets_large_r_ca[0].pt();
@@ -1054,7 +1054,6 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         antikt_nsubjettiness.push_back(n_subjettiness_1(lead_akt));
         antikt_nsubjettiness.push_back(n_subjettiness_2(lead_akt));
         antikt_nsubjettiness.push_back(n_subjettiness_3(lead_akt));
-
         if (my_jets_large_r_antikt.size() >= 2) {
             fTantikt_dr = my_jets_large_r_antikt[0].delta_R(my_jets_large_r_antikt[1]);
         }
@@ -1081,7 +1080,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         SubstructureStudy(my_jets_vlarge_r_ca, my_jets_vlarge_r_antikt, event_iter);
         return;
     }
-    
+
     // ======================================
     // Various mixture models ---------------
     // ======================================
@@ -1212,7 +1211,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     if (!mTGMMs_weights.size()) {
         mTGMMs_on = false;
     }
-    
+
     bool do_weight_distributions = false;
     if (do_weight_distributions && event_iter < 10 && !batched) {
 
@@ -1260,7 +1259,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
             fTmGMMc_r_third = sqrt(mGMMc_jets_params[mGMMc_indices[2]].xx);
         }
     }
-    
+
     // Event displays
     bool do_event_displays = true;
     if (do_event_displays && !batched) {
@@ -1287,13 +1286,13 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
             tool->JetContributionDisplay(particles_for_jets,
                                          mGMM_particle_weights,
                                          lead_mGMM_index,
-                                         1, 
+                                         1,
                                          "m_mGMM",
                                          event_iter);
             tool->JetContributionDisplay(particles_for_jets,
                                          mGMM_particle_weights,
                                          lead_mGMM_index,
-                                         0, 
+                                         0,
                                          "pt_mGMM",
                                          event_iter);
         }
@@ -1811,7 +1810,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
 
     moments_m.clear();
     moments_pt.clear();
-    
+
     #ifdef WITHROOT
     t_t->Fill();
 
@@ -1902,7 +1901,7 @@ void FuzzyAnalysis::DeclareBranches(){
     tree_vars["mGMMc_m_pu_soft"] = &fTmGMMc_m_pu_soft;
     tree_vars["mGMMc_m_pu_hard"] = &fTmGMMc_m_pu_hard;
     tree_vars["mGMMc_dr"] = &fTmGMMc_dr;
-    
+
     tree_vars["mGMMc_r"] = &fTmGMMc_r;
     tree_vars["mGMMc_r_second"] = &fTmGMMc_r_second;
     tree_vars["mGMMc_r_third"] = &fTmGMMc_r_third;
@@ -2058,7 +2057,7 @@ void FuzzyAnalysis::ResetBranches(){
     for (iter = tree_vars.begin(); iter != tree_vars.end(); iter++) {
         *(iter->second) = -999999;
     }
-    
+
     CA_nsubjettiness.clear();
     antikt_nsubjettiness.clear();
 
