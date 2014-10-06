@@ -55,7 +55,7 @@ void StackedEfficiencyHistogramGen::Finish(__attribute__((unused)) EventManager
                             0.);
 
         std::vector<CustomSortPair> to_sort;
-        for (unsigned int iter = 0; iter < _signals.at(0).size(); iter++) {
+        for (unsigned int iter = 0; iter < _signals.at(attr_iter).size(); iter++) {
             to_sort.push_back(CustomSortPair(_signals.at(attr_iter).at(iter) / integral_sig,
                                              _backgrounds.at(attr_iter).at(iter) / integral_background));
         }
@@ -64,13 +64,13 @@ void StackedEfficiencyHistogramGen::Finish(__attribute__((unused)) EventManager
         float integrated_background = 0;
         std::vector<float> vec_signal;
         std::vector<float> vec_background_rejection;
-        for (unsigned int iter = 0; iter < _signals.at(0).size(); iter++) {
+        for (unsigned int iter = 0; iter < _signals.at(attr_iter).size(); iter++) {
             integrated_signal += to_sort.at(iter).signal;
             integrated_background += to_sort.at(iter).background;
             vec_signal.push_back(integrated_signal);
             vec_background_rejection.push_back(1 - integrated_background);
         }
-        TGraph *efficiency_graph = new TGraph(_signals.at(0).size(),
+        TGraph *efficiency_graph = new TGraph(vec_signal.size(),
                                               &vec_signal.at(0),
                                               &vec_background_rejection.at(0));
 
