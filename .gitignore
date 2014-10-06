@@ -4,6 +4,9 @@
 *.o
 *.obj
 
+# Generated files
+*.pdf
+
 # Compiled Dynamic libraries
 *.so
 *.dylib
