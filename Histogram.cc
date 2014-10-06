@@ -83,7 +83,7 @@ void StackedEfficiencyHistogramGen::Finish(__attribute__((unused)) EventManager
         multi->Add(efficiency_graph);
     }
     TCanvas canvas("temporary", "", 0, 0, _canvas_x, _canvas_y);
-    multi->Draw("ap");
+    multi->Draw("ac");
     multi->GetXaxis()->SetTitle(_x_label.c_str());
     multi->GetYaxis()->SetTitle(_y_label.c_str());
 
@@ -260,7 +260,7 @@ void ScatterBase::Finish(__attribute__((unused)) EventManager const* event_manag
     legend->SetFillColor(0);
     legend->SetBorderSize(0);
 
-    multi->Draw("ac");
+    multi->Draw("ap");
     multi->GetXaxis()->SetTitle(_x_label.c_str());
     multi->GetYaxis()->SetTitle(_y_label.c_str());
 
