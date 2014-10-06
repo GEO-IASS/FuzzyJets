@@ -38,7 +38,7 @@ def submit_fuzzy(mu, size, lw, rec, cut, n_events, i, unique_id):
 
 workdir = "/u/at/chstan/nfs/summer_2014/ForConrad/"
 
-pythia_conf = workdir + "configs/qcd_batch.pythia"
+pythia_conf = workdir + "configs/default_batch.pythia"
 
 cwd = os.getcwd() + "/"
 subfile = cwd + "_batchSingleSub.sh"
@@ -46,16 +46,16 @@ subfile = cwd + "_batchSingleSub.sh"
 time_postfix = time.strftime('%Y_%m_%d_%Hh%Mm%Ss')
 
 events_per_job = 5000
-n_jobs = 10
-n_jobs_patch = 5
+n_jobs = 50
+n_jobs_patch = 10
 queue = 'xlong'
 
-name = '50kevts_qcd_mu0'
+name = '250kevts_zprime_mu0'
 outdir = cwd + 'files/' + name + '/' + time_postfix
 safe_mkdir(outdir)
 
 NPVs = [0]
-sizes = [7, 8, 9, 10]
+sizes = [10]
 learnWeights = [False, True]
 recombinations = [False, True]
 pT_cuts = [5, 15, 25, 50]
@@ -78,7 +78,7 @@ for current_mu in NPVs:
                         j += 1
 
 outdir = cwd + 'files/' + name + '_patch/' + time_postfix
-safe_mkdir(outdir) 
+safe_mkdir(outdir)
 for current_mu in NPVs:
     for current_size in sizes:
         for current_lw in learnWeights:

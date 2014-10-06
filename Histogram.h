@@ -11,6 +11,7 @@
 #include <sstream>
 #include <iostream>
 #include <stdlib.h>
+#include <assert.h>
 
 class EventManager;
 
@@ -43,14 +44,14 @@ protected:
     std::string _outfile_name;
 
     unsigned int _canvas_x, _canvas_y;
-    std::vector<unsigned int> _n_points;
+    std::vector<std::vector<unsigned int> > _n_points;
 
     size_t _ticks;
 
     std::string _x_label;
     std::string _y_label;
 
-    unsigned int _dimension; // inferred
+    std::vector<unsigned int> _dimensions; // inferred
 
     StackedEfficiencyHistogramGen() {
         _outfile_name = "UNNAMED.PDF";
@@ -75,13 +76,20 @@ protected:
     void fill(unsigned int attr_idx, std::vector<float> point, float weight, bool sig) {
         unsigned int raw_index = 0;
         unsigned int scalar = 1;
-        for (unsigned int dimension_iter = 0; dimension_iter < _dimension; dimension_iter++) {
+        unsigned int current_dimensions = _dimensions.at(attr_idx);
+
+        std::vector<unsigned int> current_n_points = _n_points.at(attr_idx);
+
+        assert(point.size() == current_dimensions);
+        assert(point.size() == current_n_points.size());
+
+        for (unsigned int dimension_iter = 0; dimension_iter < current_dimensions; dimension_iter++) {
             unsigned int index = determineBin(point.at(dimension_iter),
                                               _lows.at(attr_idx).at(dimension_iter),
                                               _highs.at(attr_idx).at(dimension_iter),
-                                              _n_points.at(dimension_iter));
+                                              current_n_points.at(dimension_iter));
             raw_index += index * scalar;
-            scalar *= _n_points.at(dimension_iter);
+            scalar *= current_n_points.at(dimension_iter);
         }
         if (sig) {
             _signals.at(attr_idx).at(raw_index) += weight;
@@ -100,13 +108,17 @@ protected:
 public:
     void Start(__attribute__((unused)) EventManager const* event_manager) {
         unsigned int attribute_count = _colors.size();
-        _dimension = _lows.at(0).size();
         for(unsigned int attribute_iter = 0; attribute_iter < attribute_count; attribute_iter++) {
+            _dimensions.push_back(_lows.at(attribute_iter).size());
+            unsigned int current_dimensions = _dimensions.at(attribute_iter);
+
+            std::vector<unsigned int> current_n_points = _n_points.at(attribute_iter);
+
             std::vector<float> v;
             std::vector<float> w;
             unsigned int count_max = 1;
-            for(unsigned int iter = 0; iter < _dimension; iter++) {
-                count_max *= _n_points.at(iter);
+            for(unsigned int iter = 0; iter < current_dimensions; iter++) {
+                count_max *= current_n_points.at(iter);
             }
             for(unsigned int iter = 0; iter < count_max; iter++) {
                 v.push_back(0);
@@ -208,15 +220,17 @@ public:
         _x_label = _event_signal + " Efficiency";
         _y_label = "1 - " + _event_background + " Efficiency";
 
-        _n_points = {20, 20};
+        _n_points = {{400}, {400}, {400}, {5, 400}};
 
         _colors = {kRed, kBlue, kGreen, kBlack};
-        _labels = {"#tau_{3} / #tau_{2}", "#tau_{2} / #tau_{1}",
-                   "#sigma", "#tau_{3} / #tau_{2}, #sigma"};
+        _labels = {"#tau_{3} / #tau_{2}",
+                   "#tau_{2} / #tau_{1}",
+                   "#sigma",
+                   "#tau_{3} / #tau_{2}, #sigma"};
 
         _ticks = 405;
-        _lows = {{0, 0}, {0, 0}, {0, 0}, {0, 0}};
-        _highs = {{1, 1}, {1, 1}, {1.5, 1.5}, {1, 1.5}};
+        _lows = {{0}, {0}, {0}, {0, 0}};
+        _highs = {{1}, {1}, {1.5}, {1, 1.5}};
 
         _outfile_name = "SigmaImprovementEfficiency_" + event_signal +
             "_" + event_background + "_" + std::to_string((long long int) _cut_low) +
@@ -232,7 +246,7 @@ public:
         _x_label = "W' Efficiency";
         _y_label = "1 - QCD Efficiency";
         _outfile_name = "EfficiencyGenTest.pdf";
-        _n_points = {500};
+        _n_points = {{500}, {500}, {500}};
 
         _colors = {kRed, kBlue, kBlack};
         _labels = {"Fuzzy #sigma", "Fuzzy Mass", "Anti-k_{T} Mass"};
@@ -899,8 +913,12 @@ public:
         : signal(s), background(b) {}
 
     bool operator < (const CustomSortPair& rhs) const {
-        //        if (background == 0) return true;
-        //        if (rhs.background == 0) return false;
+        if (background == 0 && rhs.background == 0) {
+            // both nan candidates, better do something consistent
+            return signal > rhs.signal;
+        }
+        if (background == 0) return true;
+        if (rhs.background == 0) return false;
         return ((signal / background) > (rhs.signal / rhs.background));
     }
 };

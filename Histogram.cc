@@ -60,6 +60,7 @@ void StackedEfficiencyHistogramGen::Finish(__attribute__((unused)) EventManager
                                              _backgrounds.at(attr_iter).at(iter) / integral_background));
         }
         std::sort(to_sort.begin(), to_sort.end());
+
         float integrated_signal = 0;
         float integrated_background = 0;
         std::vector<float> vec_signal;
@@ -82,7 +83,7 @@ void StackedEfficiencyHistogramGen::Finish(__attribute__((unused)) EventManager
         multi->Add(efficiency_graph);
     }
     TCanvas canvas("temporary", "", 0, 0, _canvas_x, _canvas_y);
-    multi->Draw("ac");
+    multi->Draw("ap");
     multi->GetXaxis()->SetTitle(_x_label.c_str());
     multi->GetYaxis()->SetTitle(_y_label.c_str());
 
@@ -259,7 +260,7 @@ void ScatterBase::Finish(__attribute__((unused)) EventManager const* event_manag
     legend->SetFillColor(0);
     legend->SetBorderSize(0);
 
-    multi->Draw("ap");
+    multi->Draw("ac");
     multi->GetXaxis()->SetTitle(_x_label.c_str());
     multi->GetYaxis()->SetTitle(_y_label.c_str());
 
@@ -377,15 +378,15 @@ void SigmaImprovementEfficiency::Update(EventManager const* event_manager) {
     float sigma_back = (*event_manager)[_event_background].mGMMc_r;
 
     if (_cut_low <= pT_sig && pT_sig < _cut_high) {
-        fillSignal(0, {tau3_sig/tau2_sig, 0.5}, signal_reweight);
-        fillSignal(1, {tau2_sig/tau1_sig, 0.5}, signal_reweight);
-        fillSignal(2, {sigma_sig, 0.5}, signal_reweight);
+        fillSignal(0, {tau3_sig/tau2_sig}, signal_reweight);
+        fillSignal(1, {tau2_sig/tau1_sig}, signal_reweight);
+        fillSignal(2, {sigma_sig}, signal_reweight);
         fillSignal(3, {tau3_sig/tau2_sig, sigma_sig}, signal_reweight);
     }
     if (_cut_low <= pT_back && pT_back < _cut_high) {
-        fillBackground(0, {tau3_back/tau2_back, 0.5}, background_reweight);
-        fillBackground(1, {tau2_back/tau1_back, 0.5}, background_reweight);
-        fillBackground(2, {sigma_back, 0.5}, background_reweight);
+        fillBackground(0, {tau3_back/tau2_back}, background_reweight);
+        fillBackground(1, {tau2_back/tau1_back}, background_reweight);
+        fillBackground(2, {sigma_back}, background_reweight);
         fillBackground(3, {tau3_back/tau2_back, sigma_back}, background_reweight);
     }
 }
