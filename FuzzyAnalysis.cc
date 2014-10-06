@@ -306,7 +306,8 @@ namespace {
                           FuzzyTools *tool,
                           vecPseudoJet& jets,
                           vector<vector<double> >& particle_weights,
-                          vector<double>& jet_weights) {
+                          vector<double>& jet_weights,
+                          unsigned int &iters) {
         vecPseudoJet parts = particles;
         tool->SetKernelType(FuzzyTools::UNIFORM);
         tool->SetLearnWeights(learn_weights);
@@ -320,7 +321,8 @@ namespace {
         tool->SetR(size);
         jets = tool->ClusterFuzzyUniform(particles,
                                          &particle_weights,
-                                         &jet_weights);
+                                         &jet_weights,
+                                         iters);
         FindLeadingJet(particles, jets, particle_weights, tool, lead_indices, lead_pT);
     }
 
@@ -336,7 +338,8 @@ namespace {
                            vecPseudoJet& jets,
                            vector<vector<double> >& particle_weights,
                            vector<MatTwo>& parameters,
-                           vector<double>& jet_weights) {
+                           vector<double>& jet_weights,
+                           unsigned int &iters) {
         tool->SetKernelType(FuzzyTools::TRUNCGAUSSIAN);
         tool->SetLearnWeights(learn_weights);
         if(learn_shape) {
@@ -356,7 +359,8 @@ namespace {
         jets = tool->ClusterFuzzyTruncGaus(particles,
                                            &particle_weights,
                                            &parameters,
-                                           &jet_weights);
+                                           &jet_weights,
+                                           iters);
         FindLeadingJet(particles, jets, particle_weights, tool, lead_indices, lead_pT);
     }
 
@@ -370,7 +374,8 @@ namespace {
                            vecPseudoJet& jets,
                            vector<vector<double> >& particle_weights,
                            vector<MatTwo>& parameters,
-                           vector<double>& jet_weights) {
+                           vector<double>& jet_weights,
+                           unsigned int &iters) {
         tool->SetKernelType(FuzzyTools::GAUSSIAN);
         tool->SetLearnWeights(learn_weights);
         if (do_recombination) {
@@ -381,9 +386,10 @@ namespace {
             tool->SetSeeds(seeds);
         }
         jets = tool->ClusterFuzzyGaussianC(particles,
-                                          &particle_weights,
-                                          &parameters,
-                                          &jet_weights);
+                                           &particle_weights,
+                                           &parameters,
+                                           &jet_weights,
+                                           iters);
         FindLeadingJet(particles, jets, particle_weights, tool, lead_indices, lead_pT);
     }
 
@@ -399,7 +405,8 @@ namespace {
                           vecPseudoJet& jets,
                           vector<vector<double> >& particle_weights,
                           vector<MatTwo>& parameters,
-                          vector<double>& jet_weights) {
+                          vector<double>& jet_weights,
+                          unsigned int &iters) {
         tool->SetKernelType(FuzzyTools::GAUSSIAN);
         tool->SetLearnWeights(learn_weights);
         if(learn_shape) {
@@ -418,7 +425,8 @@ namespace {
         jets = tool->ClusterFuzzyGaussian(particles,
                                           &particle_weights,
                                           &parameters,
-                                          &jet_weights);
+                                          &jet_weights,
+                                          iters);
         FindLeadingJet(particles, jets, particle_weights, tool, lead_indices, lead_pT);
     }
 }
@@ -503,6 +511,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
         tool->SetDefaultSigma(MatTwo(subs_sigma*subs_sigma, 0, 0, subs_sigma*subs_sigma));
         tool->SetMergeDistance(0.05);
 
+        unsigned int dummy;
         // Fuzzy Jets: mGMMs --------------------
         vector<vector<double> > mGMMs_particle_weights;
         vector<MatTwo> mGMMs_jets_params;
@@ -515,7 +524,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                              f_learn_weights, true, false,
                              mGMMs_indices, max_pT_mGMMs,
                              tool, mGMMs_jets, mGMMs_particle_weights,
-                             mGMMs_jets_params, mGMMs_weights);
+                             mGMMs_jets_params, mGMMs_weights, dummy);
         }
         int lead_mGMMs_index = mGMMs_indices.size() ? mGMMs_indices.at(0) : -1;
 
@@ -532,7 +541,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                               f_learn_weights, false,
                               mGMMc_indices, max_pT_mGMMc,
                               tool, mGMMc_jets, mGMMc_particle_weights,
-                              mGMMc_jets_params, mGMMc_weights);
+                              mGMMc_jets_params, mGMMc_weights, dummy);
         }
         int lead_mGMMc_index = mGMMc_indices.size() ? mGMMc_indices.at(0) : -1;
 
@@ -548,7 +557,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                               f_learn_weights, true, false,
                               f_size, mTGMMs_indices, max_pT_mTGMMs,
                               tool, mTGMMs_jets, mTGMMs_particle_weights,
-                              mTGMMs_jets_params, mTGMMs_weights);
+                              mTGMMs_jets_params, mTGMMs_weights, dummy);
         }
         int lead_mTGMMs_index = mTGMMs_indices.size() ? mTGMMs_indices.at(0) : -1;
 
@@ -564,7 +573,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                              f_learn_weights, false, false,
                              mGMM_indices, max_pT_mGMM,
                              tool, mGMM_jets, mGMM_particle_weights,
-                             mGMM_jets_params, mGMM_weights);
+                             mGMM_jets_params, mGMM_weights, dummy);
         }
         int lead_mGMM_index = mGMM_indices.size() ? mGMM_indices.at(0) : -1;
 
@@ -578,7 +587,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
             DoMUMMJetFinding(particles_for_jets, random_seeds,
                              f_learn_weights, f_size, false,
                              mUMM_indices, max_pT_mUMM, tool, mUMM_jets,
-                             mUMM_particle_weights, mUMM_weights);
+                             mUMM_particle_weights, mUMM_weights, dummy);
         }
         __attribute__((unused)) int lead_mUMM_index = mUMM_indices.size() ? mUMM_indices.at(0) : -1;
 
@@ -593,7 +602,8 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
             DoMTGMMJetFinding(particles_for_jets, random_seeds,
                               f_learn_weights, false, false, f_size,
                               mTGMM_indices, max_pT_mTGMM, tool, mTGMM_jets,
-                              mTGMM_particle_weights, mTGMM_jets_params, mTGMM_weights);
+                              mTGMM_particle_weights, mTGMM_jets_params,
+                              mTGMM_weights, dummy);
         }
         int lead_mTGMM_index = mTGMM_indices.size() ? mTGMM_indices.at(0) : -1;
 
@@ -1109,7 +1119,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                          f_learn_weights, true, do_recombination,
                          mGMMs_indices, max_pT_mGMMs,
                          tool, mGMMs_jets, mGMMs_particle_weights,
-                         mGMMs_jets_params, mGMMs_weights);
+                         mGMMs_jets_params, mGMMs_weights, fTmGMMs_iter);
     }
     int lead_mGMMs_index = mGMMs_indices.size() ? mGMMs_indices.at(0) : -1;
 
@@ -1126,7 +1136,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                           f_learn_weights, do_recombination,
                           mGMMc_indices, max_pT_mGMMc,
                           tool, mGMMc_jets, mGMMc_particle_weights,
-                          mGMMc_jets_params, mGMMc_weights);
+                          mGMMc_jets_params, mGMMc_weights, fTmGMMc_iter);
     }
     int lead_mGMMc_index = mGMMc_indices.size() ? mGMMc_indices.at(0) : -1;
 
@@ -1142,7 +1152,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                           f_learn_weights, true, do_recombination,
                           f_size, mTGMMs_indices, max_pT_mTGMMs,
                           tool, mTGMMs_jets, mTGMMs_particle_weights,
-                          mTGMMs_jets_params, mTGMMs_weights);
+                          mTGMMs_jets_params, mTGMMs_weights, fTmTGMMs_iter);
     }
     int lead_mTGMMs_index = mTGMMs_indices.size() ? mTGMMs_indices.at(0) : -1;
 
@@ -1158,7 +1168,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                          f_learn_weights, false, do_recombination,
                          mGMM_indices, max_pT_mGMM,
                          tool, mGMM_jets, mGMM_particle_weights,
-                         mGMM_jets_params, mGMM_weights);
+                         mGMM_jets_params, mGMM_weights, fTmGMM_iter);
     }
     int lead_mGMM_index = mGMM_indices.size() ? mGMM_indices.at(0) : -1;
 
@@ -1172,7 +1182,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         DoMUMMJetFinding(particles_for_jets, my_jets_large_r_ca,
                          f_learn_weights, f_size, do_recombination,
                          mUMM_indices, max_pT_mUMM, tool, mUMM_jets,
-                         mUMM_particle_weights, mUMM_weights);
+                         mUMM_particle_weights, mUMM_weights, fTmUMM_iter);
     }
     int lead_mUMM_index = mUMM_indices.size() ? mUMM_indices.at(0) : -1;
 
@@ -1187,7 +1197,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         DoMTGMMJetFinding(particles_for_jets, my_jets_large_r_ca,
                           f_learn_weights, false, do_recombination, f_size,
                           mTGMM_indices, max_pT_mTGMM, tool, mTGMM_jets,
-                          mTGMM_particle_weights, mTGMM_jets_params, mTGMM_weights);
+                          mTGMM_particle_weights, mTGMM_jets_params,
+                          mTGMM_weights, fTmTGMM_iter);
     }
     int lead_mTGMM_index = mTGMM_indices.size() ? mTGMM_indices.at(0) : -1;
 
@@ -1997,6 +2008,14 @@ void FuzzyAnalysis::DeclareBranches(){
     t_t->Branch("EventNumber",    &fTEventNumber,    "EventNumber/I");
     t_t->Branch("NPV",            &fTNPV,            "NPV/I");
 
+    // declare non-float branches
+    t_t->Branch("mGMM_iter", &fTmGMM_iter, "mGMM_iter/i");
+    t_t->Branch("mGMMc_iter", &fTmGMMc_iter, "mGMMc_iter/i");
+    t_t->Branch("mGMMs_iter", &fTmGMMs_iter, "mGMMs_iter/i");
+    t_t->Branch("mTGMM_iter", &fTmTGMM_iter, "mTGMM_iter/i");
+    t_t->Branch("mTGMMs_iter", &fTmTGMMs_iter, "mTGMMs_iter/i");
+    t_t->Branch("mUMM_iter", &fTmUMM_iter, "mUMM_iter/i");
+
     // declare vector branches
     t_t->Branch("CA_nsubjettiness", "vector<float>", &CA_nsubjettiness);
     t_t->Branch("antikt_nsubjettiness", "vector<float>", &antikt_nsubjettiness);
@@ -2057,6 +2076,16 @@ void FuzzyAnalysis::ResetBranches(){
     for (iter = tree_vars.begin(); iter != tree_vars.end(); iter++) {
         *(iter->second) = -999999;
     }
+
+    // reset non-float basic branches
+    fTmGMM_iter = 0;
+    fTmGMMc_iter = 0;
+    fTmGMMs_iter = 0;
+    fTmTGMM_iter = 0;
+    fTmTGMMs_iter = 0;
+    fTmUMM_iter = 0;
+
+    // reset vector branches
 
     CA_nsubjettiness.clear();
     antikt_nsubjettiness.clear();

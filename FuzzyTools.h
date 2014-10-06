@@ -32,11 +32,11 @@ public:
     double yx;
     double yy;
 
-    MatTwo(double xx_in, double xy_in, double yx_in, double yy_in) 
+    MatTwo(double xx_in, double xy_in, double yx_in, double yy_in)
         : xx(xx_in)
         , xy(xy_in)
         , yx(yx_in)
-        , yy(yy_in) 
+        , yy(yy_in)
     {}
 
 
@@ -55,7 +55,7 @@ protected:
     double _weight;
 public:
     AbstractKernel() {}
-    
+
     virtual ~AbstractKernel() {}
 
     virtual double PDF(double x, double y) = 0;
@@ -89,9 +89,9 @@ public:
 class GaussianKernel : public AbstractKernel {
     double _mu_x, _mu_y;
     MatTwo _sigma;
-    
+
 public:
-    GaussianKernel(double weight, double mu_x, double mu_y, MatTwo sigma) 
+    GaussianKernel(double weight, double mu_x, double mu_y, MatTwo sigma)
         :_mu_x(mu_x), _mu_y(mu_y), _sigma(sigma) {
         _weight = weight;
     }
@@ -155,7 +155,7 @@ class FuzzyTools {
     double merge_dist;
     double min_weight;
     double min_sigma;
-   
+
     double log_log_likelihood_limit;
 
     int cluster_count;
@@ -174,7 +174,7 @@ class FuzzyTools {
     void SetDefaultSigma(MatTwo s) {
         default_sigma = s;
     }
-   
+
     void SetLogLogLikelihoodLimit(double l) {
         log_log_likelihood_limit = l;
     }
@@ -287,7 +287,8 @@ class FuzzyTools {
     vecPseudoJet ClusterFuzzyGaussian(vecPseudoJet const& particles,
                                       vector<vector<double> >* weights,
                                       vector<MatTwo>* mGMM_jets_params_out,
-                                      vector<double>* mGMM_weights_out);
+                                      vector<double>* mGMM_weights_out,
+                                      unsigned int &iter_count);
 
     vecPseudoJet UpdateJetsGaussianC(vecPseudoJet const& particles,
                                      vector<vector<double> > const& weights,
@@ -298,7 +299,8 @@ class FuzzyTools {
     vecPseudoJet ClusterFuzzyGaussianC(vecPseudoJet const& particles,
                                        vector<vector<double> >* weights,
                                        vector<MatTwo>* mGMMc_jets_params_out,
-                                       vector<double>* mGMMc_weights_out);
+                                       vector<double>* mGMMc_weights_out,
+                                       unsigned int &iter_count);
 
     void ComputeWeightsUniform(vecPseudoJet const& particles,
                                vector<vector<double> >* weights,
@@ -313,7 +315,8 @@ class FuzzyTools {
 
     vecPseudoJet ClusterFuzzyUniform(vecPseudoJet const& particles,
                                      vector<vector<double> >* weights,
-                                     vector<double>* mUMM_weights_out);
+                                     vector<double>* mUMM_weights_out,
+                                     unsigned int &iter_count);
 
     void ComputeWeightsTruncGaus(vecPseudoJet const& particles,
                                  vector<vector<double> >* weights,
@@ -331,7 +334,8 @@ class FuzzyTools {
     vecPseudoJet ClusterFuzzyTruncGaus(vecPseudoJet const& particles,
                                        vector<vector<double> >* weights,
                                        vector<MatTwo>* mTGMM_jets_params_out,
-                                       vector<double>* mTGMM_weights);
+                                       vector<double>* mTGMM_weights,
+                                       unsigned int &iter_count);
 
     double LogLikelihoodGaussian(vecPseudoJet const& particles,
                                  vecPseudoJet const& mGMM_jets,

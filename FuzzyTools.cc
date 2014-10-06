@@ -60,7 +60,7 @@ FuzzyTools::FuzzyTools()
 
     learn_weights = true;
     learn_shape = true;
-    
+
     log_log_likelihood_limit = -10;
 
     merge_dist = 0.01;
@@ -117,13 +117,13 @@ GaussianKernel::AdditionalUpdate(vecPseudoJet const& particles,
         _sigma.yx += q_ji * x_diff * y_diff / cluster_weighted_pt;
         _sigma.yy += q_ji * y_diff * y_diff / cluster_weighted_pt;
     }
-    
+
     // if the matrix is looking singular...
     if (_sigma.xx+_sigma.yy+_sigma.xy < 0.01){
         _sigma.xx=0.5*0.5;
         _sigma.yy=0.5*0.5;
     }
-    
+
     // updated sigma is junk if it had almost no contained pT
     if (!(cluster_weighted_pt > 0)){
         _sigma.xx=0.001*0.001;
@@ -137,7 +137,7 @@ double
 GaussianKernel::PDF(double x, double y) {
     const double limit = 0.001*0.001;
     double det = _sigma.determinant();
-    
+
     double invdet;
     double ixx, iyx, iyy;
 
@@ -147,7 +147,7 @@ GaussianKernel::PDF(double x, double y) {
 
         det = sigmasubsx * sigmasubsy - _sigma.xy * _sigma.yx;
         invdet = 1.0/det;
-        
+
         ixx = sigmasubsy * invdet;
         iyy = sigmasubsx * invdet;
         iyx = -_sigma.yx * invdet;
@@ -173,7 +173,7 @@ FuzzyTools::doGaus(double x1, double x2, double mu1, double mu2,
                    MatTwo const& sigma){
     const double limit = 0.001 * 0.001;
     double det = sigma.determinant();
-    
+
     double invdet;
     double ixx, iyx, iyy;
 
@@ -497,19 +497,19 @@ FuzzyTools::UpdateJetsGaussianC(vecPseudoJet const& particles,
                                 vector<MatTwo>* mGMMc_jets_params,
                                 vector<double>* mGMMc_weights) {
     vecPseudoJet out_jets;
-    
+
     double total_particle_pt = 0;
     unsigned int particle_count = weights.size();
     for (unsigned int particle_iter = 0; particle_iter < particle_count; particle_iter++) {
         total_particle_pt += pow(particles[particle_iter].pt(), alpha);
     }
-    
+
     for (int cluster_iter = 0; cluster_iter < cluster_count; cluster_iter++) {
         double jet_y = 0;
         double jet_phi = 0;
         double cluster_weighted_pt = 0;
         double cluster_pi = 0;
-        
+
         for (unsigned int particle_iter = 0; particle_iter < particle_count; particle_iter++) {
             cluster_weighted_pt += pow(particles[particle_iter].pt(), alpha) * weights[particle_iter][cluster_iter];
         }
@@ -525,17 +525,17 @@ FuzzyTools::UpdateJetsGaussianC(vecPseudoJet const& particles,
         if (learn_weights) {
             mGMMc_weights->at(cluster_iter) = cluster_pi;
         }
-        
+
         if(!(cluster_weighted_pt > 0)) {
             // setup jet to be pruned
             jet_y = 0;
             jet_phi = 0;
         }
-        
+
         fastjet::PseudoJet my_jet;
         my_jet.reset_PtYPhiM(1.0, jet_y, jet_phi, 0.);
         out_jets.push_back(my_jet);
-        
+
         if(learn_shape) {
             MatTwo sigma_update(0, 0, 0, 0);
             double sum = 0;
@@ -724,7 +724,8 @@ FuzzyTools::ClustersForRemovalUniform(vecPseudoJet const& mUMM_jets,
 vecPseudoJet
 FuzzyTools::ClusterFuzzyUniform(vecPseudoJet const& particles,
                                 vector<vector<double> >* weights_out,
-                                vector<double>* mUMM_weights_out) {
+                                vector<double>* mUMM_weights_out,
+                                unsigned int &iter_count) {
     assert(kernel_type == FuzzyTools::UNIFORM);
 
     int cluster_count = seeds.size();
@@ -736,7 +737,8 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet const& particles,
         mUMM_weights.push_back(1.0/cluster_count);
     }
     double log_likelihood_norm_last = 0;
-    for(int iter = 0; iter < max_iters; iter++) {
+    int iter = 0;
+    for(; iter < max_iters; iter++) {
         ComputeWeightsUniform(particles, &weights, cluster_count, mUMM_jets, mUMM_weights);
         mUMM_jets = UpdateJetsUniform(particles, weights, cluster_count, &mUMM_weights);
         double log_likelihood_norm = LogLikelihoodUniform(particles, mUMM_jets, mUMM_weights) / particles.size();
@@ -779,6 +781,7 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet const& particles,
         std::transform(mUMM_weights.begin(), mUMM_weights.end(), mUMM_weights.begin(),
                        std::bind2nd(std::multiplies<double>(), 1.0/total_weight));
     }
+    iter_count = iter;
     weights_out->clear();
     for (unsigned int i=0; i<weights.size(); i++){
         weights_out->push_back(weights[i]);
@@ -794,7 +797,8 @@ vecPseudoJet
 FuzzyTools::ClusterFuzzyTruncGaus(vecPseudoJet const& particles,
                                   vector<vector<double> >* weights_out,
                                   vector<MatTwo>* mTGMM_jets_params_out,
-                                  vector<double>* mTGMM_weights_out){
+                                  vector<double>* mTGMM_weights_out,
+                                  unsigned int &iter_count){
     assert(kernel_type == FuzzyTools::TRUNCGAUSSIAN);
 
     int cluster_count = seeds.size();
@@ -808,7 +812,8 @@ FuzzyTools::ClusterFuzzyTruncGaus(vecPseudoJet const& particles,
     vecPseudoJet mTGMM_jets = Initialize(particles,cluster_count,seeds);
     vector<MatTwo> mTGMM_jets_params = Initializeparams(particles,cluster_count);
     double log_likelihood_norm_last = 0;
-    for (int iter=0; iter<max_iters; iter++){
+    int iter = 0;
+    for (; iter<max_iters; iter++){
         // EM algorithm update steps
         ComputeWeightsTruncGaus(particles,&weights,cluster_count,mTGMM_jets,mTGMM_jets_params, mTGMM_weights);
         mTGMM_jets = UpdateJetsTruncGaus(particles,weights,cluster_count,&mTGMM_jets_params,&mTGMM_weights);
@@ -860,6 +865,7 @@ FuzzyTools::ClusterFuzzyTruncGaus(vecPseudoJet const& particles,
         cluster_count = mTGMM_jets_hold.size();
 
     }
+    iter_count = iter;
     weights_out->clear();
     for (unsigned int i=0; i<weights.size(); i++){
         weights_out->push_back(weights[i]);
@@ -879,7 +885,8 @@ vecPseudoJet
 FuzzyTools::ClusterFuzzyGaussianC(vecPseudoJet const& particles,
                                  vector<vector<double> >* weights_out,
                                  vector<MatTwo>* mGMMc_jets_params_out,
-                                 vector<double>* mGMMc_weights_out){
+                                 vector<double>* mGMMc_weights_out,
+                                 unsigned int &iter_count){
     assert(kernel_type == FuzzyTools::GAUSSIAN);
 
     int cluster_count = seeds.size();
@@ -893,7 +900,8 @@ FuzzyTools::ClusterFuzzyGaussianC(vecPseudoJet const& particles,
     vecPseudoJet mGMMc_jets = Initialize(particles,cluster_count,seeds);
     vector<MatTwo> mGMMc_jets_params = Initializeparams(particles,cluster_count);
     double log_likelihood_norm_last = 0;
-    for (int iter=0; iter<max_iters; iter++){
+    int iter=0;
+    for (; iter<max_iters; iter++){
         // EM algorithm update steps
         ComputeWeightsGaussian(particles,&weights,cluster_count,mGMMc_jets,mGMMc_jets_params, mGMMc_weights);
         mGMMc_jets = UpdateJetsGaussianC(particles,weights,cluster_count,&mGMMc_jets_params,&mGMMc_weights);
@@ -946,6 +954,7 @@ FuzzyTools::ClusterFuzzyGaussianC(vecPseudoJet const& particles,
         cluster_count = mGMMc_jets_hold.size();
 
     }
+    iter_count= iter;
     weights_out->clear();
     for (unsigned int i=0; i<weights.size(); i++){
         weights_out->push_back(weights[i]);
@@ -1023,24 +1032,24 @@ void ClusterFuzzy(vecPseudoJet const& particles,
             if (cluster_weighted_pt > 0) {
                 for (unsigned int particle_iter = 0; particle_iter < particles.size(); particle_iter++) {
                     fastjet::PseudoJet const& particle = particles[particle_iter];
-                    jet_y += pow(particle.pt(), tool.GetAlpha()) * particle_weights[particle_iter] 
+                    jet_y += pow(particle.pt(), tool.GetAlpha()) * particle_weights[particle_iter]
                         * particle.rapidity() / cluster_weighted_pt;
                     jet_phi += pow(particle.pt(), tool.GetAlpha()) * particle_weights[particle_iter]
                         * particle.phi() / cluster_weighted_pt;
                 }
             }
             p_jet->SetLocation(jet_y, jet_phi);
-            
+
             if (tool.GetLearnWeights()) {
                 p_jet->SetWeight(cluster_weighted_pt / total_particle_pt);
             }
         }
-        
+
         // remove clusters if necessary
         if (tool.GetClusteringMode() == FuzzyTools::FIXED) continue;
 
         set<unsigned int> repeats = ClustersForRemoval(tool, jets);
-        
+
         vector<AbstractKernel *> new_jets;
         for (unsigned int jet_iter = 0; jet_iter < jets.size(); jet_iter++) {
             if (repeats.count(jet_iter) != 0) {
@@ -1058,7 +1067,8 @@ vecPseudoJet
 FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet const& particles,
                                  vector<vector<double> >* weights_out,
                                  vector<MatTwo>* mGMM_jets_params_out,
-                                 vector<double>* mGMM_weights_out){
+                                 vector<double>* mGMM_weights_out,
+                                 unsigned int &iter_count){
     assert(kernel_type == FuzzyTools::GAUSSIAN);
 
     int cluster_count = seeds.size();
@@ -1072,7 +1082,8 @@ FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet const& particles,
     vecPseudoJet mGMM_jets = Initialize(particles,cluster_count,seeds);
     vector<MatTwo> mGMM_jets_params = Initializeparams(particles,cluster_count);
     double log_likelihood_norm_last = 0;
-    for (int iter=0; iter<max_iters; iter++){
+    int iter=0;
+    for (; iter<max_iters; iter++){
         // EM algorithm update steps
         ComputeWeightsGaussian(particles,&weights,cluster_count,mGMM_jets,mGMM_jets_params, mGMM_weights);
         mGMM_jets = UpdateJetsGaussian(particles,weights,cluster_count,&mGMM_jets_params,&mGMM_weights);
@@ -1124,6 +1135,7 @@ FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet const& particles,
         cluster_count = mGMM_jets_hold.size();
 
     }
+    iter_count = iter;
     weights_out->clear();
     for (unsigned int i=0; i<weights.size(); i++){
         weights_out->push_back(weights[i]);
@@ -1143,13 +1155,13 @@ double FuzzyTools::LogLikelihoodGaussian(vecPseudoJet const& particles,
                                          vecPseudoJet const& mGMM_jets,
                                          vector<MatTwo> const& mGMM_jets_params,
                                          vector<double> const& mGMM_weights) {
-    double log_likelihood = 0; 
+    double log_likelihood = 0;
     for (unsigned int particle_iter = 0; particle_iter < particles.size(); particle_iter++) {
         fastjet::PseudoJet p = particles[particle_iter];
         double likelihood_summand = 0;
         for (unsigned int cluster_iter = 0; cluster_iter < mGMM_weights.size(); cluster_iter++) {
             fastjet::PseudoJet cluster = mGMM_jets[cluster_iter];
-            likelihood_summand += mGMM_weights[cluster_iter] * 
+            likelihood_summand += mGMM_weights[cluster_iter] *
                 doGaus(p.rapidity(), p.phi(), cluster.rapidity(), cluster.phi(), mGMM_jets_params[cluster_iter]);
 
         }
@@ -1162,13 +1174,13 @@ double FuzzyTools::LogLikelihoodTruncGaus(vecPseudoJet const& particles,
                                           vecPseudoJet const& mTGMM_jets,
                                           vector<MatTwo> const& mTGMM_jets_params,
                                           vector<double> const& mTGMM_weights) {
-    double log_likelihood = 0; 
+    double log_likelihood = 0;
     for (unsigned int particle_iter = 0; particle_iter < particles.size(); particle_iter++) {
         fastjet::PseudoJet p = particles[particle_iter];
         double likelihood_summand = 0;
         for (unsigned int cluster_iter = 0; cluster_iter < mTGMM_weights.size(); cluster_iter++) {
             fastjet::PseudoJet cluster = mTGMM_jets[cluster_iter];
-            likelihood_summand += mTGMM_weights[cluster_iter] * 
+            likelihood_summand += mTGMM_weights[cluster_iter] *
                 doTruncGaus(p.rapidity(), p.phi(), cluster.rapidity(), cluster.phi(), mTGMM_jets_params[cluster_iter]);
         }
         log_likelihood += log(likelihood_summand);
@@ -1474,14 +1486,14 @@ FuzzyTools::SubsEventDisplay(vecPseudoJet const& particles,
     #ifdef WITHROOT
     gStyle->SetOptStat(0);
     TCanvas * c = new TCanvas("c", title.c_str(), 500, 500);
-    
+
     const int particle_count = particles.size();
-    
+
     map<int, TGraph*> vars;
     for (int particle_iter = 0; particle_iter < particle_count; particle_iter++) {
         double x = particles[particle_iter].rapidity();
         double y = particles[particle_iter].phi();
-        
+
         vars[particle_iter] = new TGraph(1, &x, &y);
         int mycolor = 17 - floor(weights[particle_iter][lead_mGMM_index] * 8);
         if (mycolor < 12) mycolor = 1;
@@ -1496,7 +1508,7 @@ FuzzyTools::SubsEventDisplay(vecPseudoJet const& particles,
         y_jet[jet_iter] = mGMM_jets[jet_iter].phi();
     }
     TGraph *jet_graph = new TGraph(mGMM_jet_count, x_jet, y_jet);
-    
+
     TH1F * background = new TH1F("", "", 100, -4, 8);
     background->GetXaxis()->SetTitle("Rapidity");
     background->GetYaxis()->SetTitleOffset(1.4);
@@ -1688,9 +1700,9 @@ FuzzyTools::EventDisplay(__attribute__((unused)) vecPseudoJet const& particles,
 }
 
 void
-FuzzyTools::Qjetmass(__attribute__((unused)) vecPseudoJet particles, 
-                     __attribute__((unused)) vector<vector<double> > weights, 
-                     __attribute__((unused)) int which, 
+FuzzyTools::Qjetmass(__attribute__((unused)) vecPseudoJet particles,
+                     __attribute__((unused)) vector<vector<double> > weights,
+                     __attribute__((unused)) int which,
                      __attribute__((unused)) std::string out){
     #ifdef WITHROOT
     TH1F q_jet_mass(TString::Format("qjetmass%s", out.c_str()),"",100,0,250);
@@ -1799,7 +1811,7 @@ FuzzyTools::CentralMoments(vecPseudoJet const& particles,
     #ifdef WITHROOT
     TRandom3 rand = TRandom3(1);
     UInt_t seed = rand.GetSeed();
-    #else 
+    #else
     time_t seed = time(NULL);
     srand(seed);
     #endif

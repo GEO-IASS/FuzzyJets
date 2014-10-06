@@ -64,7 +64,7 @@ class FuzzyAnalysis{
     TFile *t_f;
     TTree *t_t;
     #endif
-    
+
     FuzzyTools *tool;
 
     // Tree Vars ---------------------------------------
@@ -120,6 +120,7 @@ class FuzzyAnalysis{
     float fTmUMM_m_pu_soft;
     float fTmUMM_m_pu_hard;
     float fTmUMM_dr;
+    unsigned int fTmUMM_iter;
     std::vector<float> fTmUMM_etas;
     std::vector<float> fTmUMM_phis;
 
@@ -143,6 +144,7 @@ class FuzzyAnalysis{
     float fTmGMMs_m_pu_soft;
     float fTmGMMs_m_pu_hard;
     float fTmGMMs_dr;
+    unsigned int fTmGMMs_iter;
     std::vector<float> fTmGMMs_etas;
     std::vector<float> fTmGMMs_phis;
 
@@ -166,9 +168,10 @@ class FuzzyAnalysis{
     float fTmGMMc_m_pu_soft;
     float fTmGMMc_m_pu_hard;
     float fTmGMMc_dr;
+    unsigned int fTmGMMc_iter;
     std::vector<float> fTmGMMc_etas;
     std::vector<float> fTmGMMc_phis;
-    
+
     float fTmGMMc_r;
     float fTmGMMc_r_avg;
     float fTmGMMc_r_weighted_avg;
@@ -195,6 +198,7 @@ class FuzzyAnalysis{
     float fTmTGMMs_m_pu_soft;
     float fTmTGMMs_m_pu_hard;
     float fTmTGMMs_dr;
+    unsigned int fTmTGMMs_iter;
     std::vector<float> fTmTGMMs_etas;
     std::vector<float> fTmTGMMs_phis;
 
@@ -218,6 +222,7 @@ class FuzzyAnalysis{
     float fTmGMM_m_pu_soft;
     float fTmGMM_m_pu_hard;
     float fTmGMM_dr;
+    unsigned int fTmGMM_iter;
     std::vector<float> fTmGMM_etas;
     std::vector<float> fTmGMM_phis;
 
@@ -241,6 +246,7 @@ class FuzzyAnalysis{
     float fTmTGMM_m_pu_soft;
     float fTmTGMM_m_pu_hard;
     float fTmTGMM_dr;
+    unsigned int fTmTGMM_iter;
     std::vector<float> fTmTGMM_etas;
     std::vector<float> fTmTGMM_phis;
 
@@ -250,7 +256,7 @@ class FuzzyAnalysis{
     fastjet::JetDefinition     *m_jet_def_vlarge_r_antikt;
     fastjet::JetDefinition     *m_jet_def_vlarge_r_ca;
 
-    
+
 
  public:
     FuzzyAnalysis ();
