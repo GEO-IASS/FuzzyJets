@@ -46,8 +46,10 @@ void eventLoop (int n_events, Pythia8::Pythia *pythia8,
         analysis->AnalyzeEvent(event_iter, pythia8, pythia_MB, NPV);
         now = clock();
         secs = ((double) (now - start) / (event_iter + 1)) / CLOCKS_PER_SEC;
+        if (!analysis->IsBatched() || ((event_iter + 1) % 500) == 0) {
         cout << "Seconds per event (sample: " << (event_iter + 1)
              << " events): " << secs << endl;
+        }
     }
 }
 
