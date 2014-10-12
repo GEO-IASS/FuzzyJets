@@ -295,6 +295,10 @@ class FuzzyAnalysis{
     void SetBatched(bool b) {
         batched = b;
     }
+    bool IsBatched() {
+        return batched;
+    }
+
     void SetShouldPrint(bool s) {
         should_print = s;
     }

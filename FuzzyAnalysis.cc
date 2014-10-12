@@ -4,9 +4,12 @@
 #include <sstream>
 #include <set>
 #include <assert.h>
+#include <exception>
 
 #include "myFastJetBase.h"
+#include "fastjet/ClusterSequenceActiveAreaExplicitGhosts.hh"
 #include "fastjet/ClusterSequenceArea.hh"
+#include "fastjet/ClusterSequenceActiveArea.hh"
 #include "fastjet/PseudoJet.hh"
 #include "fastjet/tools/Filter.hh"
 #include "fastjet/Selector.hh"
@@ -74,7 +77,7 @@ namespace {
                             __attribute__((unused)) int which,
                             __attribute__((unused)) std::string out,
                             __attribute__((unused)) int iter) {
-        #ifdef WITHROOT
+#ifdef WITHROOT
         TTree aux(TString::Format("WT_%s_%d", out.c_str(), iter), "");
         double w;
         int p_count = weights.size();
@@ -84,7 +87,7 @@ namespace {
             aux.Fill();
         }
         aux.Write();
-        #endif
+#endif
     }
 
     // is the reference particle given by index p_idx clustered at all?
@@ -258,9 +261,9 @@ namespace {
     }
 
     struct SortablePt {
-        public:
-            float pT;
-            unsigned int index;
+    public:
+        float pT;
+        unsigned int index;
 
         SortablePt(int input_index, float input_pT) : pT(input_pT), index(input_index) {}
 
@@ -473,10 +476,10 @@ FuzzyAnalysis::~FuzzyAnalysis(){
 void FuzzyAnalysis::Begin(){
     // Declare TTree
     string fullName = directory_prefix + f_out_name;
-    #ifdef WITHROOT
+#ifdef WITHROOT
     t_f = new TFile(fullName.c_str(), "RECREATE");
     t_t = new TTree("EventTree", "Event Tree for Fuzzy");
-    #endif
+#endif
 
     if(!batched) {
         SetupHistosMap();
@@ -638,7 +641,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                 if (num_clusters == max_num_clusters) {
                     ss << ".pdf)";
                 } else {
-                ss << ".pdf";
+                    ss << ".pdf";
                 }
             }
             std::string file = ss.str();
@@ -657,8 +660,8 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
             } else {
                 if (num_clusters == max_num_clusters) {
                     ss << ".pdf)";
-            } else {
-                ss << ".pdf";
+                } else {
+                    ss << ".pdf";
                 }
             }
             std::string file = ss.str();
@@ -676,8 +679,8 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
             } else {
                 if (num_clusters == max_num_clusters) {
                     ss << ".pdf)";
-            } else {
-                ss << ".pdf";
+                } else {
+                    ss << ".pdf";
                 }
             }
             std::string file = ss.str();
@@ -695,8 +698,8 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
             } else {
                 if (num_clusters == max_num_clusters) {
                     ss << ".pdf)";
-            } else {
-                ss << ".pdf";
+                } else {
+                    ss << ".pdf";
                 }
             }
             std::string file = ss.str();
@@ -714,8 +717,8 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
             } else {
                 if (num_clusters == max_num_clusters) {
                     ss << ".pdf)";
-            } else {
-                ss << ".pdf";
+                } else {
+                    ss << ".pdf";
                 }
             }
             std::string file = ss.str();
@@ -747,7 +750,7 @@ void FuzzyAnalysis::SetupHistosMap() {
 }
 
 void FuzzyAnalysis::WriteHistosMap() {
-    #ifdef WITHROOT
+#ifdef WITHROOT
     static const std::string algs_arr[] =
         {"mGMM", "mGMMs", "mGMMc", "mTGMM", "mTGMMs", "mUMM"};
     std::vector<std::string> algs(algs_arr, algs_arr+sizeof(algs_arr) / sizeof(algs_arr[0]));
@@ -816,16 +819,16 @@ void FuzzyAnalysis::WriteHistosMap() {
         delete leggaa;
 
     }
-    #endif
+#endif
 }
 
 // End
 void FuzzyAnalysis::End(){
-    #ifdef WITHROOT
+#ifdef WITHROOT
     WriteHistosMap();
     t_t->Write();
     delete t_f;
-    #endif
+#endif
     return;
 }
 
@@ -1008,6 +1011,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     // Area Definition ---------------------
     fastjet::GhostedAreaSpec area_spec(max_rap);
     fastjet::AreaDefinition area_def(fastjet::active_area, area_spec);
+    fastjet::AreaDefinition area_def_exp = fastjet::AreaDefinition(fastjet::active_area_explicit_ghosts);
 
     // N Subjettiness
     fastjet::contrib::Nsubjettiness n_subjettiness_1(1, fastjet::contrib::Njettiness::kt_axes, 1, 1, 1);
@@ -1015,15 +1019,21 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     fastjet::contrib::Nsubjettiness n_subjettiness_3(3, fastjet::contrib::Njettiness::kt_axes, 1, 1, 1);
 
     // large-R jets: C/A --------------------
-    fastjet::ClusterSequenceArea cs_large_r_ca(particles_for_jets, *m_jet_def_large_r_ca, area_def);
+    {
+        fastjet::ClusterSequenceArea cs_large_r_ca(particles_for_jets, *m_jet_def_large_r_ca, area_def);
+        vecPseudoJet my_jets_large_r_ca = fastjet::sorted_by_pt(cs_large_r_ca.inclusive_jets(pT_min));
+        if (my_jets_large_r_ca.size() != 0) {
+            fTCA_pufrac = JetPuFracFastjet(my_jets_large_r_ca[0]);
+            fTCA_m_pu = JetPuMassFastjet(my_jets_large_r_ca[0]);
+        }
+    }
+    fastjet::ClusterSequenceArea cs_large_r_ca(particles_for_jets, *m_jet_def_large_r_ca, area_def_exp);
     vecPseudoJet my_jets_large_r_ca = fastjet::sorted_by_pt(cs_large_r_ca.inclusive_jets(pT_min));
 
     // this is a very temporary fix, it appears that there are no jets sometimes with pT at least
     if (my_jets_large_r_ca.size() != 0) {
         fTCA_m = my_jets_large_r_ca[0].m();
         fTCA_pt = my_jets_large_r_ca[0].pt();
-        fTCA_pufrac = JetPuFracFastjet(my_jets_large_r_ca[0]);
-        fTCA_m_pu = JetPuMassFastjet(my_jets_large_r_ca[0]);
         fTCA_area = my_jets_large_r_ca[0].area();
         if (my_jets_large_r_ca.size() >= 2) {
             fTCA_dr = my_jets_large_r_ca[0].delta_R(my_jets_large_r_ca[1]);
@@ -1037,7 +1047,22 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     fastjet::Filter filter_two(0.2, fastjet::SelectorPtFractionMin(0.05));
     fastjet::Filter filter_three(0.3, fastjet::SelectorPtFractionMin(0.05));
 
-    fastjet::ClusterSequenceArea cs_large_r_antikt(particles_for_jets, *m_jet_def_large_r_antikt, area_def);
+    {
+        fastjet::ClusterSequenceArea cs_large_r_antikt(particles_for_jets, *m_jet_def_large_r_antikt, area_def);
+        vecPseudoJet my_jets_large_r_antikt = fastjet::sorted_by_pt(cs_large_r_antikt.inclusive_jets(pT_min));
+        fastjet::PseudoJet lead_akt = my_jets_large_r_antikt[0];
+        fastjet::PseudoJet lead_akt_filter_two = filter_two(lead_akt);
+        fastjet::PseudoJet lead_akt_filter_three = filter_three(lead_akt);
+
+        fTantikt_m_pu = JetPuMassFastjet(lead_akt);
+        fTantikt_pufrac = JetPuFracFastjet(lead_akt);
+        fTantikt_m_pu_trimmed_two = JetPuMassFastjet(lead_akt_filter_two);
+        fTantikt_pufrac_trimmed_two = JetPuFracFastjet(lead_akt_filter_two);
+        fTantikt_m_pu_trimmed_three = JetPuMassFastjet(lead_akt_filter_three);
+        fTantikt_pufrac_trimmed_three = JetPuFracFastjet(lead_akt_filter_three);
+    }
+
+    fastjet::ClusterSequenceArea cs_large_r_antikt(particles_for_jets, *m_jet_def_large_r_antikt, area_def_exp);
     vecPseudoJet my_jets_large_r_antikt = fastjet::sorted_by_pt(cs_large_r_antikt.inclusive_jets(pT_min));
 
     if (my_jets_large_r_antikt.size() != 0) {
@@ -1047,19 +1072,15 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
 
         fTantikt_area = lead_akt.area();
         fTantikt_m = lead_akt.m();
-        fTantikt_m_pu = JetPuMassFastjet(lead_akt);
         fTantikt_pt = lead_akt.pt();
-        fTantikt_pufrac = JetPuFracFastjet(lead_akt);
 
+        fTantikt_area_trimmed_two = lead_akt_filter_two.area();
         fTantikt_m_trimmed_two = lead_akt_filter_two.m();
-        fTantikt_m_pu_trimmed_two = JetPuMassFastjet(lead_akt_filter_two);
         fTantikt_pt_trimmed_two = lead_akt_filter_two.pt();
-        fTantikt_pufrac_trimmed_two = JetPuFracFastjet(lead_akt_filter_two);
 
+        fTantikt_area_trimmed_three = lead_akt_filter_three.area();
         fTantikt_m_trimmed_three = lead_akt_filter_three.m();
-        fTantikt_m_pu_trimmed_three = JetPuMassFastjet(lead_akt_filter_three);
         fTantikt_pt_trimmed_three = lead_akt_filter_three.pt();
-        fTantikt_pufrac_trimmed_three = JetPuFracFastjet(lead_akt_filter_three);
 
         antikt_nsubjettiness.push_back(n_subjettiness_1(lead_akt));
         antikt_nsubjettiness.push_back(n_subjettiness_2(lead_akt));
@@ -1105,7 +1126,6 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     bool mGMMs_on = true;
     bool mTGMM_on = true;
     bool mTGMMs_on = true;
-
 
     // Fuzzy Jets: mGMMs --------------------
     vector<vector<double> > mGMMs_particle_weights;
@@ -1350,14 +1370,14 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                   "mGMMc",
                                   event_iter);
             tool->NewEventDisplayPoster(particles_for_jets,
-                                  my_jets_large_r_ca, tops,
-                                  mGMMc_jets,
-                                  mGMMc_particle_weights,
-                                  lead_mGMMc_index,
-                                  mGMMc_jets_params,
-                                  mGMMc_weights,
-                                  "mGMMc",
-                                  event_iter);
+                                        my_jets_large_r_ca, tops,
+                                        mGMMc_jets,
+                                        mGMMc_particle_weights,
+                                        lead_mGMMc_index,
+                                        mGMMc_jets_params,
+                                        mGMMc_weights,
+                                        "mGMMc",
+                                        event_iter);
         }
         if(mTGMMs_on) {
             tool->NewEventDisplay(particles_for_jets,
@@ -1822,135 +1842,135 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     moments_m.clear();
     moments_pt.clear();
 
-    #ifdef WITHROOT
+#ifdef WITHROOT
     t_t->Fill();
 
     if (!batched && should_print) {
-    #else
-    if (true) {
-    #endif
-        map<string, float*>::const_iterator iter;
-        for (iter = tree_vars.begin(); iter != tree_vars.end(); iter++) {
-            cout << iter->first << ": " << *(iter->second) << endl;
+#else
+        if (true) {
+#endif
+            map<string, float*>::const_iterator iter;
+            for (iter = tree_vars.begin(); iter != tree_vars.end(); iter++) {
+                cout << iter->first << ": " << *(iter->second) << endl;
+            }
         }
+
+        if(f_debug) cout << "FuzzyAnalysis::AnalyzeEvent End " << endl;
+        return;
     }
 
-    if(f_debug) cout << "FuzzyAnalysis::AnalyzeEvent End " << endl;
-    return;
-}
 
 
+    // declate branches
+    void FuzzyAnalysis::DeclareBranches(){
+        tree_vars["CA_m"] = &fTCA_m;
+        tree_vars["CA_pt"] = &fTCA_pt;
+        tree_vars["CA_pufrac"] = &fTCA_pufrac;
+        tree_vars["CA_m_pu"] = &fTCA_m_pu;
+        tree_vars["CA_dr"] = &fTCA_dr;
+        tree_vars["CA_area"] = &fTCA_area;
 
-// declate branches
-void FuzzyAnalysis::DeclareBranches(){
-    tree_vars["CA_m"] = &fTCA_m;
-    tree_vars["CA_pt"] = &fTCA_pt;
-    tree_vars["CA_pufrac"] = &fTCA_pufrac;
-    tree_vars["CA_m_pu"] = &fTCA_m_pu;
-    tree_vars["CA_dr"] = &fTCA_dr;
-    tree_vars["CA_area"] = &fTCA_area;
+        tree_vars["toppt"] = &fTtoppt;
 
-    tree_vars["toppt"] = &fTtoppt;
+        tree_vars["antikt_m"] = &fTantikt_m;
+        tree_vars["antikt_m_pu"] = &fTantikt_m_pu;
+        tree_vars["antikt_pt"] = &fTantikt_pt;
+        tree_vars["antikt_pufrac"] = &fTantikt_pufrac;
+        tree_vars["antikt_dr"] = &fTantikt_dr;
+        tree_vars["antikt_area"] = &fTantikt_area;
 
-    tree_vars["antikt_m"] = &fTantikt_m;
-    tree_vars["antikt_m_pu"] = &fTantikt_m_pu;
-    tree_vars["antikt_pt"] = &fTantikt_pt;
-    tree_vars["antikt_pufrac"] = &fTantikt_pufrac;
-    tree_vars["antikt_dr"] = &fTantikt_dr;
-    tree_vars["antikt_area"] = &fTantikt_area;
+        tree_vars["antikt_m_trimmed_two"] = &fTantikt_m_trimmed_two;
+        tree_vars["antikt_m_pu_trimmed_two"] = &fTantikt_m_pu_trimmed_two;
+        tree_vars["antikt_pt_trimmed_two"] = &fTantikt_pt_trimmed_two;
+        tree_vars["antikt_pufrac_trimmed_two"] = &fTantikt_pufrac_trimmed_two;
+        tree_vars["antikt_area_trimmed_two"] = &fTantikt_area_trimmed_two;
 
-    tree_vars["antikt_m_trimmed_two"] = &fTantikt_m_trimmed_two;
-    tree_vars["antikt_m_pu_trimmed_two"] = &fTantikt_m_pu_trimmed_two;
-    tree_vars["antikt_pt_trimmed_two"] = &fTantikt_pt_trimmed_two;
-    tree_vars["antikt_pufrac_trimmed_two"] = &fTantikt_pufrac_trimmed_two;
-    tree_vars["antikt_area_trimmed_two"] = &fTantikt_area_trimmed_two;
+        tree_vars["antikt_m_trimmed_three"] = &fTantikt_m_trimmed_three;
+        tree_vars["antikt_m_pu_trimmed_three"] = &fTantikt_m_pu_trimmed_three;
+        tree_vars["antikt_pt_trimmed_three"] = &fTantikt_pt_trimmed_three;
+        tree_vars["antikt_pufrac_trimmed_three"] = &fTantikt_pufrac_trimmed_three;
+        tree_vars["antikt_area_trimmed_three"] = &fTantikt_area_trimmed_three;
 
-    tree_vars["antikt_m_trimmed_three"] = &fTantikt_m_trimmed_three;
-    tree_vars["antikt_m_pu_trimmed_three"] = &fTantikt_m_pu_trimmed_three;
-    tree_vars["antikt_pt_trimmed_three"] = &fTantikt_pt_trimmed_three;
-    tree_vars["antikt_pufrac_trimmed_three"] = &fTantikt_pufrac_trimmed_three;
-    tree_vars["antikt_area_trimmed_three"] = &fTantikt_area_trimmed_three;
+        tree_vars["mGMMs_m"] = &fTmGMMs_m;
+        tree_vars["mGMMs_pt"] = &fTmGMMs_pt;
+        tree_vars["deltatop_mGMMs"] = &fTdeltatop_mGMMs;
+        tree_vars["mGMMs_m_mean"] = &fTmGMMs_m_mean;
+        tree_vars["mGMMs_m_var"] = &fTmGMMs_m_var;
+        tree_vars["mGMMs_m_skew"] = &fTmGMMs_m_skew;
+        tree_vars["mGMMs_pt_mean"] = &fTmGMMs_pt_mean;
+        tree_vars["mGMMs_pt_var"] = &fTmGMMs_pt_var;
+        tree_vars["mGMMs_pt_skew"] = &fTmGMMs_pt_skew;
+        tree_vars["mGMMs_ptl"] = &fTmGMMs_ptl;
+        tree_vars["mGMMs_ml"] = &fTmGMMs_ml;
+        tree_vars["mGMMs_m_soft"] = &fTmGMMs_m_soft;
+        tree_vars["mGMMs_pt_soft"] = &fTmGMMs_pt_soft;
+        tree_vars["mGMMs_ucpu"] = &fTmGMMs_ucpu;
+        tree_vars["mGMMs_clpu"] = &fTmGMMs_clpu;
+        tree_vars["mGMMs_pufrac_soft"] = &fTmGMMs_pufrac_soft;
+        tree_vars["mGMMs_pufrac_hard"] = &fTmGMMs_pufrac_hard;
+        tree_vars["mGMMs_m_pu_soft"] = &fTmGMMs_m_pu_soft;
+        tree_vars["mGMMs_m_pu_hard"] = &fTmGMMs_m_pu_hard;
+        tree_vars["mGMMs_dr"] = &fTmGMMs_dr;
 
-    tree_vars["mGMMs_m"] = &fTmGMMs_m;
-    tree_vars["mGMMs_pt"] = &fTmGMMs_pt;
-    tree_vars["deltatop_mGMMs"] = &fTdeltatop_mGMMs;
-    tree_vars["mGMMs_m_mean"] = &fTmGMMs_m_mean;
-    tree_vars["mGMMs_m_var"] = &fTmGMMs_m_var;
-    tree_vars["mGMMs_m_skew"] = &fTmGMMs_m_skew;
-    tree_vars["mGMMs_pt_mean"] = &fTmGMMs_pt_mean;
-    tree_vars["mGMMs_pt_var"] = &fTmGMMs_pt_var;
-    tree_vars["mGMMs_pt_skew"] = &fTmGMMs_pt_skew;
-    tree_vars["mGMMs_ptl"] = &fTmGMMs_ptl;
-    tree_vars["mGMMs_ml"] = &fTmGMMs_ml;
-    tree_vars["mGMMs_m_soft"] = &fTmGMMs_m_soft;
-    tree_vars["mGMMs_pt_soft"] = &fTmGMMs_pt_soft;
-    tree_vars["mGMMs_ucpu"] = &fTmGMMs_ucpu;
-    tree_vars["mGMMs_clpu"] = &fTmGMMs_clpu;
-    tree_vars["mGMMs_pufrac_soft"] = &fTmGMMs_pufrac_soft;
-    tree_vars["mGMMs_pufrac_hard"] = &fTmGMMs_pufrac_hard;
-    tree_vars["mGMMs_m_pu_soft"] = &fTmGMMs_m_pu_soft;
-    tree_vars["mGMMs_m_pu_hard"] = &fTmGMMs_m_pu_hard;
-    tree_vars["mGMMs_dr"] = &fTmGMMs_dr;
+        tree_vars["mGMMc_m"] = &fTmGMMc_m;
+        tree_vars["mGMMc_pt"] = &fTmGMMc_pt;
+        tree_vars["deltatop_mGMMc"] = &fTdeltatop_mGMMc;
+        tree_vars["mGMMc_m_mean"] = &fTmGMMc_m_mean;
+        tree_vars["mGMMc_m_var"] = &fTmGMMc_m_var;
+        tree_vars["mGMMc_m_skew"] = &fTmGMMc_m_skew;
+        tree_vars["mGMMc_pt_mean"] = &fTmGMMc_pt_mean;
+        tree_vars["mGMMc_pt_var"] = &fTmGMMc_pt_var;
+        tree_vars["mGMMc_pt_skew"] = &fTmGMMc_pt_skew;
+        tree_vars["mGMMc_ptl"] = &fTmGMMc_ptl;
+        tree_vars["mGMMc_ml"] = &fTmGMMc_ml;
+        tree_vars["mGMMc_m_soft"] = &fTmGMMc_m_soft;
+        tree_vars["mGMMc_pt_soft"] = &fTmGMMc_pt_soft;
+        tree_vars["mGMMc_ucpu"] = &fTmGMMc_ucpu;
+        tree_vars["mGMMc_clpu"] = &fTmGMMc_clpu;
+        tree_vars["mGMMc_pufrac_soft"] = &fTmGMMc_pufrac_soft;
+        tree_vars["mGMMc_pufrac_hard"] = &fTmGMMc_pufrac_hard;
+        tree_vars["mGMMc_m_pu_soft"] = &fTmGMMc_m_pu_soft;
+        tree_vars["mGMMc_m_pu_hard"] = &fTmGMMc_m_pu_hard;
+        tree_vars["mGMMc_dr"] = &fTmGMMc_dr;
 
-    tree_vars["mGMMc_m"] = &fTmGMMc_m;
-    tree_vars["mGMMc_pt"] = &fTmGMMc_pt;
-    tree_vars["deltatop_mGMMc"] = &fTdeltatop_mGMMc;
-    tree_vars["mGMMc_m_mean"] = &fTmGMMc_m_mean;
-    tree_vars["mGMMc_m_var"] = &fTmGMMc_m_var;
-    tree_vars["mGMMc_m_skew"] = &fTmGMMc_m_skew;
-    tree_vars["mGMMc_pt_mean"] = &fTmGMMc_pt_mean;
-    tree_vars["mGMMc_pt_var"] = &fTmGMMc_pt_var;
-    tree_vars["mGMMc_pt_skew"] = &fTmGMMc_pt_skew;
-    tree_vars["mGMMc_ptl"] = &fTmGMMc_ptl;
-    tree_vars["mGMMc_ml"] = &fTmGMMc_ml;
-    tree_vars["mGMMc_m_soft"] = &fTmGMMc_m_soft;
-    tree_vars["mGMMc_pt_soft"] = &fTmGMMc_pt_soft;
-    tree_vars["mGMMc_ucpu"] = &fTmGMMc_ucpu;
-    tree_vars["mGMMc_clpu"] = &fTmGMMc_clpu;
-    tree_vars["mGMMc_pufrac_soft"] = &fTmGMMc_pufrac_soft;
-    tree_vars["mGMMc_pufrac_hard"] = &fTmGMMc_pufrac_hard;
-    tree_vars["mGMMc_m_pu_soft"] = &fTmGMMc_m_pu_soft;
-    tree_vars["mGMMc_m_pu_hard"] = &fTmGMMc_m_pu_hard;
-    tree_vars["mGMMc_dr"] = &fTmGMMc_dr;
+        tree_vars["mGMMc_r"] = &fTmGMMc_r;
+        tree_vars["mGMMc_r_second"] = &fTmGMMc_r_second;
+        tree_vars["mGMMc_r_third"] = &fTmGMMc_r_third;
+        tree_vars["mGMMc_r_avg"] = &fTmGMMc_r_avg;
+        tree_vars["mGMMc_r_weighted_avg"] = &fTmGMMc_r_weighted_avg;
 
-    tree_vars["mGMMc_r"] = &fTmGMMc_r;
-    tree_vars["mGMMc_r_second"] = &fTmGMMc_r_second;
-    tree_vars["mGMMc_r_third"] = &fTmGMMc_r_third;
-    tree_vars["mGMMc_r_avg"] = &fTmGMMc_r_avg;
-    tree_vars["mGMMc_r_weighted_avg"] = &fTmGMMc_r_weighted_avg;
+        tree_vars["mTGMMs_m"] = &fTmTGMMs_m;
+        tree_vars["mTGMMs_pt"] = &fTmTGMMs_pt;
+        tree_vars["deltatop_mTGMMs"] = &fTdeltatop_mTGMMs;
+        tree_vars["mTGMMs_m_mean"] = &fTmTGMMs_m_mean;
+        tree_vars["mTGMMs_m_var"] = &fTmTGMMs_m_var;
+        tree_vars["mTGMMs_m_skew"] = &fTmTGMMs_m_skew;
+        tree_vars["mTGMMs_pt_mean"] = &fTmTGMMs_pt_mean;
+        tree_vars["mTGMMs_pt_var"] = &fTmTGMMs_pt_var;
+        tree_vars["mTGMMs_pt_skew"] = &fTmTGMMs_pt_skew;
+        tree_vars["mTGMMs_ptl"] = &fTmTGMMs_ptl;
+        tree_vars["mTGMMs_ml"] = &fTmTGMMs_ml;
+        tree_vars["mTGMMs_m_soft"] = &fTmTGMMs_m_soft;
+        tree_vars["mTGMMs_pt_soft"] = &fTmTGMMs_pt_soft;
+        tree_vars["mTGMMs_ucpu"] = &fTmTGMMs_ucpu;
+        tree_vars["mTGMMs_clpu"] = &fTmTGMMs_clpu;
+        tree_vars["mTGMMs_pufrac_soft"] = &fTmTGMMs_pufrac_soft;
+        tree_vars["mTGMMs_pufrac_hard"] = &fTmTGMMs_pufrac_hard;
+        tree_vars["mTGMMs_m_pu_soft"] = &fTmTGMMs_m_pu_soft;
+        tree_vars["mTGMMs_m_pu_hard"] = &fTmTGMMs_m_pu_hard;
+        tree_vars["mTGMMs_dr"] = &fTmTGMMs_dr;
 
-    tree_vars["mTGMMs_m"] = &fTmTGMMs_m;
-    tree_vars["mTGMMs_pt"] = &fTmTGMMs_pt;
-    tree_vars["deltatop_mTGMMs"] = &fTdeltatop_mTGMMs;
-    tree_vars["mTGMMs_m_mean"] = &fTmTGMMs_m_mean;
-    tree_vars["mTGMMs_m_var"] = &fTmTGMMs_m_var;
-    tree_vars["mTGMMs_m_skew"] = &fTmTGMMs_m_skew;
-    tree_vars["mTGMMs_pt_mean"] = &fTmTGMMs_pt_mean;
-    tree_vars["mTGMMs_pt_var"] = &fTmTGMMs_pt_var;
-    tree_vars["mTGMMs_pt_skew"] = &fTmTGMMs_pt_skew;
-    tree_vars["mTGMMs_ptl"] = &fTmTGMMs_ptl;
-    tree_vars["mTGMMs_ml"] = &fTmTGMMs_ml;
-    tree_vars["mTGMMs_m_soft"] = &fTmTGMMs_m_soft;
-    tree_vars["mTGMMs_pt_soft"] = &fTmTGMMs_pt_soft;
-    tree_vars["mTGMMs_ucpu"] = &fTmTGMMs_ucpu;
-    tree_vars["mTGMMs_clpu"] = &fTmTGMMs_clpu;
-    tree_vars["mTGMMs_pufrac_soft"] = &fTmTGMMs_pufrac_soft;
-    tree_vars["mTGMMs_pufrac_hard"] = &fTmTGMMs_pufrac_hard;
-    tree_vars["mTGMMs_m_pu_soft"] = &fTmTGMMs_m_pu_soft;
-    tree_vars["mTGMMs_m_pu_hard"] = &fTmTGMMs_m_pu_hard;
-    tree_vars["mTGMMs_dr"] = &fTmTGMMs_dr;
-
-    tree_vars["mUMM_m"] = &fTmUMM_m;
-    tree_vars["mUMM_pt"] = &fTmUMM_pt;
-    tree_vars["deltatop_mUMM"] = &fTdeltatop_mUMM;
-    tree_vars["mUMM_m_mean"] = &fTmUMM_m_mean;
-    tree_vars["mUMM_m_var"] = &fTmUMM_m_var;
-    tree_vars["mUMM_m_skew"] = &fTmUMM_m_skew;
-    tree_vars["mUMM_pt_mean"] = &fTmUMM_pt_mean;
-    tree_vars["mUMM_pt_var"] = &fTmUMM_pt_var;
-    tree_vars["mUMM_pt_skew"] = &fTmUMM_pt_skew;
-    tree_vars["mUMM_ptl"] = &fTmUMM_ptl;
-    tree_vars["mUMM_ml"] = &fTmUMM_ml;
+        tree_vars["mUMM_m"] = &fTmUMM_m;
+        tree_vars["mUMM_pt"] = &fTmUMM_pt;
+        tree_vars["deltatop_mUMM"] = &fTdeltatop_mUMM;
+        tree_vars["mUMM_m_mean"] = &fTmUMM_m_mean;
+        tree_vars["mUMM_m_var"] = &fTmUMM_m_var;
+        tree_vars["mUMM_m_skew"] = &fTmUMM_m_skew;
+        tree_vars["mUMM_pt_mean"] = &fTmUMM_pt_mean;
+        tree_vars["mUMM_pt_var"] = &fTmUMM_pt_var;
+        tree_vars["mUMM_pt_skew"] = &fTmUMM_pt_skew;
+        tree_vars["mUMM_ptl"] = &fTmUMM_ptl;
+        tree_vars["mUMM_ml"] = &fTmUMM_ml;
     tree_vars["mUMM_m_soft"] = &fTmUMM_m_soft;
     tree_vars["mUMM_pt_soft"] = &fTmUMM_pt_soft;
     tree_vars["mUMM_ucpu"] = &fTmUMM_ucpu;

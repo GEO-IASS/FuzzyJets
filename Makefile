@@ -16,7 +16,7 @@ PROFILER =
 
 # Use these for ROOTless compiles
 #ROOTLIBS =
-#ROOTFLAGS = 
+#ROOTFLAGS =
 
 # Use these for actually logging data
 ROOTLIBS = `root-config --glibs`
