@@ -171,6 +171,12 @@ GaussianKernel::PDF(double x, double y) {
 double
 FuzzyTools::doGaus(double x1, double x2, double mu1, double mu2,
                    MatTwo const& sigma){
+    /*#ifdef FIXED_MOD_PI
+    if (x2 - mu2 > M_PI) {
+        mu2 += 2*M_PI
+    }
+    #endif*/
+
     const double limit = 0.001 * 0.001;
     double det = sigma.determinant();
 
@@ -193,10 +199,15 @@ FuzzyTools::doGaus(double x1, double x2, double mu1, double mu2,
     }
 
     const double mxmu1 = x1 - mu1;
-    const double mxmu2 = x2 - mu2;
-    const double expval = exp(-0.5 * (ixx * mxmu1 * mxmu1 + iyy * mxmu2 * mxmu2) - iyx * mxmu1 * mxmu2);
-
-    return expval / (2 * M_PI * sqrt(fabs(det)));
+    double mxmu2 = x2 - mu2;
+    const double expvalA = exp(-0.5 * (ixx * mxmu1 * mxmu1 + iyy * mxmu2 * mxmu2) - iyx * mxmu1 * mxmu2);
+#ifdef FIXED_MOD_PI
+    mxmu2 = x2 - mu2 + 2 * M_PI * (x2 > mu2 ? -1 : 1);
+    const double expvalB = exp(-0.5 * (ixx * mxmu1 * mxmu1 + iyy * mxmu2 * mxmu2) - iyx * mxmu1 * mxmu2);
+    return max(expvalA, expvalB) / (2 * M_PI * sqrt(fabs(det)));
+#else
+    return expvalA / (2 * M_PI * sqrt(fabs(det)));
+#endif
 }
 
 // return the *square* of the Mahalanobis distance
@@ -225,14 +236,22 @@ FuzzyTools::MDist(double x1, double x2, double mu1, double mu2,
     }
 
     const double mxmu1 = x1 - mu1;
-    const double mxmu2 = x2 - mu2;
-    return (ixx * mxmu1 * mxmu1 + iyy * mxmu2 * mxmu2 + 2 * iyx * mxmu1 * mxmu2);
+    double mxmu2 = x2 - mu2;
+    const double retA = (ixx * mxmu1 * mxmu1 + iyy * mxmu2 * mxmu2 + 2 * iyx * mxmu1 * mxmu2);
+#ifdef FIXED_MOD_PI
+    mxmu2 = x2 - mu2 + 2 * M_PI * (x2 > mu2 ? -1 : 1);
+    const double retB = (ixx * mxmu1 * mxmu1 + iyy * mxmu2 * mxmu2 + 2 * iyx * mxmu1 * mxmu2);
+    return min(retA, retB);
+#else
+    return retA;
+#endif
 }
 
 double
 FuzzyTools::doTruncGaus(double x1, double x2, double mu1, double mu2,
                         MatTwo const& sigma) {
     double dist = MDist(x1, x2, mu1, mu2, sigma);
+
     if (dist > R*R) {
         return 0;
     }
@@ -1294,8 +1313,12 @@ FuzzyTools::NewEventDisplay(__attribute__((unused)) vecPseudoJet const& particle
     }
     gPad->SetLogz();
     canv.Update();
-    canv.Write(TString::Format("NewEventDisplay_%s_%d", out.c_str(), iter));
-    canv.Print(TString::Format("NewEventDisplay_%s_%d.pdf", out.c_str(), iter));
+    canv.Write(TString::Format("%sNewEventDisplay_%s_%d",
+                               directory_prefix.c_str(),
+                               out.c_str(), iter));
+    canv.Print(TString::Format("%sNewEventDisplay_%s_%d.pdf",
+                               directory_prefix.c_str(),
+                               out.c_str(), iter));
     #endif
 }
 
@@ -1384,7 +1407,9 @@ FuzzyTools::NewEventDisplayPoster(__attribute__((unused)) vecPseudoJet const& pa
     gPad->SetLogz();
     canv.Update();
 
-    canv.Print(TString::Format("NewEventDisplayPoster_%s_%d.pdf", out.c_str(), iter));
+    canv.Print(TString::Format("%sNewEventDisplayPoster_%s_%d.pdf",
+                               directory_prefix.c_str(),
+                               out.c_str(), iter));
     #endif
 }
 
@@ -1471,7 +1496,9 @@ FuzzyTools::NewEventDisplayUniform(__attribute__((unused)) vecPseudoJet const& p
     gPad->SetLogz();
     canv.Update();
 
-    canv.Write(TString::Format("NewEventDisplay_%s_%d", out.c_str(), iter));
+    canv.Write(TString::Format("%sNewEventDisplay_%s_%d",
+                               directory_prefix.c_str(),
+                               out.c_str(), iter));
     #endif
 }
 
