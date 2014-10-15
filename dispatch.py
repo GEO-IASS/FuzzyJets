@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import os, time, subprocess, pickle, threading
+import os, time, subprocess, pickle, threading, random
 
 def safe_mkdir(p):
     if not os.path.isdir(p):
@@ -12,8 +12,8 @@ def file_name(prefix, is_intermediate, size, lw, mu, rec, cut):
     div = "/temp_" if is_intermediate else "/"
     return prefix + div + str(size) + "s_" + str(mu) + "mu_" + lw_flag + "lw_" + rec_flag + "rec_" + str(cut) + "cut"
 
-def subprocess_call_bg(args):
-    subprocess.call(args)
+#def subprocess_call_bg(args):
+#    subprocess.call(args)
 
 def submit_fuzzy(mu, size, lw, rec, cut, n_events, i, unique_id):
     logdir = cwd + 'logs/' + name + "/" + time_postfix + "_bsub_" + str(mu) + "_" + str(unique_id)
@@ -34,30 +34,33 @@ def submit_fuzzy(mu, size, lw, rec, cut, n_events, i, unique_id):
               "--PythiaConfig", pythia_conf,
               "--LearnWeights", lw_flag, "--Recombination", rec_flag,
               "--pTMin", str(cut), "--Batch", "1"]
+    time.sleep(random.randint(delay_mins_low*60, delay_mins_high*60))
     subprocess.call(submit)
 
 workdir = "/u/at/chstan/nfs/summer_2014/ForConrad/"
 
-pythia_conf = workdir + "configs/default_batch.pythia"
+pythia_conf = workdir + "configs/wprime_batch.pythia"
 
 cwd = os.getcwd() + "/"
 subfile = cwd + "_batchSingleSub.sh"
 
 time_postfix = time.strftime('%Y_%m_%d_%Hh%Mm%Ss')
 
-events_per_job = 5000
-n_jobs = 50
-n_jobs_patch = 10
+events_per_job = 10000
+n_jobs = 15
+n_jobs_patch = 3
+delay_mins_low = 3
+delay_mins_high = 9
 queue = 'xlong'
 
-name = '250kevts_zprime_mu0'
+name = '150kevts_wprime_area'
 outdir = cwd + 'files/' + name + '/' + time_postfix
 safe_mkdir(outdir)
 
 NPVs = [0]
 sizes = [10]
-learnWeights = [False, True]
-recombinations = [False, True]
+learnWeights = [False]
+recombinations = [False]
 pT_cuts = [5, 15, 25, 50]
 
 j = 0

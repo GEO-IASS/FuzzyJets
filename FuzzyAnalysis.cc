@@ -1294,7 +1294,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     // Event displays
     bool do_event_displays = true;
     if (do_event_displays && !batched) {
-        if(event_iter < 10 && mGMM_on) {
+        if(event_iter < && mGMM_on) {
             tool->EventDisplay(particles_for_jets,
                                my_jets_large_r_ca,tops,
                                mGMM_jets,
