@@ -55,9 +55,20 @@ void StackedEfficiencyHistogramGen::Finish(__attribute__((unused)) EventManager
                             0.);
 
         std::vector<CustomSortPair> to_sort;
+        CustomSortPair pair(0,0);
         for (unsigned int iter = 0; iter < _signals.at(attr_iter).size(); iter++) {
-            to_sort.push_back(CustomSortPair(_signals.at(attr_iter).at(iter) / integral_sig,
-                                             _backgrounds.at(attr_iter).at(iter) / integral_background));
+            float p_sig = _signals.at(attr_iter).at(iter) / integral_sig;
+            float p_back = _backgrounds.at(attr_iter).at(iter) / integral_background;
+            pair.signal += p_sig;
+            pair.background += p_back;
+            if (pair.background > 0.002) {
+                to_sort.push_back(CustomSortPair(pair.signal, pair.background));
+                pair.signal = 0;
+                pair.background = 0;
+            }
+        }
+        if (pair.signal + pair.background > 0) {
+            to_sort.push_back(CustomSortPair(pair.signal, pair.background));
         }
         std::sort(to_sort.begin(), to_sort.end());
 
@@ -65,12 +76,16 @@ void StackedEfficiencyHistogramGen::Finish(__attribute__((unused)) EventManager
         float integrated_background = 0;
         std::vector<float> vec_signal;
         std::vector<float> vec_background_rejection;
-        for (unsigned int iter = 0; iter < _signals.at(attr_iter).size(); iter++) {
+        vec_signal.push_back(0);
+        vec_background_rejection.push_back(1);
+        for (unsigned int iter = 0; iter < to_sort.size(); iter++) {
             integrated_signal += to_sort.at(iter).signal;
             integrated_background += to_sort.at(iter).background;
             vec_signal.push_back(integrated_signal);
             vec_background_rejection.push_back(1 - integrated_background);
         }
+        vec_signal.push_back(1);
+        vec_background_rejection.push_back(0);
         TGraph *efficiency_graph = new TGraph(vec_signal.size(),
                                               &vec_signal.at(0),
                                               &vec_background_rejection.at(0));
@@ -359,7 +374,8 @@ void PtCorrelation::Update(EventManager const* event_manager) {
     float reweight = event_manager->Reweight(_event_label);
     _hist->Fill(alg_val, other_alg_val, reweight);
 }
-void SigmaImprovementEfficiency::Update(EventManager const* event_manager) {
+
+void SigmaImprovementEfficiencyMultiTau::Update(EventManager const* event_manager) {
     float background_reweight = event_manager->Reweight(_event_background);
     float signal_reweight = event_manager->Reweight(_event_signal);
 
@@ -368,26 +384,174 @@ void SigmaImprovementEfficiency::Update(EventManager const* event_manager) {
 
     std::vector<float> *n_sub_sig = (*event_manager)[_event_signal].antikt_nsubjettiness;
     std::vector<float> *n_sub_back = (*event_manager)[_event_background].antikt_nsubjettiness;
-    float tau1_sig = n_sub_sig->at(0);
-    float tau2_sig = n_sub_sig->at(1);
-    float tau3_sig = n_sub_sig->at(2);
-    float tau1_back = n_sub_back->at(0);
-    float tau2_back = n_sub_back->at(1);
-    float tau3_back = n_sub_back->at(2);
+    float tau1_sig;
+    float tau2_sig;
+    float tau3_sig;
+
+    float tau1_back;
+    float tau2_back;
+    float tau3_back;
+
+    if(n_sub_sig->size() > 0)
+        tau1_sig = n_sub_sig->at(0);
+    if(n_sub_back->size() > 0)
+        tau1_back = n_sub_back->at(0);
+    if(n_sub_sig->size() > 1)
+        tau2_sig = n_sub_sig->at(1);
+    if(n_sub_back->size() > 1)
+        tau2_back = n_sub_back->at(1);
+    if(n_sub_sig->size() > 2)
+        tau3_sig = n_sub_sig->at(2);
+    if(n_sub_back->size() > 2)
+        tau3_back = n_sub_back->at(2);
+
+    int max_sig = n_sub_sig->size();
+    int max_back = n_sub_back->size();
+
     float sigma_sig = (*event_manager)[_event_signal].mGMMc_r;
     float sigma_back = (*event_manager)[_event_background].mGMMc_r;
 
     if (_cut_low <= pT_sig && pT_sig < _cut_high) {
-        fillSignal(0, {tau3_sig/tau2_sig}, signal_reweight);
-        fillSignal(1, {tau2_sig/tau1_sig}, signal_reweight);
+        if (max_sig > 2) {
+            fillSignal(0, {tau3_sig, tau2_sig}, signal_reweight);
+            fillSignal(3, {tau3_sig, sigma_sig}, signal_reweight);
+        }
+        if (max_sig > 1) {
+            fillSignal(1, {tau2_sig, tau1_sig}, signal_reweight);
+            fillSignal(4, {tau2_sig, sigma_sig}, signal_reweight);
+        }
+        if (max_sig > 0) {
+            fillSignal(5, {tau1_sig, sigma_sig}, signal_reweight);
+        }
         fillSignal(2, {sigma_sig}, signal_reweight);
-        fillSignal(3, {tau3_sig/tau2_sig, sigma_sig}, signal_reweight);
     }
     if (_cut_low <= pT_back && pT_back < _cut_high) {
-        fillBackground(0, {tau3_back/tau2_back}, background_reweight);
-        fillBackground(1, {tau2_back/tau1_back}, background_reweight);
+        if (max_back > 2) {
+            fillBackground(0, {tau3_back, tau2_back}, background_reweight);
+            fillBackground(3, {tau3_back, sigma_back}, background_reweight);
+        }
+        if (max_back > 1) {
+            fillBackground(1, {tau2_back, tau1_back}, background_reweight);
+            fillBackground(4, {tau2_back, sigma_back}, background_reweight);
+        }
+        if (max_back > 0) {
+            fillBackground(5, {tau1_back, sigma_back}, background_reweight);
+        }
+
         fillBackground(2, {sigma_back}, background_reweight);
-        fillBackground(3, {tau3_back/tau2_back, sigma_back}, background_reweight);
+    }
+}
+
+void SigmaImprovementEfficiencyTau21::Update(EventManager const* event_manager) {
+    float background_reweight = event_manager->Reweight(_event_background);
+    float signal_reweight = event_manager->Reweight(_event_signal);
+
+    float pT_sig = (*event_manager)[_event_signal].antikt_pt;
+    float pT_back = (*event_manager)[_event_background].antikt_pt;
+
+    std::vector<float> *n_sub_sig = (*event_manager)[_event_signal].antikt_nsubjettiness;
+    std::vector<float> *n_sub_back = (*event_manager)[_event_background].antikt_nsubjettiness;
+    float tau1_sig;
+    float tau2_sig;
+    float tau3_sig;
+    float tau1_back;
+    float tau2_back;
+    float tau3_back;
+    if(n_sub_sig->size() > 0)
+        tau1_sig = n_sub_sig->at(0);
+    if(n_sub_back->size() > 0)
+        tau1_back = n_sub_back->at(0);
+    if(n_sub_sig->size() > 1)
+        tau2_sig = n_sub_sig->at(1);
+    if(n_sub_back->size() > 1)
+        tau2_back = n_sub_back->at(1);
+    if(n_sub_sig->size() > 2)
+        tau3_sig = n_sub_sig->at(2);
+    if(n_sub_back->size() > 2)
+        tau3_back = n_sub_back->at(2);
+
+    int max_sig = n_sub_sig->size();
+    int max_back = n_sub_back->size();
+
+    float sigma_sig = (*event_manager)[_event_signal].mGMMc_r;
+    float sigma_back = (*event_manager)[_event_background].mGMMc_r;
+
+    if (_cut_low <= pT_sig && pT_sig < _cut_high) {
+        if (max_sig > 2) {
+            fillSignal(0, {tau3_sig/tau2_sig}, signal_reweight);
+        }
+        if (max_sig > 1) {
+            fillSignal(1, {tau2_sig/tau1_sig}, signal_reweight);
+            fillSignal(3, {tau2_sig/tau1_sig, sigma_sig}, signal_reweight);
+        }
+        fillSignal(2, {sigma_sig}, signal_reweight);
+    }
+    if (_cut_low <= pT_back && pT_back < _cut_high) {
+        if (max_back > 2) {
+            fillBackground(0, {tau3_back/tau2_back}, background_reweight);
+        }
+        if (max_back > 1) {
+            fillBackground(1, {tau2_back/tau1_back}, background_reweight);
+            fillBackground(3, {tau2_back/tau1_back, sigma_back}, background_reweight);
+        }
+        fillBackground(2, {sigma_back}, background_reweight);
+    }
+}
+
+void SigmaImprovementEfficiencyTau32::Update(EventManager const* event_manager) {
+    float background_reweight = event_manager->Reweight(_event_background);
+    float signal_reweight = event_manager->Reweight(_event_signal);
+
+    float pT_sig = (*event_manager)[_event_signal].antikt_pt;
+    float pT_back = (*event_manager)[_event_background].antikt_pt;
+
+    std::vector<float> *n_sub_sig = (*event_manager)[_event_signal].antikt_nsubjettiness;
+    std::vector<float> *n_sub_back = (*event_manager)[_event_background].antikt_nsubjettiness;
+    float tau1_sig;
+    float tau2_sig;
+    float tau3_sig;
+    float tau1_back;
+    float tau2_back;
+    float tau3_back;
+
+    if(n_sub_sig->size() > 0)
+        tau1_sig = n_sub_sig->at(0);
+    if(n_sub_back->size() > 0)
+        tau1_back = n_sub_back->at(0);
+    if(n_sub_sig->size() > 1)
+        tau2_sig = n_sub_sig->at(1);
+    if(n_sub_back->size() > 1)
+        tau2_back = n_sub_back->at(1);
+    if(n_sub_sig->size() > 2)
+        tau3_sig = n_sub_sig->at(2);
+    if(n_sub_back->size() > 2)
+        tau3_back = n_sub_back->at(2);
+
+    int max_sig = n_sub_sig->size();
+    int max_back = n_sub_back->size();
+
+    float sigma_sig = (*event_manager)[_event_signal].mGMMc_r;
+    float sigma_back = (*event_manager)[_event_background].mGMMc_r;
+
+    if (_cut_low <= pT_sig && pT_sig < _cut_high) {
+        if (max_sig > 2) {
+            fillSignal(0, {tau3_sig/tau2_sig}, signal_reweight);
+            fillSignal(3, {tau3_sig/tau2_sig, sigma_sig}, signal_reweight);
+        }
+        if (max_sig > 1)
+            fillSignal(1, {tau2_sig/tau1_sig}, signal_reweight);
+        fillSignal(2, {sigma_sig}, signal_reweight);
+
+    }
+    if (_cut_low <= pT_back && pT_back < _cut_high) {
+        if (max_back > 2) {
+            fillBackground(0, {tau3_back/tau2_back}, background_reweight);
+            fillBackground(3, {tau3_back/tau2_back, sigma_back}, background_reweight);
+        }
+        if (max_back > 1) {
+            fillBackground(1, {tau2_back/tau1_back}, background_reweight);
+        }
+        fillBackground(2, {sigma_back}, background_reweight);
     }
 }
 
@@ -463,15 +627,26 @@ void SigmaNSubjettinessEfficiencyPlot::Update(EventManager const* event_manager)
     std::vector<float> *n_sub_back = (*event_manager)[_event_background].antikt_nsubjettiness;
 
     if (_cut_low <= pT_signal && pT_signal < _cut_high) {
-        _signal_hists.at(0)->Fill(n_sub_sig->at(0), signal_reweight);
-        _signal_hists.at(1)->Fill(n_sub_sig->at(1), signal_reweight);
-        _signal_hists.at(2)->Fill(n_sub_sig->at(1)/n_sub_sig->at(0), signal_reweight);
+        if (n_sub_sig->size() > 1) {
+            _signal_hists.at(1)->Fill(n_sub_sig->at(1), signal_reweight);
+            _signal_hists.at(2)->Fill(n_sub_sig->at(1)/n_sub_sig->at(0), signal_reweight);
+        }
+
+        if (n_sub_sig->size() > 0) {
+            _signal_hists.at(0)->Fill(n_sub_sig->at(0), signal_reweight);
+        }
+
         _signal_hists.at(3)->Fill((*event_manager)[_event_signal].mGMMc_r, signal_reweight);
     }
     if (_cut_low <= pT_background && pT_background < _cut_high) {
-        _background_hists.at(0)->Fill(n_sub_back->at(0), background_reweight);
-        _background_hists.at(1)->Fill(n_sub_back->at(1), background_reweight);
-        _background_hists.at(2)->Fill(n_sub_back->at(1)/n_sub_sig->at(0), background_reweight);
+        if (n_sub_back->size() > 1) {
+            _background_hists.at(1)->Fill(n_sub_back->at(1), background_reweight);
+            _background_hists.at(2)->Fill(n_sub_back->at(1)/n_sub_back->at(0), background_reweight);
+        }
+        if (n_sub_back->size() > 0) {
+            _background_hists.at(0)->Fill(n_sub_back->at(0), background_reweight);
+        }
+
         _background_hists.at(3)->Fill((*event_manager)[_event_background].mGMMc_r, background_reweight);
     }
 }
@@ -611,10 +786,32 @@ void JetMultiplicityPtCut::Update(EventManager const* event_manager) {
     _ys[2] = (reweight * multiplicity + _ns[2]*_ys[2]) / (reweight + _ns[2]);
     _ns[2] += reweight;
     if(_ns[2] == 0) _ys[2] = 0;
+}
 
-    multiplicity = (*event_manager)[_event_label_base + "_50"].mGMM_etas->size();
-    reweight = event_manager->Reweight(_event_label_base + "_50");
-    _ys[3] = (reweight * multiplicity + _ns[3]*_ys[3]) / (reweight + _ns[3]);
-    _ns[3] += reweight;
-    if(_ns[3] == 0) _ys[3] = 0;
+void RadiusPtSeedHistogram::Update(EventManager const* event_manager) {
+    float reweight = event_manager->Reweight(_event_label_base + "_5");
+    float sigma = (*event_manager)[_event_label_base + "_5"].mGMMc_r;
+    _hists[0]->Fill(sigma, reweight);
+
+    reweight = event_manager->Reweight(_event_label_base + "_15");
+    sigma = (*event_manager)[_event_label_base + "_15"].mGMMc_r;
+    _hists[1]->Fill(sigma, reweight);
+
+    reweight = event_manager->Reweight(_event_label_base + "_25");
+    sigma = (*event_manager)[_event_label_base + "_25"].mGMMc_r;
+    _hists[2]->Fill(sigma, reweight);
+}
+
+void AverageRadiusPtSeedHistogram::Update(EventManager const* event_manager) {
+    float reweight = event_manager->Reweight(_event_label_base + "_5");
+    float sigma = (*event_manager)[_event_label_base + "_5"].mGMMc_r_avg;
+    _hists[0]->Fill(sigma, reweight);
+
+    reweight = event_manager->Reweight(_event_label_base + "_15");
+    sigma = (*event_manager)[_event_label_base + "_15"].mGMMc_r_avg;
+    _hists[1]->Fill(sigma, reweight);
+
+    reweight = event_manager->Reweight(_event_label_base + "_25");
+    sigma = (*event_manager)[_event_label_base + "_25"].mGMMc_r_avg;
+    _hists[2]->Fill(sigma, reweight);
 }

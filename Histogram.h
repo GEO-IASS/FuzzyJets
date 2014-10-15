@@ -197,7 +197,7 @@ public:
     virtual void Finish(__attribute__((unused)) EventManager const* event_manager);
 };
 
-class SigmaImprovementEfficiency : public StackedEfficiencyHistogramGen {
+class SigmaImprovementEfficiencyTau32 : public StackedEfficiencyHistogramGen {
 protected:
     std::string _event_signal;
     std::string _event_background;
@@ -206,7 +206,7 @@ protected:
     float _cut_high;
 
 public:
-    SigmaImprovementEfficiency (std::string event_signal,
+    SigmaImprovementEfficiencyTau32 (std::string event_signal,
                                 std::string event_background,
                                 float cut_low,
                                 float cut_high) {
@@ -220,7 +220,7 @@ public:
         _x_label = _event_signal + " Efficiency";
         _y_label = "1 - " + _event_background + " Efficiency";
 
-        _n_points = {{400}, {400}, {400}, {5, 400}};
+        _n_points = {{400}, {400}, {400}, {10, 40}};
 
         _colors = {kRed, kBlue, kGreen, kBlack};
         _labels = {"#tau_{3} / #tau_{2}",
@@ -232,7 +232,95 @@ public:
         _lows = {{0}, {0}, {0}, {0, 0}};
         _highs = {{1}, {1}, {1.5}, {1, 1.5}};
 
-        _outfile_name = "SigmaImprovementEfficiency_" + event_signal +
+        _outfile_name = "SigmaImprovementEfficiencyTau32_" + event_signal +
+            "_" + event_background + "_" + std::to_string((long long int) _cut_low) +
+            "_to_" + std::to_string((long long int) _cut_high) + "pT.pdf";
+    }
+    void Update(EventManager const* event_manager);
+};
+
+class SigmaImprovementEfficiencyTau21 : public StackedEfficiencyHistogramGen {
+protected:
+    std::string _event_signal;
+    std::string _event_background;
+
+    float _cut_low;
+    float _cut_high;
+
+public:
+    SigmaImprovementEfficiencyTau21 (std::string event_signal,
+                                std::string event_background,
+                                float cut_low,
+                                float cut_high) {
+        _event_signal = event_signal;
+        _event_background = event_background;
+
+        _cut_low = cut_low;
+        _cut_high = cut_high;
+
+        _title = "";
+        _x_label = _event_signal + " Efficiency";
+        _y_label = "1 - " + _event_background + " Efficiency";
+
+        _n_points = {{400}, {400}, {400}, {10, 40}};
+
+        _colors = {kRed, kBlue, kGreen, kBlack};
+        _labels = {"#tau_{3} / #tau_{2}",
+                   "#tau_{2} / #tau_{1}",
+                   "#sigma",
+                   "#tau_{2} / #tau_{1}, #sigma"};
+
+        _ticks = 405;
+        _lows = {{0}, {0}, {0}, {0, 0}};
+        _highs = {{1}, {1}, {1.5}, {1, 1.5}};
+
+        _outfile_name = "SigmaImprovementEfficiencyTau21_" + event_signal +
+            "_" + event_background + "_" + std::to_string((long long int) _cut_low) +
+            "_to_" + std::to_string((long long int) _cut_high) + "pT.pdf";
+    }
+    void Update(EventManager const* event_manager);
+};
+
+class SigmaImprovementEfficiencyMultiTau : public StackedEfficiencyHistogramGen {
+protected:
+    std::string _event_signal;
+    std::string _event_background;
+
+    float _cut_low;
+    float _cut_high;
+
+public:
+    SigmaImprovementEfficiencyMultiTau (std::string event_signal,
+                                        std::string event_background,
+                                        float cut_low,
+                                        float cut_high) {
+        _event_signal = event_signal;
+        _event_background = event_background;
+
+        _cut_low = cut_low;
+        _cut_high = cut_high;
+
+        _title = "";
+        _x_label = _event_signal + " Efficiency";
+        _y_label = "1 - " + _event_background + " Efficiency";
+
+        _n_points = {{20, 20}, {20, 20}, {400}, {10, 40},
+                     {10, 40}, {10, 40}};
+
+        _colors = {kRed, kBlue, kGreen, kBlack, kOrange, kViolet};
+        _labels = {"#tau_{3}, #tau_{2}",
+                   "#tau_{2}, #tau_{1}",
+                   "#sigma",
+                   "#tau_{3}, #sigma",
+                   "#tau_{2}, #sigma",
+                   "#tau_{1}, #sigma"};
+
+        _ticks = 405;
+        _lows = {{0, 0}, {0, 0}, {0}, {0, 0}, {0, 0}, {0, 0}};
+        _highs = {{0.5, 0.8}, {0.8, 0.8}, {1.5}, {0.5, 1.5},
+                  {0.8, 1.5}, {0.8, 1.5}};
+
+        _outfile_name = "SigmaImprovementEfficiencyMultiTau_" + event_signal +
             "_" + event_background + "_" + std::to_string((long long int) _cut_low) +
             "_to_" + std::to_string((long long int) _cut_high) + "pT.pdf";
     }
@@ -471,9 +559,9 @@ protected:
 public:
     JetMultiplicityPtCut(std::string event_label_base) {
         _event_label_base = event_label_base;
-        _xs = {5, 15, 25, 50};
-        _ys = {0, 0, 0, 0};
-        _ns = {0, 0, 0, 0}; // need to keep track of moving averages
+        _xs = {5, 15, 25};
+        _ys = {0, 0, 0};
+        _ns = {0, 0, 0}; // need to keep track of moving averages
         std::stringstream ss;
         ss.str(std::string());
         ss << _event_label_base << "_JetMultiplicityPtCut.pdf";
@@ -760,17 +848,30 @@ protected:
 public:
     SigmaAreaCorrelation(std::string event_label, std::string alg) {
         _event_label = event_label;
-
         if (alg == "antikt") {
             _x_low = 0;
             _x_high = 1.2;
             _y_low = 2.8;
             _y_high = 3.6;
-        } else {
+            _alg_branch = "antikt_area";
+        } else if (alg == "CA") {
             _x_low = 0;
             _x_high = 1;
             _y_low = 0.5;
             _y_high = 4.5;
+            _alg_branch = "CA_area";
+        } else if (alg == "antikt_trimmed_two") {
+            _x_low = 0;
+            _x_high = 1.2;
+            _y_low = 0;
+            _y_high = 2;
+            _alg_branch = "antikt_area_trimmed_two";
+        } else if (alg == "antikt_trimmed_three") {
+            _x_low = 0;
+            _x_high = 1.2;
+            _y_low = 0;
+            _y_high = 2;
+            _alg_branch = "antikt_area_trimmed_three";
         }
 
         _canvas_x = 1200;
@@ -785,10 +886,6 @@ public:
         ss << _event_label << "_" << alg << "_SigmaAreaCorrelation.pdf";
         _outfile_name = ss.str();
         _title = _event_label;
-
-        ss.str(std::string());
-        ss << alg << "_area";
-        _alg_branch = ss.str();
     }
 
     void Update(EventManager const* event_manager);
@@ -857,6 +954,58 @@ public:
         _labels = {"Z'#rightarrow tt'", "W'#rightarrow qq'", "QCD"};
 
         _ticks = 505;
+    }
+
+    void Update(EventManager const* event_manager);
+};
+
+class RadiusPtSeedHistogram : public StackedHistogramBase {
+protected:
+    std::string _event_label_base;
+
+public:
+    RadiusPtSeedHistogram(std::string event_label_base) {
+        _event_label_base = event_label_base;
+
+        _high = 1;
+        _n_bins = 50;
+
+        _x_label = "Learned #sigma";
+        _y_label = "Arb. units";
+        _title = "";
+
+        _outfile_name = "RadiusPtSeed_" + _event_label_base + ".pdf";
+        _colors = {kBlack, kBlue, kRed};
+        _styles = {1, 1, 1};
+        _labels = {"5 GeV Cut", "15 GeV Cut", "25 GeV Cut"};
+
+        _ticks = 502;
+    }
+
+    void Update(EventManager const* event_manager);
+};
+
+class AverageRadiusPtSeedHistogram : public StackedHistogramBase {
+protected:
+    std::string _event_label_base;
+
+public:
+    AverageRadiusPtSeedHistogram(std::string event_label_base) {
+        _event_label_base = event_label_base;
+
+        _high = 1;
+        _n_bins = 50;
+
+        _x_label = "Learned Event Average #sigma";
+        _y_label = "Arb. units";
+        _title = "";
+
+        _outfile_name = "AverageRadiusPtSeed_" + _event_label_base + ".pdf";
+        _colors = {kBlack, kBlue, kRed};
+        _styles = {1, 1, 1};
+        _labels = {"5 GeV Cut", "15 GeV Cut", "25 GeV Cut"};
+
+        _ticks = 502;
     }
 
     void Update(EventManager const* event_manager);

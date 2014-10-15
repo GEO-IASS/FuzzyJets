@@ -367,21 +367,24 @@ void pTOverlay() {
 }
 
 void EventTest() {
-    std::string qcd_location_5 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_qcd_mu0/2014_09_15_19h10m00s/10s_0mu_0lw_0rec_5cut.root";
-    std::string qcd_location_15 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_qcd_mu0/2014_09_15_19h10m00s/10s_0mu_0lw_0rec_15cut.root";
-    std::string qcd_location_25 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_qcd_mu0/2014_09_15_19h10m00s/10s_0mu_0lw_0rec_25cut.root";
-    std::string qcd_location_50 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_qcd_mu0/2014_09_15_19h10m00s/10s_0mu_0lw_0rec_50cut.root";
-    std::string wprime_location_5 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_wprime_mu0/2014_09_15_17h58m40s/10s_0mu_0lw_0rec_5cut.root";
-    std::string wprime_location_15 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_wprime_mu0/2014_09_15_17h58m40s/10s_0mu_0lw_0rec_15cut.root";
-    std::string wprime_location_25 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_wprime_mu0/2014_09_15_17h58m40s/10s_0mu_0lw_0rec_25cut.root";
-    std::string wprime_location_50 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_wprime_mu0/2014_09_15_17h58m40s/10s_0mu_0lw_0rec_50cut.root";
-    std::string zprime_location_5 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_zprime_mu0/2014_09_15_17h53m29s/10s_0mu_0lw_0rec_5cut.root";
-    std::string zprime_location_15 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_zprime_mu0/2014_09_15_17h53m29s/10s_0mu_0lw_0rec_15cut.root";
-    std::string zprime_location_25 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_zprime_mu0/2014_09_15_17h53m29s/10s_0mu_0lw_0rec_25cut.root";
-    std::string zprime_location_50 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/50kevts_zprime_mu0/2014_09_15_17h53m29s/10s_0mu_0lw_0rec_50cut.root";
+    std::string qcd_location_5 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_qcd_area/2014_10_14_11h23m44s/10s_0mu_0lw_0rec_5cut.root";
+    std::string qcd_location_15 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_qcd_area/2014_10_14_11h23m44s/10s_0mu_0lw_0rec_15cut.root";
+    std::string qcd_location_25 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_qcd_area/2014_10_14_11h23m44s/10s_0mu_0lw_0rec_25cut.root";
+    std::string qcd_location_50 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_qcd_area/2014_10_14_11h23m44s/10s_0mu_0lw_0rec_50cut.root";
+    std::string wprime_location_5 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_wprime_area/2014_10_15_00h40m54s/10s_0mu_0lw_0rec_5cut.root";
+    std::string wprime_location_15 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_wprime_area/2014_10_15_00h40m54s/10s_0mu_0lw_0rec_15cut.root";
+    std::string wprime_location_25 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_wprime_area/2014_10_15_00h40m54s/10s_0mu_0lw_0rec_25cut.root";
+    std::string wprime_location_50 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_wprime_area/2014_10_15_00h40m54s/10s_0mu_0lw_0rec_50cut.root";
+    std::string zprime_location_5 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_zprime_area/2014_10_13_22h17m12s/10s_0mu_0lw_0rec_5cut.root";
+    std::string zprime_location_15 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_zprime_area/2014_10_13_22h17m12s/10s_0mu_0lw_0rec_15cut.root";
+    std::string zprime_location_25 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_zprime_area/2014_10_13_22h17m12s/10s_0mu_0lw_0rec_25cut.root";
+    std::string zprime_location_50 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_zprime_area/2014_10_13_22h17m12s/10s_0mu_0lw_0rec_50cut.root";
 
     static const std::vector<std::string> all_algs {"mGMM", "mGMMs", "mGMMc", "mTGMM", "mTGMMs", "mUMM", "CA", "antikt"};
     static const std::vector<std::string> cs_algs {"CA", "antikt"};
+    static const std::vector<std::string> cs_algs_all
+    {"CA", "antikt", "antikt_trimmed_two", "antikt_trimmed_three"};
+
     static const std::vector<std::string> algs {"mGMM", "mGMMs", "mGMMc", "mTGMM", "mTGMMs", "mUMM"};
     static const std::vector<std::string> event_labels {"qcd", "wprime", "zprime"};
 
@@ -391,17 +394,17 @@ void EventTest() {
     manager.InstallEvent("qcd_5", qcd_location_5);
     manager.InstallEvent("qcd_15", qcd_location_15);
     manager.InstallEvent("qcd_25", qcd_location_25);
-    manager.InstallEvent("qcd_50", qcd_location_50);
+    //manager.InstallEvent("qcd_50", qcd_location_50);
 
     manager.InstallEvent("wprime_5", wprime_location_5);
     manager.InstallEvent("wprime_15", wprime_location_15);
     manager.InstallEvent("wprime_25", wprime_location_25);
-    manager.InstallEvent("wprime_50", wprime_location_50);
+    //manager.InstallEvent("wprime_50", wprime_location_50);
 
     manager.InstallEvent("zprime_5", zprime_location_5);
     manager.InstallEvent("zprime_15", zprime_location_15);
     manager.InstallEvent("zprime_25", zprime_location_25);
-    manager.InstallEvent("zprime_50", zprime_location_50);
+    //manager.InstallEvent("zprime_50", zprime_location_50);
 
     // INSTALL HISTOGRAMS
     // SOME TESTS FIRST
@@ -431,12 +434,25 @@ void EventTest() {
                 manager << new SigmaEfficiencyPlot(event_label + "_5",
                                                    other_event_label + "_5",
                                                    cut_low, cut_high);
-                manager << new SigmaNSubjettinessEfficiencyPlot(event_label + "_5",
-                                                                other_event_label + "_5",
-                                                                cut_low, cut_high);
-                manager << new SigmaImprovementEfficiency(event_label + "_5",
-                                                          other_event_label + "_5",
-                                                          cut_low, cut_high);
+                std::vector<std::string> postfixes = {"_5", "_15", "_25"};
+
+                for (unsigned int postfix_iter = 0; postfix_iter < postfixes.size();
+                     postfix_iter++) {
+                    std::string cpf = postfixes.at(postfix_iter);
+
+                    manager << new SigmaNSubjettinessEfficiencyPlot(event_label + cpf,
+                                                                    other_event_label + cpf,
+                                                                    cut_low, cut_high);
+                    manager << new SigmaImprovementEfficiencyTau32(event_label + cpf,
+                                                                   other_event_label + cpf,
+                                                                   cut_low, cut_high);
+                    manager << new SigmaImprovementEfficiencyTau21(event_label + cpf,
+                                                                   other_event_label + cpf,
+                                                                   cut_low, cut_high);
+                    manager << new SigmaImprovementEfficiencyMultiTau(event_label + cpf,
+                                                                      other_event_label + cpf,
+                                                                      cut_low, cut_high);
+                }
                 for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
                     std::string alg = algs[alg_iter];
                     manager << new FuzzyJetMassEfficiencyPlot(event_label + "_5",
@@ -457,6 +473,9 @@ void EventTest() {
     for (unsigned int event_label_iter = 0; event_label_iter < event_labels.size(); event_label_iter++) {
         std::string event_label = event_labels[event_label_iter];
         manager << new JetMultiplicityPtCut(event_label); // deliberately no cut postfix, see ::Update
+        manager << new RadiusPtSeedHistogram(event_label); // deliberately no cut postfix
+        manager << new AverageRadiusPtSeedHistogram(event_label); // deliberately no cut postfix
+
         for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
             std::string alg = algs[alg_iter];
             manager << new WeightDistanceCorrelation(event_label + "_5", alg);
@@ -465,9 +484,9 @@ void EventTest() {
 
     // Sigma Area Correlation
     for (unsigned int event_label_iter = 0; event_label_iter < event_labels.size(); event_label_iter++) {
-        for (unsigned int cs_alg_iter = 0; cs_alg_iter < cs_algs.size(); cs_alg_iter++) {
+        for (unsigned int cs_alg_iter = 0; cs_alg_iter < cs_algs_all.size(); cs_alg_iter++) {
             std::string event_label = event_labels.at(event_label_iter);
-            std::string cs_alg = cs_algs.at(cs_alg_iter);
+            std::string cs_alg = cs_algs_all.at(cs_alg_iter);
             manager << new SigmaAreaCorrelation(event_label + "_5", cs_alg);
         }
     }
