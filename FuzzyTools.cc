@@ -372,6 +372,7 @@ FuzzyTools::ComputeWeightsUniform(vecPseudoJet const& particles,
 
 vecPseudoJet
 FuzzyTools::UpdateJetsUniform(vecPseudoJet const& particles,
+                              __attribute__((unused)) vecPseudoJet const& oldJets,
                               vector<vector<double> > const& weights,
                               int cluster_count,
                               vector<double>* mUMM_weights) {
@@ -396,10 +397,23 @@ FuzzyTools::UpdateJetsUniform(vecPseudoJet const& particles,
 
         // compute new cluster location on the basis of the EM update steps
         for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++){
-            jet_y+=pow(particles[particle_iter].pt(),alpha) * weights[particle_iter][cluster_iter]
-                * particles[particle_iter].rapidity() / cluster_weighted_pt;
-            jet_phi+=pow(particles[particle_iter].pt(),alpha) * weights[particle_iter][cluster_iter]
-                * particles[particle_iter].phi() / cluster_weighted_pt;
+            double delta_jet_y = pow(particles[particle_iter].pt(),alpha)
+                * weights[particle_iter][cluster_iter] / cluster_weighted_pt;
+            double delta_jet_phi = delta_jet_y;
+            delta_jet_y *= particles[particle_iter].rapidity();
+
+#ifdef FIXED_MOD_PI
+            double k = particles[particle_iter].phi();
+            if (fabs(oldJets[cluster_iter].phi() - k) > M_PI) {
+                k += 2*M_PI*(oldJets[cluster_iter].phi() > k ? 1 : -1);
+            }
+            delta_jet_phi *= k;
+#else
+            delta_jet_phi *= particles[particle_iter].phi();
+#endif
+
+            jet_y += delta_jet_y;
+            jet_phi += delta_jet_phi;
         }
         cluster_pi = cluster_weighted_pt / total_particle_pt;
         if (learn_weights) {
@@ -422,6 +436,8 @@ FuzzyTools::UpdateJetsUniform(vecPseudoJet const& particles,
 
 vecPseudoJet
 FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet const& particles,
+                                __attribute__((unused))
+                                vecPseudoJet const& oldJets,
                                 vector<vector<double> > const& weights,
                                 int cluster_count,
                                 vector<MatTwo>* mTGMM_jets_params,
@@ -448,10 +464,23 @@ FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet const& particles,
 
         // compute new cluster location on the basis of the EM update steps
         for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++){
-            jet_y+=pow(particles[particle_iter].pt(),alpha) * weights[particle_iter][cluster_iter]
-                * particles[particle_iter].rapidity() / cluster_weighted_pt;
-            jet_phi+=pow(particles[particle_iter].pt(),alpha) * weights[particle_iter][cluster_iter]
-                * particles[particle_iter].phi() / cluster_weighted_pt;
+            double delta_jet_y = pow(particles[particle_iter].pt(),alpha)
+                * weights[particle_iter][cluster_iter] / cluster_weighted_pt;
+            double delta_jet_phi = delta_jet_y;
+            delta_jet_y *= particles[particle_iter].rapidity();
+
+#ifdef FIXED_MOD_PI
+            double k = particles[particle_iter].phi();
+            if (fabs(oldJets[cluster_iter].phi() - k) > M_PI) {
+                k += 2*M_PI*(oldJets[cluster_iter].phi() > k ? 1 : -1);
+            }
+            delta_jet_phi *= k;
+#else
+            delta_jet_phi *= particles[particle_iter].phi();
+#endif
+
+            jet_y += delta_jet_y;
+            jet_phi += delta_jet_phi;
         }
         cluster_pi = cluster_weighted_pt / total_particle_pt;
         if (learn_weights) {
@@ -472,21 +501,28 @@ FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet const& particles,
             for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++){
                 // pt scaled particle weight
                 double q_ji = pow(particles[particle_iter].pt(),alpha) * weights[particle_iter][cluster_iter];
+                double eff_delta_phi = particles[particle_iter].phi()
+                    -my_jet.phi();
+#ifdef FIXED_MOD_PI
+                if (fabs(eff_delta_phi) > M_PI) {
+                    eff_delta_phi += 2*M_PI*(eff_delta_phi > 0 ? -1 : 1);
+                }
+#endif
                 sigma_update.xx += q_ji
                     * (particles[particle_iter].rapidity()-my_jet.rapidity())
                     * (particles[particle_iter].rapidity()-my_jet.rapidity()) / cluster_weighted_pt;
 
                 sigma_update.xy += q_ji
                     * (particles[particle_iter].rapidity()-my_jet.rapidity())
-                    * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
+                    * (eff_delta_phi) / cluster_weighted_pt;
 
                 sigma_update.yx += q_ji
                     * (particles[particle_iter].rapidity()-my_jet.rapidity())
-                    * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
+                    * (eff_delta_phi) / cluster_weighted_pt;
 
                 sigma_update.yy += q_ji
-                    * (particles[particle_iter].phi()-my_jet.phi())
-                    * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
+                    * (eff_delta_phi)
+                    * (eff_delta_phi) / cluster_weighted_pt;
             }
 
             // if the matrix is looking singular...
@@ -511,6 +547,8 @@ FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet const& particles,
 
 vecPseudoJet
 FuzzyTools::UpdateJetsGaussianC(vecPseudoJet const& particles,
+                                __attribute__((unused))
+                                vecPseudoJet const& oldJets,
                                 vector<vector<double> > const& weights,
                                 int cluster_count,
                                 vector<MatTwo>* mGMMc_jets_params,
@@ -534,10 +572,23 @@ FuzzyTools::UpdateJetsGaussianC(vecPseudoJet const& particles,
         }
 
         for (unsigned int particle_iter = 0; particle_iter < particle_count; particle_iter++) {
-            jet_y += pow(particles[particle_iter].pt(), alpha) * weights[particle_iter][cluster_iter]
-                * particles[particle_iter].rapidity() / cluster_weighted_pt;
-            jet_phi += pow(particles[particle_iter].pt(), alpha) * weights[particle_iter][cluster_iter]
-                * particles[particle_iter].phi() / cluster_weighted_pt;
+            double delta_jet_y = pow(particles[particle_iter].pt(),alpha)
+                * weights[particle_iter][cluster_iter] / cluster_weighted_pt;
+            double delta_jet_phi = delta_jet_y;
+            delta_jet_y *= particles[particle_iter].rapidity();
+
+#ifdef FIXED_MOD_PI
+            double k = particles[particle_iter].phi();
+            if (fabs(oldJets[cluster_iter].phi() - k) > M_PI) {
+                k += 2*M_PI*(oldJets[cluster_iter].phi() > k ? 1 : -1);
+            }
+            delta_jet_phi *= k;
+#else
+            delta_jet_phi *= particles[particle_iter].phi();
+#endif
+
+            jet_y += delta_jet_y;
+            jet_phi += delta_jet_phi;
         }
 
         cluster_pi = cluster_weighted_pt / total_particle_pt;
@@ -563,6 +614,11 @@ FuzzyTools::UpdateJetsGaussianC(vecPseudoJet const& particles,
                     / cluster_weighted_pt;
                 double v_off_x = particles[particle_iter].rapidity() - my_jet.rapidity();
                 double v_off_y = particles[particle_iter].phi() - my_jet.phi();
+#ifdef FIXED_MOD_PI
+                if (fabs(v_off_y) > M_PI) {
+                    v_off_y += 2*M_PI*(v_off_y > 0 ? -1 : 1);
+                }
+#endif
                 sum += q_ji * (v_off_x * v_off_x + v_off_y * v_off_y);
             }
             double little_sigma = sqrt(sum / 2);
@@ -583,6 +639,8 @@ FuzzyTools::UpdateJetsGaussianC(vecPseudoJet const& particles,
 
 vecPseudoJet
 FuzzyTools::UpdateJetsGaussian(vecPseudoJet const& particles,
+                               __attribute__((unused))
+                               vecPseudoJet const& oldJets,
                                vector<vector<double> > const& weights,
                                int cluster_count,
                                vector<MatTwo>* mGMM_jets_params,
@@ -609,10 +667,23 @@ FuzzyTools::UpdateJetsGaussian(vecPseudoJet const& particles,
 
         // compute new cluster location on the basis of the EM update steps
         for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++){
-            jet_y+=pow(particles[particle_iter].pt(),alpha) * weights[particle_iter][cluster_iter]
-                * particles[particle_iter].rapidity() / cluster_weighted_pt;
-            jet_phi+=pow(particles[particle_iter].pt(),alpha) * weights[particle_iter][cluster_iter]
-                * particles[particle_iter].phi() / cluster_weighted_pt;
+            double delta_jet_y = pow(particles[particle_iter].pt(),alpha)
+                * weights[particle_iter][cluster_iter] / cluster_weighted_pt;
+            double delta_jet_phi = delta_jet_y;
+            delta_jet_y *= particles[particle_iter].rapidity();
+
+#ifdef FIXED_MOD_PI
+            double k = particles[particle_iter].phi();
+            if (fabs(oldJets[cluster_iter].phi() - k) > M_PI) {
+                k += 2*M_PI*(oldJets[cluster_iter].phi() > k ? 1 : -1);
+            }
+            delta_jet_phi *= k;
+#else
+            delta_jet_phi *= particles[particle_iter].phi();
+#endif
+
+            jet_y += delta_jet_y;
+            jet_phi += delta_jet_phi;
         }
 
         cluster_pi = cluster_weighted_pt / total_particle_pt;
@@ -634,21 +705,28 @@ FuzzyTools::UpdateJetsGaussian(vecPseudoJet const& particles,
             for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++){
                 // pt scaled particle weight
                 double q_ji = pow(particles[particle_iter].pt(),alpha) * weights[particle_iter][cluster_iter];
+                double eff_delta_phi = particles[particle_iter].phi()
+                    -my_jet.phi();
+#ifdef FIXED_MOD_PI
+                if (fabs(eff_delta_phi) > M_PI) {
+                    eff_delta_phi += 2*M_PI*(eff_delta_phi > 0 ? -1 : 1);
+                }
+#endif
                 sigma_update.xx += q_ji
                     * (particles[particle_iter].rapidity()-my_jet.rapidity())
                     * (particles[particle_iter].rapidity()-my_jet.rapidity()) / cluster_weighted_pt;
 
                 sigma_update.xy += q_ji
                     * (particles[particle_iter].rapidity()-my_jet.rapidity())
-                    * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
+                    * (eff_delta_phi) / cluster_weighted_pt;
 
                 sigma_update.yx += q_ji
                     * (particles[particle_iter].rapidity()-my_jet.rapidity())
-                    * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
+                    * (eff_delta_phi) / cluster_weighted_pt;
 
                 sigma_update.yy += q_ji
-                    * (particles[particle_iter].phi()-my_jet.phi())
-                    * (particles[particle_iter].phi()-my_jet.phi()) / cluster_weighted_pt;
+                    * (eff_delta_phi)
+                    * (eff_delta_phi) / cluster_weighted_pt;
             }
 
             // if the matrix is looking singular...
@@ -759,7 +837,7 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet const& particles,
     int iter = 0;
     for(; iter < max_iters; iter++) {
         ComputeWeightsUniform(particles, &weights, cluster_count, mUMM_jets, mUMM_weights);
-        mUMM_jets = UpdateJetsUniform(particles, weights, cluster_count, &mUMM_weights);
+        mUMM_jets = UpdateJetsUniform(particles, mUMM_jets, weights, cluster_count, &mUMM_weights);
         double log_likelihood_norm = LogLikelihoodUniform(particles, mUMM_jets, mUMM_weights) / particles.size();
         if (log(fabs(log_likelihood_norm_last - log_likelihood_norm)) < log_log_likelihood_limit) break;
         log_likelihood_norm_last = log_likelihood_norm;
@@ -835,7 +913,7 @@ FuzzyTools::ClusterFuzzyTruncGaus(vecPseudoJet const& particles,
     for (; iter<max_iters; iter++){
         // EM algorithm update steps
         ComputeWeightsTruncGaus(particles,&weights,cluster_count,mTGMM_jets,mTGMM_jets_params, mTGMM_weights);
-        mTGMM_jets = UpdateJetsTruncGaus(particles,weights,cluster_count,&mTGMM_jets_params,&mTGMM_weights);
+        mTGMM_jets = UpdateJetsTruncGaus(particles,mTGMM_jets,weights,cluster_count,&mTGMM_jets_params,&mTGMM_weights);
         double log_likelihood_norm = LogLikelihoodTruncGaus(particles, mTGMM_jets, mTGMM_jets_params, mTGMM_weights) / particles.size();
         if (log(fabs(log_likelihood_norm_last - log_likelihood_norm)) < log_log_likelihood_limit) break;
         log_likelihood_norm_last = log_likelihood_norm;
@@ -923,7 +1001,7 @@ FuzzyTools::ClusterFuzzyGaussianC(vecPseudoJet const& particles,
     for (; iter<max_iters; iter++){
         // EM algorithm update steps
         ComputeWeightsGaussian(particles,&weights,cluster_count,mGMMc_jets,mGMMc_jets_params, mGMMc_weights);
-        mGMMc_jets = UpdateJetsGaussianC(particles,weights,cluster_count,&mGMMc_jets_params,&mGMMc_weights);
+        mGMMc_jets = UpdateJetsGaussianC(particles,mGMMc_jets,weights,cluster_count,&mGMMc_jets_params,&mGMMc_weights);
 
         double log_likelihood_norm = LogLikelihoodGaussian(particles, mGMMc_jets, mGMMc_jets_params, mGMMc_weights) / particles.size();
         if (log(fabs(log_likelihood_norm_last - log_likelihood_norm)) < log_log_likelihood_limit) break;
@@ -1105,7 +1183,7 @@ FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet const& particles,
     for (; iter<max_iters; iter++){
         // EM algorithm update steps
         ComputeWeightsGaussian(particles,&weights,cluster_count,mGMM_jets,mGMM_jets_params, mGMM_weights);
-        mGMM_jets = UpdateJetsGaussian(particles,weights,cluster_count,&mGMM_jets_params,&mGMM_weights);
+        mGMM_jets = UpdateJetsGaussian(particles,mGMM_jets,weights,cluster_count,&mGMM_jets_params,&mGMM_weights);
         double log_likelihood_norm = LogLikelihoodGaussian(particles, mGMM_jets, mGMM_jets_params, mGMM_weights) / particles.size();
         if (log(fabs(log_likelihood_norm_last - log_likelihood_norm)) < log_log_likelihood_limit) break;
         log_likelihood_norm_last = log_likelihood_norm;

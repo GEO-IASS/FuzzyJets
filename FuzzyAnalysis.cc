@@ -924,6 +924,82 @@ void FuzzyAnalysis::AnalyzeEventNew(int event_iter, Pythia8::Pythia* pythia8, Py
 }
 #endif
 
+void FuzzyAnalysis::PiFixStudy() {
+    // set up a few test particles and initial jets
+    vecPseudoJet test_particles;
+    vecPseudoJet test_jets;
+
+    fastjet::PseudoJet p(0,0,0,0);
+
+    p.reset_PtYPhiM(40, 0, 0.1, 0);
+    test_particles.push_back(p);
+    test_jets.push_back(p);
+
+
+    p.reset_PtYPhiM(20, 0, 6.2, 0);
+    test_particles.push_back(p);
+
+    // Separated particle
+    p.reset_PtYPhiM(10, -1, 5.7, 0);
+    test_particles.push_back(p);
+    test_jets.push_back(p);
+
+    bool mGMM_on = true;
+    bool mGMMc_on = true;
+
+    // Fuzzy Jets: mGMMc --------------------
+    vector<vector<double> > mGMMc_particle_weights;
+    vector<MatTwo> mGMMc_jets_params;
+    vector<double> mGMMc_weights;
+    vecPseudoJet mGMMc_jets;
+    vector<int> mGMMc_indices;
+    double max_pT_mGMMc;
+    if(mGMMc_on) {
+        DoMGMMCJetFinding(test_particles, test_jets,
+                          f_learn_weights, do_recombination,
+                          mGMMc_indices, max_pT_mGMMc,
+                          tool, mGMMc_jets, mGMMc_particle_weights,
+                          mGMMc_jets_params, mGMMc_weights, fTmGMMc_iter);
+    }
+    int lead_mGMMc_index = mGMMc_indices.size() ? mGMMc_indices.at(0) : -1;
+
+    // Fuzzy Jets: mGMM ---------------------
+    vector<vector<double> >mGMM_particle_weights;
+    vector<MatTwo> mGMM_jets_params;
+    vector<double> mGMM_weights;
+    vector<fastjet::PseudoJet> mGMM_jets;
+    vector<int> mGMM_indices;
+    double max_pT_mGMM;
+    if(mGMM_on) {
+        DoMGMMJetFinding(test_particles, test_jets,
+                         f_learn_weights, false, do_recombination,
+                         mGMM_indices, max_pT_mGMM,
+                         tool, mGMM_jets, mGMM_particle_weights,
+                         mGMM_jets_params, mGMM_weights, fTmGMM_iter);
+    }
+    int lead_mGMM_index = mGMM_indices.size() ? mGMM_indices.at(0) : -1;
+
+    tool->NewEventDisplay(test_particles,
+                          test_jets, test_particles,
+                          mGMM_jets,
+                          mGMM_particle_weights,
+                          lead_mGMM_index,
+                          mGMM_jets_params,
+                          mGMM_weights,
+                          "mGMM_mod_pi",
+                          0);
+
+    tool->NewEventDisplay(test_particles,
+                          test_jets, test_particles,
+                          mGMMc_jets,
+                          mGMMc_particle_weights,
+                          lead_mGMMc_index,
+                          mGMMc_jets_params,
+                          mGMMc_weights,
+                          "mGMMc_mod_pi",
+                          0);
+}
+
 // Analyze
 void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythia8::Pythia* pythia_MB, int NPV){
     if(f_debug) cout << "FuzzyAnalysis::AnalyzeEvent Begin " << endl;

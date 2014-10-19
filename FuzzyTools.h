@@ -279,6 +279,8 @@ class FuzzyTools {
                                 vector<double> const& mGMM_weights);
 
     vecPseudoJet UpdateJetsGaussian(vecPseudoJet const& particles,
+                                    __attribute__((unused)) vecPseudoJet
+                                    const& oldJets,
                                     vector<vector<double> > const& weights,
                                     int cluster_count,
                                     vector<MatTwo>* mGMM_jets_params,
@@ -291,6 +293,8 @@ class FuzzyTools {
                                       unsigned int &iter_count);
 
     vecPseudoJet UpdateJetsGaussianC(vecPseudoJet const& particles,
+                                     __attribute__((unused)) vecPseudoJet
+                                     const& oldJets,
                                      vector<vector<double> > const& weights,
                                      int cluster_count,
                                      vector<MatTwo>* mGMMc_jets_params,
@@ -309,6 +313,8 @@ class FuzzyTools {
                                vector<double> const& mUMM_weights);
 
     vecPseudoJet UpdateJetsUniform(vecPseudoJet const& particles,
+                                   __attribute__((unused)) vecPseudoJet
+                                   const& oldJets,
                                    vector<vector<double> > const& weights,
                                    int cluster_count,
                                    vector<double>* mUMM_weights);
@@ -326,6 +332,8 @@ class FuzzyTools {
                                  vector<double> const& mTGMM_weights);
 
     vecPseudoJet UpdateJetsTruncGaus(vecPseudoJet const& particles,
+                                     __attribute__((unused)) vecPseudoJet
+                                     const& oldJets,
                                      vector<vector<double> > const& weights,
                                      int cluster_count,
                                      vector<MatTwo>* mTGMM_jets_params,

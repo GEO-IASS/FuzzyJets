@@ -5,5 +5,5 @@
 
 //#define NEW
 
-//#define FIXED_MOD_PI
+#define FIXED_MOD_PI
 #endif

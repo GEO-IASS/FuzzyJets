@@ -75,6 +75,7 @@ int main(int argc, char* argv[]){
     bool learn_weights = false;
     bool is_batch = false;
     bool do_recombination = true;
+    bool do_mod_pi_test = false;
     string out_name = "FuzzyJets.root";
     string pythia_config_name = "configs/default.pythia";
     string directory = "results/tmp/";
@@ -92,6 +93,7 @@ int main(int argc, char* argv[]){
         ("pTMin", po::value<float>(&pT_min)->default_value(5), "Minimum pT for standard jets. (Including those used as seeds")
         ("Batch",   po::value<bool>(&is_batch)->default_value(false), "Is this running on the batch?")
         ("Recombination", po::value<bool>(&do_recombination)->default_value(true), "Should we use fixed clusters or all particles with recombination?")
+        ("ModPiTest", po::value<bool>(&do_mod_pi_test)->default_value(false), "Whether to run the mod pi testing suite.")
         ("Directory", po::value<string>(&directory)->default_value("results/tmp/"), "Directory in which to place results (.root files etc.)");
     po::variables_map vm;
     po::store(po::parse_command_line(argc, argv, desc), vm);
@@ -161,6 +163,7 @@ int main(int argc, char* argv[]){
 
     // FuzzyAnalysis
     FuzzyAnalysis *analysis = new FuzzyAnalysis();
+
     if(NPV == -1) {
         // compute for NPV = 0, 10, 20, 30
         int NPVs [4] = {0, 10, 20, 30};
@@ -207,6 +210,15 @@ int main(int argc, char* argv[]){
         cout << "running on " << n_events << " events " << endl;
         eventLoop(n_events, pythia8, pythia_MB, NPV, analysis);
 
+        if (do_mod_pi_test && !is_batch) {
+            // don't do this on the batch, and rewrite necessary variables
+            analysis->SetRecombination(false);
+            analysis->SetPrefix(directory);
+            analysis->SetSize(size);
+            analysis->SetBatched(false);
+            analysis->SetLearnWeights(true);
+            analysis->PiFixStudy();
+        }
         analysis->End();
     }
 

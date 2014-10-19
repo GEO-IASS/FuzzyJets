@@ -265,6 +265,7 @@ class FuzzyAnalysis{
     void Begin();
     void SetupHistosMap();
     void WriteHistosMap();
+    void PiFixStudy();
     void SubstructureStudy(vecPseudoJet ca_jets, vecPseudoJet antikt_jets, int event_iter);
     void AnalyzeEventNew(int i_evt, Pythia8::Pythia *pythia8, Pythia8::Pythia *pythia_MB, int NPV);
     void AnalyzeEvent(int i_evt, Pythia8::Pythia *pythia8, Pythia8::Pythia *pythia_MB, int NPV);
