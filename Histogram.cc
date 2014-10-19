@@ -31,6 +31,7 @@ void StackedEfficiencyHistogramGen::Finish(__attribute__((unused)) EventManager
     SetupATLASStyle();
 
     TMultiGraph *multi = new TMultiGraph();
+    TMultiGraph *inv_multi = new TMultiGraph();
 
     std::vector<float> random_x = {0, 1};
     std::vector<float> random_y = {1, 0};
@@ -44,6 +45,12 @@ void StackedEfficiencyHistogramGen::Finish(__attribute__((unused)) EventManager
     legend->SetFillStyle(0);
     legend->SetFillColor(0);
     legend->SetBorderSize(0);
+
+    TLegend *inv_legend = new TLegend(0.2, 0.25, 0.45, 0.35);
+    inv_legend->SetTextFont(42);
+    inv_legend->SetFillStyle(0);
+    inv_legend->SetFillColor(0);
+    inv_legend->SetBorderSize(0);
 
     for (unsigned int attr_iter = 0; attr_iter < _colors.size(); attr_iter++) {
         float integral_sig = std::accumulate(_signals.at(attr_iter).begin(),
@@ -76,6 +83,8 @@ void StackedEfficiencyHistogramGen::Finish(__attribute__((unused)) EventManager
         float integrated_background = 0;
         std::vector<float> vec_signal;
         std::vector<float> vec_background_rejection;
+        std::vector<float> vec_inv_background_efficiency;
+
         vec_signal.push_back(0);
         vec_background_rejection.push_back(1);
         for (unsigned int iter = 0; iter < to_sort.size(); iter++) {
@@ -83,21 +92,40 @@ void StackedEfficiencyHistogramGen::Finish(__attribute__((unused)) EventManager
             integrated_background += to_sort.at(iter).background;
             vec_signal.push_back(integrated_signal);
             vec_background_rejection.push_back(1 - integrated_background);
+            if (integrated_background > 0)
+                vec_inv_background_efficiency.push_back(1/integrated_background);
         }
         vec_signal.push_back(1);
         vec_background_rejection.push_back(0);
+        vec_inv_background_efficiency.push_back(1);
+
         TGraph *efficiency_graph = new TGraph(vec_signal.size(),
                                               &vec_signal.at(0),
                                               &vec_background_rejection.at(0));
+        TGraph *inv_efficiency_graph =
+            new TGraph(vec_inv_background_efficiency.size(),
+                       &vec_signal.at(vec_signal.size() -
+                                      vec_inv_background_efficiency.size()),
+                       &vec_inv_background_efficiency.at(0));
 
         efficiency_graph->SetMarkerColor(_colors[attr_iter]);
         efficiency_graph->SetLineColor(_colors[attr_iter]);
         efficiency_graph->SetMarkerStyle(20); // circle
 
+        inv_efficiency_graph->SetMarkerColor(_colors[attr_iter]);
+        inv_efficiency_graph->SetLineColor(_colors[attr_iter]);
+        inv_efficiency_graph->SetMarkerStyle(20); // circle
+
         legend->AddEntry(efficiency_graph, _labels[attr_iter].c_str(), "l");
+        inv_legend->AddEntry(inv_efficiency_graph,
+                             _labels[attr_iter].c_str(), "l");
+
         multi->Add(efficiency_graph);
+        inv_multi->Add(inv_efficiency_graph);
     }
     TCanvas canvas("temporary", "", 0, 0, _canvas_x, _canvas_y);
+    canvas.cd();
+
     multi->Draw("ac");
     multi->GetXaxis()->SetTitle(_x_label.c_str());
     multi->GetYaxis()->SetTitle(_y_label.c_str());
@@ -118,6 +146,30 @@ void StackedEfficiencyHistogramGen::Finish(__attribute__((unused)) EventManager
 
     // multi owns the efficiency graphs
     delete multi;
+
+    TCanvas inv_canvas("temporary2", "", 0,0, _canvas_x, _canvas_y);
+    inv_canvas.cd();
+    inv_canvas.SetLogy();
+
+    inv_multi->Draw("ac");
+    inv_multi->GetXaxis()->SetTitle(_x_label.c_str());
+    inv_multi->GetYaxis()->SetTitle(_y_inv_label.c_str());
+
+    inv_multi->GetXaxis()->SetLimits(0, 1);
+    inv_multi->GetYaxis()->SetLimits(0, 1);
+
+    inv_multi->GetXaxis()->SetNdivisions(_ticks);
+
+    inv_canvas.Update();
+
+    inv_legend->Draw();
+
+    DrawAtlasLabel(_title, 0.2, 0.48);
+
+    out = plot_prefix + "inv_" + _outfile_name;
+    inv_canvas.Print(out.c_str());
+
+    delete inv_multi;
 }
 
 void StackedEfficiencyHistogramBase::Finish(__attribute__((unused)) EventManager

@@ -50,6 +50,7 @@ protected:
 
     std::string _x_label;
     std::string _y_label;
+    std::string _y_inv_label;
 
     std::vector<unsigned int> _dimensions; // inferred
 
@@ -60,6 +61,7 @@ protected:
 
         _x_label = "X_LABEL";
         _y_label = "Y_LABEL";
+        _y_inv_label = "Y_LABEL";
 
         _canvas_x = _canvas_y = 800;
         _ticks = 505;
@@ -219,6 +221,7 @@ public:
         _title = "";
         _x_label = _event_signal + " Efficiency";
         _y_label = "1 - " + _event_background + " Efficiency";
+        _y_inv_label = "Inverse " + _event_background + " Efficiency";
 
         _n_points = {{400}, {400}, {400}, {10, 40}};
 
@@ -261,6 +264,7 @@ public:
         _title = "";
         _x_label = _event_signal + " Efficiency";
         _y_label = "1 - " + _event_background + " Efficiency";
+        _y_inv_label = "Inverse " + _event_background + " Efficiency";
 
         _n_points = {{400}, {400}, {400}, {10, 40}};
 
@@ -303,6 +307,7 @@ public:
         _title = "";
         _x_label = _event_signal + " Efficiency";
         _y_label = "1 - " + _event_background + " Efficiency";
+        _y_inv_label = "Inverse " + _event_background + " Efficiency";
 
         _n_points = {{20, 20}, {20, 20}, {400}, {10, 40},
                      {10, 40}, {10, 40}};
@@ -333,6 +338,8 @@ public:
         _title = "";
         _x_label = "W' Efficiency";
         _y_label = "1 - QCD Efficiency";
+        _y_inv_label = "Inverse QCD Efficiency";
+
         _outfile_name = "EfficiencyGenTest.pdf";
         _n_points = {{500}, {500}, {500}};
 
