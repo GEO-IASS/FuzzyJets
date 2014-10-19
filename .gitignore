@@ -20,6 +20,7 @@
 
 # Plots and results
 results/
+archives/
 logs/
 files/
 clean_scripts/
