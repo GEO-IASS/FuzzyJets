@@ -550,6 +550,45 @@ void SigmaImprovementEfficiencyTau21::Update(EventManager const* event_manager) 
     }
 }
 
+void AreaEfficiency::Update(EventManager const* event_manager) {
+    float background_reweight = event_manager->Reweight(_event_background);
+    float signal_reweight = event_manager->Reweight(_event_signal);
+
+    float pT_sig = (*event_manager)[_event_signal].antikt_pt;
+    float pT_back = (*event_manager)[_event_background].antikt_pt;
+
+    float trim_pT_sig = (*event_manager)[_event_signal].antikt_pt_trimmed_two;
+    float trim_pT_back = (*event_manager)[_event_background].antikt_pt_trimmed_two;
+
+    float trim_mass_sig = (*event_manager)[_event_signal].antikt_m_trimmed_two;
+    float trim_mass_back = (*event_manager)[_event_background].antikt_m_trimmed_two;
+
+    float area2_sig = (*event_manager)[_event_signal].antikt_area_trimmed_two;
+    float area2_back = (*event_manager)[_event_background].antikt_area_trimmed_two;
+
+    float area3_sig = (*event_manager)[_event_signal].antikt_area_trimmed_three;
+    float area3_back = (*event_manager)[_event_background].antikt_area_trimmed_three;
+
+    float sigma_sig = (*event_manager)[_event_signal].mGMMc_r;
+    float sigma_back = (*event_manager)[_event_background].mGMMc_r;
+
+    if (_cut_low <= pT_sig && pT_sig < _cut_high) {
+        fillSignal(0, {area2_sig}, signal_reweight);
+        fillSignal(1, {area3_sig}, signal_reweight);
+        fillSignal(2, {trim_mass_sig/trim_pT_sig}, signal_reweight);
+        fillSignal(3, {area2_sig,trim_mass_sig/trim_pT_sig}, signal_reweight);
+        fillSignal(4, {area2_sig,sigma_sig}, signal_reweight);
+    }
+
+    if (_cut_low <= pT_back && pT_back < _cut_high) {
+        fillBackground(0, {area2_back}, background_reweight);
+        fillBackground(1, {area3_back}, background_reweight);
+        fillBackground(2, {trim_mass_back/trim_pT_back}, background_reweight);
+        fillBackground(3, {area2_back,trim_mass_back/trim_pT_back}, background_reweight);
+        fillBackground(4, {area2_back,sigma_back}, background_reweight);
+    }
+}
+
 void SigmaImprovementEfficiencyTau32::Update(EventManager const* event_manager) {
     float background_reweight = event_manager->Reweight(_event_background);
     float signal_reweight = event_manager->Reweight(_event_signal);

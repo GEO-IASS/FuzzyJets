@@ -199,6 +199,50 @@ public:
     virtual void Finish(__attribute__((unused)) EventManager const* event_manager);
 };
 
+class AreaEfficiency : public StackedEfficiencyHistogramGen {
+protected:
+    std::string _event_signal;
+    std::string _event_background;
+
+    float _cut_low;
+    float _cut_high;
+
+public:
+    AreaEfficiency (std::string event_signal,
+                    std::string event_background,
+                    float cut_low,
+                    float cut_high) {
+        _event_signal = event_signal;
+        _event_background = event_background;
+
+        _cut_low = cut_low;
+        _cut_high = cut_high;
+
+        _title = "";
+        _x_label = _event_signal + " Efficiency";
+        _y_label = "1 - " + _event_background + " Efficiency";
+        _y_inv_label = "Inverse " + _event_background + " Efficiency";
+
+        _n_points = {{600}, {600}, {600}, {40, 15}, {15, 40}};
+
+        _colors = {kRed, kBlue, kGreen, kBlack, kOrange};
+        _labels = {"Antikt trimmed 0.2 area",
+                   "Antikt trimmed 0.3 area",
+                   "Leading antikt trimmed 0.2 mass/pT",
+                   "0.2 area, mass/pT",
+                   "0.2 area, #sigma"};
+
+        _ticks = 405;
+        _lows = {{0}, {0}, {0}, {0, 0}, {0, 0}};
+        _highs = {{1}, {1.4}, {1}, {1, 1}, {1, 1.5}};
+
+        _outfile_name = "AreaEfficiency_" + event_signal +
+            "_" + event_background + "_" + std::to_string((long long int) _cut_low) +
+            "_to_" + std::to_string((long long int) _cut_high) + "pT.pdf";
+    }
+    void Update(EventManager const* event_manager);
+};
+
 class SigmaImprovementEfficiencyTau32 : public StackedEfficiencyHistogramGen {
 protected:
     std::string _event_signal;

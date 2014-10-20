@@ -452,6 +452,9 @@ void EventTest() {
                     manager << new SigmaImprovementEfficiencyMultiTau(event_label + cpf,
                                                                       other_event_label + cpf,
                                                                       cut_low, cut_high);
+                    manager << new AreaEfficiency(event_label + cpf,
+                                                  other_event_label + cpf,
+                                                  cut_low, cut_high);
                 }
                 for (unsigned int alg_iter = 0; alg_iter < algs.size(); alg_iter++) {
                     std::string alg = algs[alg_iter];
@@ -513,7 +516,7 @@ void EventTest() {
     }
 
     // Start running the analysis
-    manager.SetEventCount(50000);
+    manager.SetEventCount(5000);
     manager.Init();
     manager.PreparePtReweighting("qcd_5");
 
