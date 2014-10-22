@@ -516,7 +516,7 @@ void EventTest() {
     }
 
     // Start running the analysis
-    manager.SetEventCount(5000);
+    manager.SetEventCount(50000);
     manager.Init();
     manager.PreparePtReweighting("qcd_5");
 

@@ -223,18 +223,19 @@ public:
         _y_label = "1 - " + _event_background + " Efficiency";
         _y_inv_label = "Inverse " + _event_background + " Efficiency";
 
-        _n_points = {{600}, {600}, {600}, {40, 15}, {15, 40}};
+        _n_points = {{600}, {600}, {600}, {40, 15}, {15, 40}, {15, 40}};
 
-        _colors = {kRed, kBlue, kGreen, kBlack, kOrange};
+        _colors = {kRed, kBlue, kGreen, kBlack, kOrange, kViolet};
         _labels = {"Antikt trimmed 0.2 area",
                    "Antikt trimmed 0.3 area",
-                   "Leading antikt trimmed 0.2 mass/pT",
-                   "0.2 area, mass/pT",
-                   "0.2 area, #sigma"};
+                   "Leading antikt trimmed 0.3 mass/pT",
+                   "0.3 area, mass/pT",
+                   "0.3 area, #sigma",
+                   "mass/pT, #sigma"};
 
         _ticks = 405;
-        _lows = {{0}, {0}, {0}, {0, 0}, {0, 0}};
-        _highs = {{1}, {1.4}, {1}, {1, 1}, {1, 1.5}};
+        _lows = {{0}, {0}, {0}, {0, 0}, {0, 0}, {0,0}};
+        _highs = {{1}, {1.4}, {1}, {1.4, 1}, {1.4, 1.5}, {1, 1.5}};
 
         _outfile_name = "AreaEfficiency_" + event_signal +
             "_" + event_background + "_" + std::to_string((long long int) _cut_low) +
