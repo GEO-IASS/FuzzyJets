@@ -25,6 +25,9 @@ logs/
 files/
 clean_scripts/
 
+#TMVA Crap
+weights/
+
 # Executables
 *.exe
 *.out
