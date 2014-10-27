@@ -32,12 +32,12 @@ FASTJETFLAGS = `$(FASTJETLOCATION)/bin/fastjet-config --cxxflags --plugins`
 
 all: Fuzzy Histogrammer
 
-Histogrammer: Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so Event.so Histogram.so
-	$(CXX) Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so Event.so Histogram.so -o $@ \
-	$(CXXFLAGS) $(CXXFLAGSEXTRA) $(ROOTLIBSREAL) \
+Histogrammer: Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so Event.so Histogram.so MVA.so
+	$(CXX) Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so Event.so Histogram.so MVA.so -o $@ \
+	$(CXXFLAGS) $(CXXFLAGSEXTRA) $(ROOTLIBSREAL) -lTMVA \
 	-L$(BOOSTLIBLOCATION) -lboost_program_options
 
-Histogrammer.so: Histogrammer.cc AnalyzeFuzzyTools.so AtlasUtils.so Event.so Histogram.so
+Histogrammer.so: Histogrammer.cc AnalyzeFuzzyTools.so AtlasUtils.so Event.so Histogram.so MVA.so
 	$(CXX) -o $@ -c $< \
 	$(CXXFLAGS) $(CXXFLAGSEXTRA) -fPIC -shared $(ROOTFLAGSREAL) \
 	-isystem $(BOOSTINCDIR)
@@ -51,6 +51,10 @@ Event.so: Event.cc Event.h
 	$(CXXFLAGS) $(CXXFLAGSEXTRA) -fPIC -shared $(ROOTFLAGSREAL) \
 
 Histogram.so: Histogram.cc Histogram.h
+	$(CXX) -o $@ -c $<  \
+	$(CXXFLAGS) $(CXXFLAGSEXTRA) -fPIC -shared $(ROOTFLAGSREAL) \
+
+MVA.so: MVA.cc MVA.h
 	$(CXX) -o $@ -c $<  \
 	$(CXXFLAGS) $(CXXFLAGSEXTRA) -fPIC -shared $(ROOTFLAGSREAL) \
 

@@ -6,6 +6,7 @@
 #include <utility>
 #include <unordered_map>
 
+#include <TError.h>
 #include <TROOT.h>
 #include <TColor.h>
 #include <TLine.h>
@@ -13,6 +14,7 @@
 #include "AnalyzeFuzzyTools.h"
 #include "AtlasStyle.h"
 #include "Event.h"
+#include "MVA.h"
 
 #include "boost/program_options.hpp"
 
@@ -366,6 +368,182 @@ void pTOverlay() {
     prettyHist<float>(v_hist_decs, c_dec_untrimmed);
 }
 
+void PolishTrees() {
+    // Creates additional friend trees so that the reweighting values can be
+    // found in trees for use in TMVA. Would prefer to pass them event by event,
+    // but TMVA didn't make that very compatible with the way I'm currently
+    // doing things. In any case, this is fine because it allows us to
+    //
+
+    std::string qcd_base_5 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_qcd_area/2014_10_14_11h23m44s/10s_0mu_0lw_0rec_5cut";
+    std::string qcd_base_15 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_qcd_area/2014_10_14_11h23m44s/10s_0mu_0lw_0rec_15cut";
+    std::string qcd_base_25 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_qcd_area/2014_10_14_11h23m44s/10s_0mu_0lw_0rec_25cut";
+    std::string wprime_base_5 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_wprime_area/2014_10_15_00h40m54s/10s_0mu_0lw_0rec_5cut";
+    std::string wprime_base_15 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_wprime_area/2014_10_15_00h40m54s/10s_0mu_0lw_0rec_15cut";
+    std::string wprime_base_25 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_wprime_area/2014_10_15_00h40m54s/10s_0mu_0lw_0rec_25cut";
+    std::string zprime_base_5 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_zprime_area/2014_10_13_22h17m12s/10s_0mu_0lw_0rec_5cut";
+    std::string zprime_base_15 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_zprime_area/2014_10_13_22h17m12s/10s_0mu_0lw_0rec_15cut";
+    std::string zprime_base_25 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_zprime_area/2014_10_13_22h17m12s/10s_0mu_0lw_0rec_25cut";
+
+    std::string qcd_location_5 = qcd_base_5 + ".root";
+    std::string qcd_location_15 = qcd_base_15 + ".root";
+    std::string qcd_location_25 = qcd_base_25 + ".root";
+    std::string wprime_location_5 = wprime_base_5 + ".root";
+    std::string wprime_location_15 = wprime_base_15 + ".root";
+    std::string wprime_location_25 = wprime_base_25 + ".root";
+    std::string zprime_location_5 = zprime_base_5 + ".root";
+    std::string zprime_location_15 = zprime_base_15 + ".root";
+    std::string zprime_location_25 = zprime_base_25 + ".root";
+
+    std::string qcd_new_location_5 = qcd_base_5 + "_w.root";
+    std::string qcd_new_location_15 = qcd_base_15 + "_w.root";
+    std::string qcd_new_location_25 = qcd_base_25 + "_w.root";
+    std::string wprime_new_location_5 = wprime_base_5 + "_w.root";
+    std::string wprime_new_location_15 = wprime_base_15 + "_w.root";
+    std::string wprime_new_location_25 = wprime_base_25 + "_w.root";
+    std::string zprime_new_location_5 = zprime_base_5 + "_w.root";
+    std::string zprime_new_location_15 = zprime_base_15 + "_w.root";
+    std::string zprime_new_location_25 = zprime_base_25 + "_w.root";
+
+    TFile *f_qcd_location_5 = new TFile(qcd_location_5.c_str(), "READ");
+    TFile *f_qcd_location_15 = new TFile(qcd_location_15.c_str(), "READ");
+    TFile *f_qcd_location_25 = new TFile(qcd_location_25.c_str(), "READ");
+    TFile *f_wprime_location_5 = new TFile(wprime_location_5.c_str(), "READ");
+    TFile *f_wprime_location_15 = new TFile(wprime_location_15.c_str(), "READ");
+    TFile *f_wprime_location_25 = new TFile(wprime_location_25.c_str(), "READ");
+    TFile *f_zprime_location_5 = new TFile(zprime_location_5.c_str(), "READ");
+    TFile *f_zprime_location_15 = new TFile(zprime_location_15.c_str(), "READ");
+    TFile *f_zprime_location_25 = new TFile(zprime_location_25.c_str(), "READ");
+
+    TFile *f_qcd_new_location_5 = new TFile(qcd_new_location_5.c_str(), "RECREATE");
+    TFile *f_qcd_new_location_15 = new TFile(qcd_new_location_15.c_str(), "RECREATE");
+    TFile *f_qcd_new_location_25 = new TFile(qcd_new_location_25.c_str(), "RECREATE");
+    TFile *f_wprime_new_location_5 = new TFile(wprime_new_location_5.c_str(), "RECREATE");
+    TFile *f_wprime_new_location_15 = new TFile(wprime_new_location_15.c_str(), "RECREATE");
+    TFile *f_wprime_new_location_25 = new TFile(wprime_new_location_25.c_str(), "RECREATE");
+    TFile *f_zprime_new_location_5 = new TFile(zprime_new_location_5.c_str(), "RECREATE");
+    TFile *f_zprime_new_location_15 = new TFile(zprime_new_location_15.c_str(), "RECREATE");
+    TFile *f_zprime_new_location_25 = new TFile(zprime_new_location_25.c_str(), "RECREATE");
+
+    std::string reweight_rel = "qcd_5";
+
+    std::map<std::string, TTree *> ttrees;
+    std::map<std::string, TTree *> out_ttrees;
+    std::map<std::string, TFile *> out_files;
+
+    out_files["qcd_5"] = f_qcd_new_location_5;
+    out_files["qcd_15"] = f_qcd_new_location_15;
+    out_files["qcd_25"] = f_qcd_new_location_25;
+    out_files["wprime_5"] = f_wprime_new_location_5;
+    out_files["wprime_15"] = f_wprime_new_location_15;
+    out_files["wprime_25"] = f_wprime_new_location_25;
+    out_files["zprime_5"] = f_zprime_new_location_5;
+    out_files["zprime_15"] = f_zprime_new_location_15;
+    out_files["zprime_25"] = f_zprime_new_location_25;
+
+    ttrees["qcd_5"] = (TTree *)f_qcd_location_5->Get("EventTree");
+    ttrees["qcd_15"] = (TTree *)f_qcd_location_15->Get("EventTree");
+    ttrees["qcd_25"] = (TTree *)f_qcd_location_25->Get("EventTree");
+    ttrees["wprime_5"] = (TTree *)f_wprime_location_5->Get("EventTree");
+    ttrees["wprime_15"] = (TTree *)f_wprime_location_15->Get("EventTree");
+    ttrees["wprime_25"] = (TTree *)f_wprime_location_25->Get("EventTree");
+    ttrees["zprime_5"] = (TTree *)f_zprime_location_5->Get("EventTree");
+    ttrees["zprime_15"] = (TTree *)f_zprime_location_15->Get("EventTree");
+    ttrees["zprime_25"] = (TTree *)f_zprime_location_25->Get("EventTree");
+
+    f_qcd_new_location_5->cd();
+    out_ttrees["qcd_5"] = new TTree("EventTree", "");
+    f_qcd_new_location_15->cd();
+    out_ttrees["qcd_15"] = new TTree("EventTree", "");
+    f_qcd_new_location_25->cd();
+    out_ttrees["qcd_25"] = new TTree("EventTree", "");
+    f_wprime_new_location_5->cd();
+    out_ttrees["wprime_5"] = new TTree("EventTree", "");
+    f_wprime_new_location_15->cd();
+    out_ttrees["wprime_15"] = new TTree("EventTree", "");
+    f_wprime_new_location_25->cd();
+    out_ttrees["wprime_25"] = new TTree("EventTree", "");
+    f_zprime_new_location_5->cd();
+    out_ttrees["zprime_5"] = new TTree("EventTree", "");
+    f_zprime_new_location_15->cd();
+    out_ttrees["zprime_15"] = new TTree("EventTree", "");
+    f_zprime_new_location_25->cd();
+    out_ttrees["zprime_25"] = new TTree("EventTree", "");
+
+    std::map<std::string, TH1F *> pT_histos;
+    std::map<std::string, float> pTs;
+    std::map<std::string, float> pT_reweights;
+    std::map<std::string, TBranch*> reweight_branches;
+
+    // this should be memory stable, but it's a bit sketchy
+    for (auto iter = ttrees.begin(); iter != ttrees.end(); iter++) {
+        pT_reweights[iter->first] = 0;
+        pTs[iter->first] = 0;
+    }
+
+    for (auto iter = ttrees.begin(); iter != ttrees.end(); iter++) {
+        TTree *out = out_ttrees[iter->first];
+        reweight_branches[iter->first] = out->Branch("pT_reweight",
+                                                     &pT_reweights[iter->first],
+                                                     "pT_reweight/F");
+        iter->second->SetBranchStatus("*", 0);
+        iter->second->SetBranchStatus("antikt_pt", 1);
+        std::string temp_str = "_pT_spectrum_" + iter->first;
+        pT_histos[iter->first] = new TH1F(temp_str.c_str(), "",
+                                          100, 0, 500);
+
+        iter->second->SetBranchAddress("antikt_pt", &pTs[iter->first]);
+    }
+
+    Long64_t n_entries = ttrees["qcd_5"]->GetEntries();
+    for (Long64_t event_iter = 0; event_iter < n_entries; event_iter++) {
+        for (auto iter = ttrees.begin(); iter != ttrees.end(); iter++) {
+            iter->second->GetEntry(event_iter);
+            pT_histos[iter->first]->Fill(pTs[iter->first]);
+        }
+    }
+
+    for (Long64_t event_iter = 0; event_iter < n_entries; event_iter++) {
+        for (auto iter = ttrees.begin(); iter != ttrees.end(); iter++) {
+            iter->second->GetEntry(event_iter);
+            Int_t bin_number = pT_histos[iter->first]->FindBin(pTs[iter->first]);
+            pT_reweights[iter->first] =
+                pT_histos[reweight_rel]->GetBinContent(bin_number)
+                / pT_histos[iter->first]->GetBinContent(bin_number);
+            out_ttrees[iter->first]->Fill();
+        }
+    }
+
+    // cleanup
+    for (auto iter = pT_histos.begin(); iter != pT_histos.end(); iter++) {
+        delete iter->second;
+    }
+
+    for (auto iter = out_ttrees.begin(); iter != out_ttrees.end(); iter++) {
+        out_files[iter->first]->cd();
+        iter->second->Write();
+    }
+
+    delete f_qcd_location_5;
+    delete f_qcd_location_15;
+    delete f_qcd_location_25;
+    delete f_wprime_location_5;
+    delete f_wprime_location_15;
+    delete f_wprime_location_25;
+    delete f_zprime_location_5;
+    delete f_zprime_location_15;
+    delete f_zprime_location_25;
+    delete f_qcd_new_location_5;
+    delete f_qcd_new_location_15;
+    delete f_qcd_new_location_25;
+    delete f_wprime_new_location_5;
+    delete f_wprime_new_location_15;
+    delete f_wprime_new_location_25;
+    delete f_zprime_new_location_5;
+    delete f_zprime_new_location_15;
+    delete f_zprime_new_location_25;
+}
+
 void EventTest() {
     std::string qcd_location_5 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_qcd_area/2014_10_14_11h23m44s/10s_0mu_0lw_0rec_5cut.root";
     std::string qcd_location_15 = "/u/at/chstan/nfs/summer_2014/ForConrad/files/150kevts_qcd_area/2014_10_14_11h23m44s/10s_0mu_0lw_0rec_15cut.root";
@@ -528,6 +706,8 @@ void EventTest() {
 }
 
 int main(int argc, char *argv[]) {
+    gErrorIgnoreLevel = kWarning;
+
     std::cout << "Called as: ";
     for (int i = 0; i < argc; i++) {
         std::cout << argv[i] << " ";
@@ -552,8 +732,13 @@ int main(int argc, char *argv[]) {
     SetAtlasStyle();
 
     gROOT->ProcessLine("#include <vector>");
-    EventTest();
+    std::cout << "Adding event weights." << std::endl;
+    //PolishTrees();
+    std::cout << "Starting analysis." << std::endl;
+
+    MVATest();
     return 0;
+    EventTest();
 
     pTOverlay();
 
