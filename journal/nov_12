@@ -1,0 +1,8 @@
+General TMVA:
+    TMVA provides the option to apply data transformations before processing. The default identity transformation renormalizes variables, but does not adjust them to unit variance, as far as I can tell. This should be good enough for now, but because likelihood methods can improve with variable decorrelation, it will be worth looking into this further as we move towards finishing plots and finalizing results.
+    I've also added \sigma to the list of variables to be plotted for a large number of efficiency curves, and adjusted the random tagger to have a dashed line.
+
+Event Jet:
+      One way to try to accomplish pileup subtraction or noise reduction is by associating pileup particles preferentially to a jet which we can identify with the additional vertices and remove from the event.
+
+Filter by Charge:
