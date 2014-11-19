@@ -6,8 +6,8 @@
 # Note: source setup.sh before make             #
 # --------------------------------------------- #
 OPTIMIZATION = -O3
-CXXFLAGS = -Wall -Wextra -equal -Werror -Wno-shadow -fstack-protector-all -Wno-unused-but-set-variable
-CXXFLAGSEXTRA = -g -std=c++0x
+CXXFLAGS = -Wall -Wextra -equal -Werror -Wno-shadow -fstack-protector-all -Wno-unused-but-set-variable -g
+CXXFLAGSEXTRA = -std=c++0x
 CXX = g++
 
 # Are we profiling?

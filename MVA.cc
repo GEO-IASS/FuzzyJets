@@ -206,6 +206,7 @@ void MVAPlots(TTree *signal_tree, TTree *background_tree,
     std::vector<std::vector<std::string> > plot_var_set = {
         std::vector<std::string>{"AkT 0.2 Area", "AkT 0.3 Area",
                                  "AkT 0.3 m/pT", "AkT 0.3 m/pT, AkT 0.3 Area",
+                                 "#sigma",
                                  "AkT 0.3 Area, #sigma",
                                  "AkT 0.3 m/pT, #sigma"},
         std::vector<std::string>{"#tau_{3}/#tau_{2}",
@@ -247,6 +248,7 @@ void SinglePlot(std::string partial_path, std::vector<std::string> vars,
 
     TGraph *random = new TGraph(2, &random_x.at(0), &random_y.at(0));
     random->SetLineColor(kGray);
+    random->SetLineStyle(7); // dashed
     multi->Add(random, "c");
 
     std::vector<float> inv_random_x;

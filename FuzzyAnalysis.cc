@@ -2,6 +2,7 @@
 #include <vector>
 #include <string>
 #include <sstream>
+#include <float.h>
 #include <set>
 #include <assert.h>
 #include <exception>
@@ -31,7 +32,9 @@
 #include "TMath.h"
 #include "TVector3.h"
 #include "TMatrix.h"
+#include "TStyle.h"
 #include "TH1F.h"
+#include "TH2F.h"
 #include "TCanvas.h"
 #include "TLegend.h"
 #endif
@@ -310,8 +313,15 @@ namespace {
                           vecPseudoJet& jets,
                           vector<vector<double> >& particle_weights,
                           vector<double>& jet_weights,
-                          unsigned int &iters) {
+                          unsigned int &iters,
+                          FuzzyTools::EventJet event_jet_type) {
         vecPseudoJet parts = particles;
+        tool->SetEventJetType(event_jet_type);
+        if (event_jet_type == FuzzyTools::FLAT) {
+            // use inverse calorimeter area as a first order reasonable guess
+            // in reality this should depend on the amount of pileup?
+            tool->SetEventJetWeight(1/(2*M_PI*10));
+        }
         tool->SetKernelType(FuzzyTools::UNIFORM);
         tool->SetLearnWeights(learn_weights);
         if (do_recombination) {
@@ -342,9 +352,16 @@ namespace {
                            vector<vector<double> >& particle_weights,
                            vector<MatTwo>& parameters,
                            vector<double>& jet_weights,
-                           unsigned int &iters) {
+                           unsigned int &iters,
+                           FuzzyTools::EventJet event_jet_type) {
         tool->SetKernelType(FuzzyTools::TRUNCGAUSSIAN);
         tool->SetLearnWeights(learn_weights);
+        tool->SetEventJetType(event_jet_type);
+        if (event_jet_type == FuzzyTools::FLAT) {
+            // use inverse calorimeter area as a first order reasonable guess
+            // in reality this should depend on the amount of pileup?
+            tool->SetEventJetWeight(1/(2*M_PI*10));
+        }
         if(learn_shape) {
             tool->SetClusteringMode(FuzzyTools::FIXED);
             tool->SetSeeds(seeds);
@@ -378,9 +395,16 @@ namespace {
                            vector<vector<double> >& particle_weights,
                            vector<MatTwo>& parameters,
                            vector<double>& jet_weights,
-                           unsigned int &iters) {
+                           unsigned int &iters,
+                           FuzzyTools::EventJet event_jet_type) {
         tool->SetKernelType(FuzzyTools::GAUSSIAN);
         tool->SetLearnWeights(learn_weights);
+        tool->SetEventJetType(event_jet_type);
+        if (event_jet_type == FuzzyTools::FLAT) {
+            // use inverse calorimeter area as a first order reasonable guess
+            // in reality this should depend on the amount of pileup?
+            tool->SetEventJetWeight(1/(2*M_PI*10));
+        }
         if (do_recombination) {
             tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
             tool->SetSeeds(particles);
@@ -409,9 +433,16 @@ namespace {
                           vector<vector<double> >& particle_weights,
                           vector<MatTwo>& parameters,
                           vector<double>& jet_weights,
-                          unsigned int &iters) {
+                          unsigned int &iters,
+                          FuzzyTools::EventJet event_jet_type) {
         tool->SetKernelType(FuzzyTools::GAUSSIAN);
         tool->SetLearnWeights(learn_weights);
+        tool->SetEventJetType(event_jet_type);
+        if (event_jet_type == FuzzyTools::FLAT) {
+            // use inverse calorimeter area as a first order reasonable guess
+            // in reality this should depend on the amount of pileup?
+            tool->SetEventJetWeight(1/(2*M_PI*10));
+        }
         if(learn_shape) {
             tool->SetClusteringMode(FuzzyTools::FIXED);
             tool->SetSeeds(seeds);
@@ -493,6 +524,483 @@ void FuzzyAnalysis::Begin(){
     return;
 }
 
+vecPseudoJet FuzzyAnalysis::DiscretizeParticles(vecPseudoJet const& arg_particles,
+                                                int n_phi, int n_eta,
+                                                float eta_cutoff) {
+    TH2F *grid_pT = new TH2F("grid_pT", "", n_eta, -eta_cutoff, eta_cutoff, n_phi,
+                             0, 2*M_PI);
+    TH2F *grid_charge = new TH2F("grid_charge", "", n_eta, -eta_cutoff, eta_cutoff, n_phi,
+                                 0, 2*M_PI);
+    for (unsigned int p_i = 0; p_i < arg_particles.size(); p_i++) {
+        fastjet::PseudoJet p = arg_particles[p_i];
+        float eta = p.eta();
+        float phi = p.phi();
+        if (phi < 0) phi += (2*M_PI);
+        float charge = p.user_info<MyUserInfo>().charge();
+        float pT = p.pt();
+        grid_pT->Fill(eta, phi, pT);
+        grid_charge->Fill(eta, phi, charge);
+    }
+
+    // build the discretized particles back into jets
+    vecPseudoJet out;
+    for (int x_i = 1; x_i < grid_pT->GetNbinsX() + 1; x_i++) {
+        for (int y_i = 1; y_i < grid_pT->GetNbinsY() + 1; y_i++) {
+            float eta = grid_pT->GetXaxis()->GetBinCenter(x_i);
+            float phi = grid_pT->GetXaxis()->GetBinCenter(y_i);
+            float pT = grid_pT->GetBinContent(x_i, y_i);
+            float charge = grid_charge->GetBinContent(x_i, y_i);
+            fastjet::PseudoJet p;
+            p.reset_PtYPhiM(pT, eta, phi, 0);
+
+            // don't have a particle ID anymore
+            p.set_user_info(new MyUserInfo(0, 0, charge, false));
+            if (p.pt()) {
+                out.push_back(p);
+            }
+        }
+    }
+    delete grid_pT;
+    delete grid_charge;
+
+    return out;
+}
+
+vecPseudoJet FuzzyAnalysis::ChargedParticles(vecPseudoJet const& arg_particles) {
+    vecPseudoJet charged_particles;
+    for (unsigned int particle_iter = 0; particle_iter < arg_particles.size(); particle_iter++) {
+        double charge = arg_particles[particle_iter].user_info<MyUserInfo>().charge();
+        if (fabs(charge) > 1000 * DBL_EPSILON) {
+            // is charged
+            charged_particles.push_back(arg_particles[particle_iter]);
+        }
+    }
+    return charged_particles;
+}
+
+vecPseudoJet FuzzyAnalysis::UnchargedParticles(vecPseudoJet const& arg_particles) {
+    vecPseudoJet charged_particles;
+    for (unsigned int particle_iter = 0; particle_iter < arg_particles.size(); particle_iter++) {
+        double charge = arg_particles[particle_iter].user_info<MyUserInfo>().charge();
+        if (fabs(charge) <= 1000 * DBL_EPSILON) {
+            // is charged
+            charged_particles.push_back(arg_particles[particle_iter]);
+        }
+    }
+    return charged_particles;
+}
+
+void FuzzyAnalysis::GroomingStudy(vecPseudoJet leading_particles,
+                                  int event_iter) {
+    // recluster the particles belonging to the leading jet
+    // and investigate a number of techniques for grooming
+
+    // 1) Recluster with 0.2 radius mGMMc jets with seeds from the location
+    //    of kt jets with similar size. Remove jets which are in the bottom Xth
+    //    percentile by way of pT.
+    gStyle->SetOptStat(0);
+    fastjet::JetDefinition *m_jet_def_seed = new fastjet::JetDefinition(fastjet::antikt_algorithm, 0.2);
+    fastjet::ClusterSequence cs_seed_antikt(leading_particles, *m_jet_def_seed);
+    double minimum_seed_pT = 1.0;
+    vecPseudoJet seeds = fastjet::sorted_by_pt(cs_seed_antikt.inclusive_jets(minimum_seed_pT));
+    if (seeds.size() == 0)
+        return;
+
+    bool mUMM_on = true;
+    bool mGMM_on = true;
+    bool mGMMc_on = true;
+    bool mGMMs_on = true;
+    bool mTGMM_on = true;
+    bool mTGMMs_on = true;
+
+    double subs_sigma = 0.15;
+    tool->SetDefaultSigma(MatTwo(subs_sigma*subs_sigma, 0, 0, subs_sigma*subs_sigma));
+    tool->SetR(0.2);
+    tool->SetMergeDistance(0.05);
+
+    unsigned int dummy;
+    FuzzyTools::EventJet event_jet_type = FuzzyTools::NONE;
+
+    // Fuzzy Jets: mGMMs --------------------
+    vector<vector<double> > mGMMs_particle_weights;
+    vector<MatTwo> mGMMs_jets_params;
+    vector<double> mGMMs_weights;
+    vecPseudoJet mGMMs_jets;
+    vector<int> mGMMs_indices;
+    double max_pT_mGMMs;
+    if(mGMMs_on) {
+        DoMGMMJetFinding(leading_particles, seeds,
+                         f_learn_weights, true, false,
+                         mGMMs_indices, max_pT_mGMMs,
+                         tool, mGMMs_jets, mGMMs_particle_weights,
+                         mGMMs_jets_params, mGMMs_weights, dummy, event_jet_type);
+    }
+    __attribute__((unused)) int lead_mGMMs_index = mGMMs_indices.size() ? mGMMs_indices.at(0) : -1;
+
+
+    // Fuzzy Jets: mGMMc --------------------
+    vector<vector<double> > mGMMc_particle_weights;
+    vector<MatTwo> mGMMc_jets_params;
+    vector<double> mGMMc_weights;
+    vecPseudoJet mGMMc_jets;
+    vector<int> mGMMc_indices;
+    double max_pT_mGMMc;
+    if(mGMMc_on) {
+        DoMGMMCJetFinding(leading_particles, seeds,
+                          f_learn_weights, false,
+                          mGMMc_indices, max_pT_mGMMc,
+                          tool, mGMMc_jets, mGMMc_particle_weights,
+                          mGMMc_jets_params, mGMMc_weights, dummy, event_jet_type);
+    }
+    __attribute__((unused)) int lead_mGMMc_index = mGMMc_indices.size() ? mGMMc_indices.at(0) : -1;
+
+    // Fuzzy Jets: mTGMMs -------------------
+    vector<vector<double > > mTGMMs_particle_weights;
+    vector<MatTwo> mTGMMs_jets_params;
+    vector<double> mTGMMs_weights;
+    vecPseudoJet mTGMMs_jets;
+    vector<int> mTGMMs_indices;
+    double max_pT_mTGMMs;
+    if(mTGMMs_on) {
+        DoMTGMMJetFinding(leading_particles, seeds,
+                          f_learn_weights, true, false,
+                          f_size, mTGMMs_indices, max_pT_mTGMMs,
+                          tool, mTGMMs_jets, mTGMMs_particle_weights,
+                          mTGMMs_jets_params, mTGMMs_weights, dummy, event_jet_type);
+    }
+    __attribute__((unused)) int lead_mTGMMs_index = mTGMMs_indices.size() ? mTGMMs_indices.at(0) : -1;
+
+    // Fuzzy Jets: mGMM ---------------------
+    vector<vector<double> >mGMM_particle_weights;
+    vector<MatTwo> mGMM_jets_params;
+    vector<double> mGMM_weights;
+    vecPseudoJet mGMM_jets;
+    vector<int> mGMM_indices;
+    double max_pT_mGMM;
+    if(mGMM_on) {
+        DoMGMMJetFinding(leading_particles, seeds,
+                         f_learn_weights, false, false,
+                         mGMM_indices, max_pT_mGMM,
+                         tool, mGMM_jets, mGMM_particle_weights,
+                         mGMM_jets_params, mGMM_weights, dummy, event_jet_type);
+    }
+    __attribute__((unused)) int lead_mGMM_index = mGMM_indices.size() ? mGMM_indices.at(0) : -1;
+
+    // Fuzzy Jets: mUMM ---------------------
+    vector<vector<double> > mUMM_particle_weights;
+    vector<double> mUMM_weights;
+    vecPseudoJet mUMM_jets;
+    vector<int> mUMM_indices;
+    double max_pT_mUMM;
+    if(mUMM_on) {
+        DoMUMMJetFinding(leading_particles, seeds,
+                         f_learn_weights, f_size, false,
+                         mUMM_indices, max_pT_mUMM, tool, mUMM_jets,
+                         mUMM_particle_weights, mUMM_weights, dummy, event_jet_type);
+    }
+    __attribute__((unused)) int lead_mUMM_index = mUMM_indices.size() ? mUMM_indices.at(0) : -1;
+
+    // Fuzzy Jets: mTGMM --------------------
+    vector<vector<double> > mTGMM_particle_weights;
+    vector<double> mTGMM_weights;
+    vecPseudoJet mTGMM_jets;
+    vector<MatTwo> mTGMM_jets_params;
+    vector<int> mTGMM_indices;
+    double max_pT_mTGMM;
+    if(mTGMM_on) {
+        DoMTGMMJetFinding(leading_particles, seeds,
+                          f_learn_weights, false, false, f_size,
+                          mTGMM_indices, max_pT_mTGMM, tool, mTGMM_jets,
+                          mTGMM_particle_weights, mTGMM_jets_params,
+                          mTGMM_weights, dummy, event_jet_type);
+    }
+    __attribute__((unused)) int lead_mTGMM_index = mTGMM_indices.size() ? mTGMM_indices.at(0) : -1;
+
+    if(!mGMM_weights.size()) {
+        mGMM_on = false;
+    }
+    if(!mGMMs_weights.size()) {
+        mGMMs_on = false;
+    }
+    if(!mGMMc_weights.size()) {
+        mGMMc_on = false;
+    }
+    if(!mTGMM_weights.size()) {
+        mTGMM_on = false;
+    }
+    if(!mTGMMs_weights.size()) {
+        mTGMMs_on = false;
+    }
+    if(!mUMM_weights.size()) {
+        mUMM_on = false;
+    }
+
+    double total_pT = 0;
+    for (unsigned int p_i = 0; p_i < leading_particles.size(); p_i++) {
+        total_pT += leading_particles.at(p_i).pt();
+    }
+    // remove jets up to Xth percentile in pT
+    float X = 0.25;
+    if (mGMM_on) {
+        // find groomed components for mGMM subjets
+        vector<int> indices;
+        double pT;
+        vecPseudoJet groomed_particles;
+        FindLeadingJet(leading_particles,
+                       mGMM_jets, mGMM_particle_weights,
+                       tool, indices, pT);
+        for (unsigned int p_i = 0; p_i < leading_particles.size(); p_i++) {
+            double max_weight = -1;
+            int belongs_idx = -1;
+            for (unsigned int j_i = 0; j_i < mGMM_jets.size(); j_i++) {
+                double current_weight = mGMM_particle_weights.at(p_i).at(j_i);
+                if (current_weight > max_weight) {
+                    max_weight = current_weight;
+                    belongs_idx = j_i;
+                }
+            }
+            if (max_weight >= 0 && ((1.0*indices.at(belongs_idx)/mGMM_jets.size()) < (1-X))) {
+                groomed_particles.push_back(leading_particles.at(p_i));
+            }
+        }
+
+        // UNFINISHED DISPLAY ALL JETS AND PARTICLES AND GROOMED ONES
+        tool->NewEventDisplay(leading_particles, leading_particles,
+                              leading_particles, mGMM_jets, mGMM_particle_weights,
+                              0, mGMM_jets_params, mGMM_weights, "mGMM_ungroomed", event_iter);
+        vecPseudoJet groomed_jets;
+        //vector<vector<double>> groomed_weights; not necessary it turns out,
+        // since these just get logged
+        vector<MatTwo> groomed_jets_params;
+        vector<double> groomed_jet_weights;
+        for (unsigned int j_i = 0; j_i < mGMM_jets.size(); j_i++) {
+            if ((1.0*indices.at(j_i)/mGMM_jets.size()) < (1-X)) {
+                groomed_jets.push_back(mGMM_jets.at(j_i));
+                groomed_jets_params.push_back(mGMM_jets_params.at(j_i));
+                groomed_jet_weights.push_back(mGMM_weights.at(j_i));
+            }
+        }
+        tool->NewEventDisplay(groomed_particles, groomed_particles,
+                              groomed_particles, groomed_jets, mGMM_particle_weights,
+                              0, groomed_jets_params, groomed_jet_weights, "mGMM_groomed", event_iter);
+    }
+    if (mGMMs_on) {
+        // find groomed components for mGMMs subjets
+        vector<int> indices;
+        double pT;
+        vecPseudoJet groomed_particles;
+        FindLeadingJet(leading_particles,
+                       mGMMs_jets, mGMMs_particle_weights,
+                       tool, indices, pT);
+        for (unsigned int p_i = 0; p_i < leading_particles.size(); p_i++) {
+            double max_weight = -1;
+            int belongs_idx = -1;
+            for (unsigned int j_i = 0; j_i < mGMMs_jets.size(); j_i++) {
+                double current_weight = mGMMs_particle_weights.at(p_i).at(j_i);
+                if (current_weight > max_weight) {
+                    max_weight = current_weight;
+                    belongs_idx = j_i;
+                }
+            }
+            if (max_weight >= 0 && ((1.0*indices.at(belongs_idx)/mGMMs_jets.size()) < (1-X))) {
+                groomed_particles.push_back(leading_particles.at(p_i));
+            }
+        }
+
+        // UNFINISHED DISPLAY ALL JETS AND PARTICLES AND GROOMED ONES
+        tool->NewEventDisplay(leading_particles, leading_particles,
+                              leading_particles, mGMMs_jets, mGMMs_particle_weights,
+                              0, mGMMs_jets_params, mGMMs_weights, "mGMMs_ungroomed", event_iter);
+        vecPseudoJet groomed_jets;
+        //vector<vector<double>> groomed_weights; not necessary it turns out,
+        // since these just get logged
+        vector<MatTwo> groomed_jets_params;
+        vector<double> groomed_jet_weights;
+        for (unsigned int j_i = 0; j_i < mGMMs_jets.size(); j_i++) {
+            if ((1.0*indices.at(j_i)/mGMMs_jets.size()) < (1-X)) {
+                groomed_jets.push_back(mGMMs_jets.at(j_i));
+                groomed_jets_params.push_back(mGMMs_jets_params.at(j_i));
+                groomed_jet_weights.push_back(mGMMs_weights.at(j_i));
+            }
+        }
+        tool->NewEventDisplay(groomed_particles, groomed_particles,
+                              groomed_particles, groomed_jets, mGMMs_particle_weights,
+                              0, groomed_jets_params, groomed_jet_weights, "mGMMs_groomed", event_iter);
+    }
+    if (mGMMc_on) {
+        // find groomed components for mGMMc subjets
+        vector<int> indices;
+        double pT;
+        vecPseudoJet groomed_particles;
+        FindLeadingJet(leading_particles,
+                       mGMMc_jets, mGMMc_particle_weights,
+                       tool, indices, pT);
+        for (unsigned int p_i = 0; p_i < leading_particles.size(); p_i++) {
+            double max_weight = -1;
+            int belongs_idx = -1;
+            for (unsigned int j_i = 0; j_i < mGMMc_jets.size(); j_i++) {
+                double current_weight = mGMMc_particle_weights.at(p_i).at(j_i);
+                if (current_weight > max_weight) {
+                    max_weight = current_weight;
+                    belongs_idx = j_i;
+                }
+            }
+            if (max_weight >= 0 && ((1.0*indices.at(belongs_idx)/mGMMc_jets.size()) < (1-X))) {
+                groomed_particles.push_back(leading_particles.at(p_i));
+            }
+        }
+
+        // UNFINISHED DISPLAY ALL JETS AND PARTICLES AND GROOMED ONES
+        tool->NewEventDisplay(leading_particles, leading_particles,
+                              leading_particles, mGMMc_jets, mGMMc_particle_weights,
+                              0, mGMMc_jets_params, mGMMc_weights, "mGMMc_ungroomed", event_iter);
+        vecPseudoJet groomed_jets;
+        //vector<vector<double>> groomed_weights; not necessary it turns out,
+        // since these just get logged
+        vector<MatTwo> groomed_jets_params;
+        vector<double> groomed_jet_weights;
+        for (unsigned int j_i = 0; j_i < mGMMc_jets.size(); j_i++) {
+            if ((1.0*indices.at(j_i)/mGMMc_jets.size()) < (1-X)) {
+                groomed_jets.push_back(mGMMc_jets.at(j_i));
+                groomed_jets_params.push_back(mGMMc_jets_params.at(j_i));
+                groomed_jet_weights.push_back(mGMMc_weights.at(j_i));
+            }
+        }
+        tool->NewEventDisplay(groomed_particles, groomed_particles,
+                              groomed_particles, groomed_jets, mGMMc_particle_weights,
+                              0, groomed_jets_params, groomed_jet_weights, "mGMMc_groomed", event_iter);
+    }
+    if (mTGMM_on) {
+        // find groomed components for mTGMM subjets
+        vector<int> indices;
+        double pT;
+        vecPseudoJet groomed_particles;
+        FindLeadingJet(leading_particles,
+                       mTGMM_jets, mTGMM_particle_weights,
+                       tool, indices, pT);
+        for (unsigned int p_i = 0; p_i < leading_particles.size(); p_i++) {
+            double max_weight = -1;
+            int belongs_idx = -1;
+            for (unsigned int j_i = 0; j_i < mTGMM_jets.size(); j_i++) {
+                double current_weight = mTGMM_particle_weights.at(p_i).at(j_i);
+                if (current_weight > max_weight) {
+                    max_weight = current_weight;
+                    belongs_idx = j_i;
+                }
+            }
+            if (max_weight >= 0 && ((1.0*indices.at(belongs_idx)/mTGMM_jets.size()) < (1-X))) {
+                groomed_particles.push_back(leading_particles.at(p_i));
+            }
+        }
+
+        // UNFINISHED DISPLAY ALL JETS AND PARTICLES AND GROOMED ONES
+        tool->NewEventDisplay(leading_particles, leading_particles,
+                              leading_particles, mTGMM_jets, mTGMM_particle_weights,
+                              0, mTGMM_jets_params, mTGMM_weights, "mTGMM_ungroomed", event_iter);
+        vecPseudoJet groomed_jets;
+        //vector<vector<double>> groomed_weights; not necessary it turns out,
+        // since these just get logged
+        vector<MatTwo> groomed_jets_params;
+        vector<double> groomed_jet_weights;
+        for (unsigned int j_i = 0; j_i < mTGMM_jets.size(); j_i++) {
+            if ((1.0*indices.at(j_i)/mTGMM_jets.size()) < (1-X)) {
+                groomed_jets.push_back(mTGMM_jets.at(j_i));
+                groomed_jets_params.push_back(mTGMM_jets_params.at(j_i));
+                groomed_jet_weights.push_back(mTGMM_weights.at(j_i));
+            }
+        }
+        tool->NewEventDisplay(groomed_particles, groomed_particles,
+                              groomed_particles, groomed_jets, mTGMM_particle_weights,
+                              0, groomed_jets_params, groomed_jet_weights, "mTGMM_groomed", event_iter);
+    }
+    if (mTGMMs_on) {
+        // find groomed components for mTGMMs subjets
+        vector<int> indices;
+        double pT;
+        vecPseudoJet groomed_particles;
+        FindLeadingJet(leading_particles,
+                       mTGMMs_jets, mTGMMs_particle_weights,
+                       tool, indices, pT);
+        for (unsigned int p_i = 0; p_i < leading_particles.size(); p_i++) {
+            double max_weight = -1;
+            int belongs_idx = -1;
+            for (unsigned int j_i = 0; j_i < mTGMMs_jets.size(); j_i++) {
+                double current_weight = mTGMMs_particle_weights.at(p_i).at(j_i);
+                if (current_weight > max_weight) {
+                    max_weight = current_weight;
+                    belongs_idx = j_i;
+                }
+            }
+            if (max_weight >= 0 && ((1.0*indices.at(belongs_idx)/mTGMMs_jets.size()) < (1-X))) {
+                groomed_particles.push_back(leading_particles.at(p_i));
+            }
+        }
+
+        // UNFINISHED DISPLAY ALL JETS AND PARTICLES AND GROOMED ONES
+        tool->NewEventDisplay(leading_particles, leading_particles,
+                              leading_particles, mTGMMs_jets, mTGMMs_particle_weights,
+                              0, mTGMMs_jets_params, mTGMMs_weights, "mTGMMs_ungroomed", event_iter);
+        vecPseudoJet groomed_jets;
+        //vector<vector<double>> groomed_weights; not necessary it turns out,
+        // since these just get logged
+        vector<MatTwo> groomed_jets_params;
+        vector<double> groomed_jet_weights;
+        for (unsigned int j_i = 0; j_i < mTGMMs_jets.size(); j_i++) {
+            if ((1.0*indices.at(j_i)/mTGMMs_jets.size()) < (1-X)) {
+                groomed_jets.push_back(mTGMMs_jets.at(j_i));
+                groomed_jets_params.push_back(mTGMMs_jets_params.at(j_i));
+                groomed_jet_weights.push_back(mTGMMs_weights.at(j_i));
+            }
+        }
+        tool->NewEventDisplay(groomed_particles, groomed_particles,
+                              groomed_particles, groomed_jets, mTGMMs_particle_weights,
+                              0, groomed_jets_params, groomed_jet_weights, "mTGMMs_groomed", event_iter);
+    }
+    if (mUMM_on) {
+        // find groomed components for mUMM subjets
+        vector<int> indices;
+        double pT;
+        vecPseudoJet groomed_particles;
+        FindLeadingJet(leading_particles,
+                       mUMM_jets, mUMM_particle_weights,
+                       tool, indices, pT);
+        for (unsigned int p_i = 0; p_i < leading_particles.size(); p_i++) {
+            double max_weight = -1;
+            int belongs_idx = -1;
+            for (unsigned int j_i = 0; j_i < mUMM_jets.size(); j_i++) {
+                double current_weight = mUMM_particle_weights.at(p_i).at(j_i);
+                if (current_weight > max_weight) {
+                    max_weight = current_weight;
+                    belongs_idx = j_i;
+                }
+            }
+            if (max_weight >= 0 && ((1.0*indices.at(belongs_idx)/mUMM_jets.size()) < (1-X))) {
+                groomed_particles.push_back(leading_particles.at(p_i));
+            }
+        }
+
+        // UNFINISHED DISPLAY ALL JETS AND PARTICLES AND GROOMED ONES
+        tool->NewEventDisplayUniform(leading_particles, leading_particles,
+                                     leading_particles, mUMM_jets, mUMM_particle_weights,
+                                     0, mUMM_weights, "mUMM_ungroomed", event_iter);
+        vecPseudoJet groomed_jets;
+        //vector<vector<double>> groomed_weights; not necessary it turns out,
+        // since these just get logged
+        vector<double> groomed_jet_weights;
+        for (unsigned int j_i = 0; j_i < mUMM_jets.size(); j_i++) {
+            if ((1.0*indices.at(j_i)/mUMM_jets.size()) < (1-X)) {
+                groomed_jets.push_back(mUMM_jets.at(j_i));
+                groomed_jet_weights.push_back(mUMM_weights.at(j_i));
+            }
+        }
+        tool->NewEventDisplayUniform(groomed_particles, groomed_particles,
+                                     groomed_particles, groomed_jets, mUMM_particle_weights,
+                                     0, groomed_jet_weights, "mUMM_groomed", event_iter);
+    }
+
+    delete m_jet_def_seed;
+}
+
 void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                                       __attribute__((unused)) vecPseudoJet antikt_jets,
                                       __attribute__((unused)) int event_iter) {
@@ -515,6 +1023,8 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
         tool->SetMergeDistance(0.05);
 
         unsigned int dummy;
+        FuzzyTools::EventJet event_jet_type = FuzzyTools::NONE;
+
         // Fuzzy Jets: mGMMs --------------------
         vector<vector<double> > mGMMs_particle_weights;
         vector<MatTwo> mGMMs_jets_params;
@@ -527,7 +1037,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                              f_learn_weights, true, false,
                              mGMMs_indices, max_pT_mGMMs,
                              tool, mGMMs_jets, mGMMs_particle_weights,
-                             mGMMs_jets_params, mGMMs_weights, dummy);
+                             mGMMs_jets_params, mGMMs_weights, dummy, event_jet_type);
         }
         int lead_mGMMs_index = mGMMs_indices.size() ? mGMMs_indices.at(0) : -1;
 
@@ -544,7 +1054,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                               f_learn_weights, false,
                               mGMMc_indices, max_pT_mGMMc,
                               tool, mGMMc_jets, mGMMc_particle_weights,
-                              mGMMc_jets_params, mGMMc_weights, dummy);
+                              mGMMc_jets_params, mGMMc_weights, dummy, event_jet_type);
         }
         int lead_mGMMc_index = mGMMc_indices.size() ? mGMMc_indices.at(0) : -1;
 
@@ -560,7 +1070,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                               f_learn_weights, true, false,
                               f_size, mTGMMs_indices, max_pT_mTGMMs,
                               tool, mTGMMs_jets, mTGMMs_particle_weights,
-                              mTGMMs_jets_params, mTGMMs_weights, dummy);
+                              mTGMMs_jets_params, mTGMMs_weights, dummy, event_jet_type);
         }
         int lead_mTGMMs_index = mTGMMs_indices.size() ? mTGMMs_indices.at(0) : -1;
 
@@ -576,7 +1086,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                              f_learn_weights, false, false,
                              mGMM_indices, max_pT_mGMM,
                              tool, mGMM_jets, mGMM_particle_weights,
-                             mGMM_jets_params, mGMM_weights, dummy);
+                             mGMM_jets_params, mGMM_weights, dummy, event_jet_type);
         }
         int lead_mGMM_index = mGMM_indices.size() ? mGMM_indices.at(0) : -1;
 
@@ -590,7 +1100,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
             DoMUMMJetFinding(particles_for_jets, random_seeds,
                              f_learn_weights, f_size, false,
                              mUMM_indices, max_pT_mUMM, tool, mUMM_jets,
-                             mUMM_particle_weights, mUMM_weights, dummy);
+                             mUMM_particle_weights, mUMM_weights, dummy, event_jet_type);
         }
         __attribute__((unused)) int lead_mUMM_index = mUMM_indices.size() ? mUMM_indices.at(0) : -1;
 
@@ -606,7 +1116,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                               f_learn_weights, false, false, f_size,
                               mTGMM_indices, max_pT_mTGMM, tool, mTGMM_jets,
                               mTGMM_particle_weights, mTGMM_jets_params,
-                              mTGMM_weights, dummy);
+                              mTGMM_weights, dummy, event_jet_type);
         }
         int lead_mTGMM_index = mTGMM_indices.size() ? mTGMM_indices.at(0) : -1;
 
@@ -959,7 +1469,8 @@ void FuzzyAnalysis::PiFixStudy() {
                           f_learn_weights, do_recombination,
                           mGMMc_indices, max_pT_mGMMc,
                           tool, mGMMc_jets, mGMMc_particle_weights,
-                          mGMMc_jets_params, mGMMc_weights, fTmGMMc_iter);
+                          mGMMc_jets_params, mGMMc_weights, fTmGMMc_iter,
+                          FuzzyTools::NONE);
     }
     int lead_mGMMc_index = mGMMc_indices.size() ? mGMMc_indices.at(0) : -1;
 
@@ -975,7 +1486,8 @@ void FuzzyAnalysis::PiFixStudy() {
                          f_learn_weights, false, do_recombination,
                          mGMM_indices, max_pT_mGMM,
                          tool, mGMM_jets, mGMM_particle_weights,
-                         mGMM_jets_params, mGMM_weights, fTmGMM_iter);
+                         mGMM_jets_params, mGMM_weights, fTmGMM_iter,
+                         FuzzyTools::NONE);
     }
     int lead_mGMM_index = mGMM_indices.size() ? mGMM_indices.at(0) : -1;
 
@@ -1017,6 +1529,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     // new event-----------------------
     fTEventNumber = event_iter;
     std::vector <fastjet::PseudoJet>           particles_for_jets;
+    std::vector <fastjet::PseudoJet>           pileup_for_jets;
     vector<fastjet::PseudoJet> tops;
     fastjet::PseudoJet dl;
     tops.push_back(dl);
@@ -1047,10 +1560,12 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
             p.set_user_info(new MyUserInfo(pythia_MB->event[particle_idx].id(),particle_idx,pythia_MB->event[particle_idx].charge(),true));
 
             max_rap = max_rap < fabs(p.rap()) ? fabs(p.rap()) : max_rap;
-            particles_for_jets.push_back(p);
+            pileup_for_jets.push_back(p);
         }
         if (!pythia_MB->next()) continue;
     }
+
+    vecPseudoJet uncharged_pileup = UnchargedParticles(pileup_for_jets);
 
     // Particle loop -----------------------------------------------------------
     // The Pythia event listing contains a lot more than we want to process,
@@ -1083,6 +1598,27 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         particles_for_jets.push_back(p);
 
     } // end particle loop -----------------------------------------------
+
+    vecPseudoJet charged_hs = ChargedParticles(particles_for_jets);
+    vecPseudoJet uncharged_hs = UnchargedParticles(particles_for_jets);
+
+    vecPseudoJet all_uncharged;
+    for (unsigned int p_i = 0; p_i < uncharged_hs.size(); p_i++) {
+        all_uncharged.push_back(uncharged_hs.at(p_i));
+    }
+    for (unsigned int p_i = 0; p_i < uncharged_pileup.size(); p_i++) {
+        all_uncharged.push_back(uncharged_pileup.at(p_i));
+    }
+
+    vecPseudoJet discretized_all_uncharged = DiscretizeParticles(all_uncharged,
+                                                                 60, 100, 5);
+
+    vecPseudoJet all_particles_for_jets = discretized_all_uncharged;
+    for (unsigned int p_i = 0; p_i < charged_hs.size(); p_i++) {
+        all_particles_for_jets.push_back(charged_hs.at(p_i));
+    }
+
+    particles_for_jets = all_particles_for_jets;
 
     // Area Definition ---------------------
     fastjet::GhostedAreaSpec area_spec(max_rap);
@@ -1188,6 +1724,14 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         return;
     }
 
+    bool do_grooming_study = true;
+    if (do_grooming_study && !batched) {
+        if (!my_jets_large_r_antikt.size()) return;
+
+        GroomingStudy(my_jets_large_r_antikt.at(0).constituents(), event_iter);
+        return;
+    }
+
     // ======================================
     // Various mixture models ---------------
     // ======================================
@@ -1203,6 +1747,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     bool mTGMM_on = true;
     bool mTGMMs_on = true;
 
+    FuzzyTools::EventJet event_jet_type = FuzzyTools::FLAT;
+
     // Fuzzy Jets: mGMMs --------------------
     vector<vector<double> > mGMMs_particle_weights;
     vector<MatTwo> mGMMs_jets_params;
@@ -1215,7 +1761,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                          f_learn_weights, true, do_recombination,
                          mGMMs_indices, max_pT_mGMMs,
                          tool, mGMMs_jets, mGMMs_particle_weights,
-                         mGMMs_jets_params, mGMMs_weights, fTmGMMs_iter);
+                         mGMMs_jets_params, mGMMs_weights, fTmGMMs_iter,
+                         event_jet_type);
     }
     int lead_mGMMs_index = mGMMs_indices.size() ? mGMMs_indices.at(0) : -1;
 
@@ -1232,7 +1779,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                           f_learn_weights, do_recombination,
                           mGMMc_indices, max_pT_mGMMc,
                           tool, mGMMc_jets, mGMMc_particle_weights,
-                          mGMMc_jets_params, mGMMc_weights, fTmGMMc_iter);
+                          mGMMc_jets_params, mGMMc_weights, fTmGMMc_iter,
+                          event_jet_type);
     }
     int lead_mGMMc_index = mGMMc_indices.size() ? mGMMc_indices.at(0) : -1;
 
@@ -1248,7 +1796,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                           f_learn_weights, true, do_recombination,
                           f_size, mTGMMs_indices, max_pT_mTGMMs,
                           tool, mTGMMs_jets, mTGMMs_particle_weights,
-                          mTGMMs_jets_params, mTGMMs_weights, fTmTGMMs_iter);
+                          mTGMMs_jets_params, mTGMMs_weights, fTmTGMMs_iter,
+                          event_jet_type);
     }
     int lead_mTGMMs_index = mTGMMs_indices.size() ? mTGMMs_indices.at(0) : -1;
 
@@ -1264,7 +1813,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                          f_learn_weights, false, do_recombination,
                          mGMM_indices, max_pT_mGMM,
                          tool, mGMM_jets, mGMM_particle_weights,
-                         mGMM_jets_params, mGMM_weights, fTmGMM_iter);
+                         mGMM_jets_params, mGMM_weights, fTmGMM_iter,
+                         event_jet_type);
     }
     int lead_mGMM_index = mGMM_indices.size() ? mGMM_indices.at(0) : -1;
 
@@ -1278,7 +1828,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         DoMUMMJetFinding(particles_for_jets, my_jets_large_r_ca,
                          f_learn_weights, f_size, do_recombination,
                          mUMM_indices, max_pT_mUMM, tool, mUMM_jets,
-                         mUMM_particle_weights, mUMM_weights, fTmUMM_iter);
+                         mUMM_particle_weights, mUMM_weights, fTmUMM_iter,
+                         event_jet_type);
     }
     int lead_mUMM_index = mUMM_indices.size() ? mUMM_indices.at(0) : -1;
 
@@ -1294,7 +1845,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                           f_learn_weights, false, do_recombination, f_size,
                           mTGMM_indices, max_pT_mTGMM, tool, mTGMM_jets,
                           mTGMM_particle_weights, mTGMM_jets_params,
-                          mTGMM_weights, fTmTGMM_iter);
+                          mTGMM_weights, fTmTGMM_iter, event_jet_type);
     }
     int lead_mTGMM_index = mTGMM_indices.size() ? mTGMM_indices.at(0) : -1;
 
@@ -1402,6 +1953,14 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                          0,
                                          "pt_mGMM",
                                          event_iter);
+            if (event_jet_type != FuzzyTools::NONE) {
+                tool->EventJetDisplay(particles_for_jets,
+                                      mGMM_jets,
+                                      mGMM_particle_weights,
+                                      mGMM_jets_params,
+                                      mGMM_weights,
+                                      "mGMM", event_iter);
+            }
         }
         if(mTGMM_on) {
             tool->NewEventDisplay(particles_for_jets,
@@ -1413,6 +1972,14 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                   mTGMM_weights,
                                   "mTGMM",
                                   event_iter);
+            if (event_jet_type != FuzzyTools::NONE) {
+                tool->EventJetDisplay(particles_for_jets,
+                                      mTGMM_jets,
+                                      mTGMM_particle_weights,
+                                      mTGMM_jets_params,
+                                      mTGMM_weights,
+                                      "mTGMM", event_iter);
+            }
         }
         if(mUMM_on) {
             tool->NewEventDisplayUniform(particles_for_jets,
@@ -1423,6 +1990,14 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                          mUMM_weights,
                                          "mUMM",
                                          event_iter);
+            if (event_jet_type != FuzzyTools::NONE) {
+                //tool->EventJetDisplay(particles_for_jets,
+                //                      mUMM_jets,
+                //                      mUMM_particle_weights,
+                //                      mUMM_jets_params,
+                //                      mUMM_weights,
+                //                      "mUMM", event_iter);
+            }
         }
         if(mGMMs_on) {
             tool->NewEventDisplay(particles_for_jets,
@@ -1434,6 +2009,14 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                   mGMMs_weights,
                                   "mGMMs",
                                   event_iter);
+            if (event_jet_type != FuzzyTools::NONE) {
+                tool->EventJetDisplay(particles_for_jets,
+                                      mGMMs_jets,
+                                      mGMMs_particle_weights,
+                                      mGMMs_jets_params,
+                                      mGMMs_weights,
+                                      "mGMMs", event_iter);
+            }
         }
         if(mGMMc_on) {
             tool->NewEventDisplay(particles_for_jets,
@@ -1445,6 +2028,14 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                   mGMMc_weights,
                                   "mGMMc",
                                   event_iter);
+            if (event_jet_type != FuzzyTools::NONE) {
+                tool->EventJetDisplay(particles_for_jets,
+                                      mGMMc_jets,
+                                      mGMMc_particle_weights,
+                                      mGMMc_jets_params,
+                                      mGMMc_weights,
+                                      "mGMMc", event_iter);
+            }
             tool->NewEventDisplayPoster(particles_for_jets,
                                         my_jets_large_r_ca, tops,
                                         mGMMc_jets,
@@ -1465,6 +2056,14 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                   mTGMMs_weights,
                                   "mTGMMs",
                                   event_iter);
+            if (event_jet_type != FuzzyTools::NONE) {
+                tool->EventJetDisplay(particles_for_jets,
+                                      mTGMMs_jets,
+                                      mTGMMs_particle_weights,
+                                      mTGMMs_jets_params,
+                                      mTGMMs_weights,
+                                      "mTGMMs", event_iter);
+            }
         }
     }
 
@@ -2047,173 +2646,173 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         tree_vars["mUMM_pt_skew"] = &fTmUMM_pt_skew;
         tree_vars["mUMM_ptl"] = &fTmUMM_ptl;
         tree_vars["mUMM_ml"] = &fTmUMM_ml;
-    tree_vars["mUMM_m_soft"] = &fTmUMM_m_soft;
-    tree_vars["mUMM_pt_soft"] = &fTmUMM_pt_soft;
-    tree_vars["mUMM_ucpu"] = &fTmUMM_ucpu;
-    tree_vars["mUMM_clpu"] = &fTmUMM_clpu;
-    tree_vars["mUMM_pufrac_soft"] = &fTmUMM_pufrac_soft;
-    tree_vars["mUMM_pufrac_hard"] = &fTmUMM_pufrac_hard;
-    tree_vars["mUMM_m_pu_soft"] = &fTmUMM_m_pu_soft;
-    tree_vars["mUMM_m_pu_hard"] = &fTmUMM_m_pu_hard;
-    tree_vars["mUMM_dr"] = &fTmUMM_dr;
+        tree_vars["mUMM_m_soft"] = &fTmUMM_m_soft;
+        tree_vars["mUMM_pt_soft"] = &fTmUMM_pt_soft;
+        tree_vars["mUMM_ucpu"] = &fTmUMM_ucpu;
+        tree_vars["mUMM_clpu"] = &fTmUMM_clpu;
+        tree_vars["mUMM_pufrac_soft"] = &fTmUMM_pufrac_soft;
+        tree_vars["mUMM_pufrac_hard"] = &fTmUMM_pufrac_hard;
+        tree_vars["mUMM_m_pu_soft"] = &fTmUMM_m_pu_soft;
+        tree_vars["mUMM_m_pu_hard"] = &fTmUMM_m_pu_hard;
+        tree_vars["mUMM_dr"] = &fTmUMM_dr;
 
-    tree_vars["mGMM_m"] = &fTmGMM_m;
-    tree_vars["mGMM_pt"] = &fTmGMM_pt;
-    tree_vars["deltatop_mGMM"] = &fTdeltatop_mGMM;
-    tree_vars["mGMM_m_mean"] = &fTmGMM_m_mean;
-    tree_vars["mGMM_m_var"] = &fTmGMM_m_var;
-    tree_vars["mGMM_m_skew"] = &fTmGMM_m_skew;
-    tree_vars["mGMM_pt_mean"] = &fTmGMM_pt_mean;
-    tree_vars["mGMM_pt_var"] = &fTmGMM_pt_var;
-    tree_vars["mGMM_pt_skew"] = &fTmGMM_pt_skew;
-    tree_vars["mGMM_ptl"] = &fTmGMM_ptl;
-    tree_vars["mGMM_ml"] = &fTmGMM_ml;
-    tree_vars["mGMM_m_soft"] = &fTmUMM_m_soft;
-    tree_vars["mGMM_pt_soft"] = &fTmUMM_pt_soft;
-    tree_vars["mGMM_ucpu"] = &fTmGMM_ucpu;
-    tree_vars["mGMM_clpu"] = &fTmGMM_clpu;
-    tree_vars["mGMM_pufrac_soft"] = &fTmGMM_pufrac_soft;
-    tree_vars["mGMM_pufrac_hard"] = &fTmGMM_pufrac_hard;
-    tree_vars["mGMM_m_pu_soft"] = &fTmGMM_m_pu_soft;
-    tree_vars["mGMM_m_pu_hard"] = &fTmGMM_m_pu_hard;
-    tree_vars["mGMM_dr"] = &fTmGMM_dr;
+        tree_vars["mGMM_m"] = &fTmGMM_m;
+        tree_vars["mGMM_pt"] = &fTmGMM_pt;
+        tree_vars["deltatop_mGMM"] = &fTdeltatop_mGMM;
+        tree_vars["mGMM_m_mean"] = &fTmGMM_m_mean;
+        tree_vars["mGMM_m_var"] = &fTmGMM_m_var;
+        tree_vars["mGMM_m_skew"] = &fTmGMM_m_skew;
+        tree_vars["mGMM_pt_mean"] = &fTmGMM_pt_mean;
+        tree_vars["mGMM_pt_var"] = &fTmGMM_pt_var;
+        tree_vars["mGMM_pt_skew"] = &fTmGMM_pt_skew;
+        tree_vars["mGMM_ptl"] = &fTmGMM_ptl;
+        tree_vars["mGMM_ml"] = &fTmGMM_ml;
+        tree_vars["mGMM_m_soft"] = &fTmUMM_m_soft;
+        tree_vars["mGMM_pt_soft"] = &fTmUMM_pt_soft;
+        tree_vars["mGMM_ucpu"] = &fTmGMM_ucpu;
+        tree_vars["mGMM_clpu"] = &fTmGMM_clpu;
+        tree_vars["mGMM_pufrac_soft"] = &fTmGMM_pufrac_soft;
+        tree_vars["mGMM_pufrac_hard"] = &fTmGMM_pufrac_hard;
+        tree_vars["mGMM_m_pu_soft"] = &fTmGMM_m_pu_soft;
+        tree_vars["mGMM_m_pu_hard"] = &fTmGMM_m_pu_hard;
+        tree_vars["mGMM_dr"] = &fTmGMM_dr;
 
-    tree_vars["mTGMM_m"] = &fTmTGMM_m;
-    tree_vars["mTGMM_pt"] = &fTmTGMM_pt;
-    tree_vars["deltatop_mTGMM"] = &fTdeltatop_mTGMM;
-    tree_vars["mTGMM_m_mean"] = &fTmTGMM_m_mean;
-    tree_vars["mTGMM_m_var"] = &fTmTGMM_m_var;
-    tree_vars["mTGMM_m_skew"] = &fTmTGMM_m_skew;
-    tree_vars["mTGMM_pt_mean"] = &fTmTGMM_pt_mean;
-    tree_vars["mTGMM_pt_var"] = &fTmTGMM_pt_var;
-    tree_vars["mTGMM_pt_skew"] = &fTmTGMM_pt_skew;
-    tree_vars["mTGMM_ptl"] = &fTmTGMM_ptl;
-    tree_vars["mTGMM_ml"] = &fTmTGMM_ml;
-    tree_vars["mTGMM_m_soft"] = &fTmTGMM_m_soft;
-    tree_vars["mTGMM_pt_soft"] = &fTmTGMM_pt_soft;
-    tree_vars["mTGMM_ucpu"] = &fTmTGMM_ucpu;
-    tree_vars["mTGMM_clpu"] = &fTmTGMM_clpu;
-    tree_vars["mTGMM_pufrac_soft"] = &fTmTGMM_pufrac_soft;
-    tree_vars["mTGMM_pufrac_hard"] = &fTmTGMM_pufrac_hard;
-    tree_vars["mTGMM_m_pu_soft"] = &fTmTGMM_m_pu_soft;
-    tree_vars["mTGMM_m_pu_hard"] = &fTmTGMM_m_pu_hard;
-    tree_vars["mTGMM_dr"] = &fTmTGMM_dr;
+        tree_vars["mTGMM_m"] = &fTmTGMM_m;
+        tree_vars["mTGMM_pt"] = &fTmTGMM_pt;
+        tree_vars["deltatop_mTGMM"] = &fTdeltatop_mTGMM;
+        tree_vars["mTGMM_m_mean"] = &fTmTGMM_m_mean;
+        tree_vars["mTGMM_m_var"] = &fTmTGMM_m_var;
+        tree_vars["mTGMM_m_skew"] = &fTmTGMM_m_skew;
+        tree_vars["mTGMM_pt_mean"] = &fTmTGMM_pt_mean;
+        tree_vars["mTGMM_pt_var"] = &fTmTGMM_pt_var;
+        tree_vars["mTGMM_pt_skew"] = &fTmTGMM_pt_skew;
+        tree_vars["mTGMM_ptl"] = &fTmTGMM_ptl;
+        tree_vars["mTGMM_ml"] = &fTmTGMM_ml;
+        tree_vars["mTGMM_m_soft"] = &fTmTGMM_m_soft;
+        tree_vars["mTGMM_pt_soft"] = &fTmTGMM_pt_soft;
+        tree_vars["mTGMM_ucpu"] = &fTmTGMM_ucpu;
+        tree_vars["mTGMM_clpu"] = &fTmTGMM_clpu;
+        tree_vars["mTGMM_pufrac_soft"] = &fTmTGMM_pufrac_soft;
+        tree_vars["mTGMM_pufrac_hard"] = &fTmTGMM_pufrac_hard;
+        tree_vars["mTGMM_m_pu_soft"] = &fTmTGMM_m_pu_soft;
+        tree_vars["mTGMM_m_pu_hard"] = &fTmTGMM_m_pu_hard;
+        tree_vars["mTGMM_dr"] = &fTmTGMM_dr;
 
-    // Event Properties
-    #ifdef WITHROOT
-    t_t->Branch("EventNumber",    &fTEventNumber,    "EventNumber/I");
-    t_t->Branch("NPV",            &fTNPV,            "NPV/I");
+        // Event Properties
+#ifdef WITHROOT
+        t_t->Branch("EventNumber",    &fTEventNumber,    "EventNumber/I");
+        t_t->Branch("NPV",            &fTNPV,            "NPV/I");
 
-    // declare non-float branches
-    t_t->Branch("mGMM_iter", &fTmGMM_iter, "mGMM_iter/i");
-    t_t->Branch("mGMMc_iter", &fTmGMMc_iter, "mGMMc_iter/i");
-    t_t->Branch("mGMMs_iter", &fTmGMMs_iter, "mGMMs_iter/i");
-    t_t->Branch("mTGMM_iter", &fTmTGMM_iter, "mTGMM_iter/i");
-    t_t->Branch("mTGMMs_iter", &fTmTGMMs_iter, "mTGMMs_iter/i");
-    t_t->Branch("mUMM_iter", &fTmUMM_iter, "mUMM_iter/i");
+        // declare non-float branches
+        t_t->Branch("mGMM_iter", &fTmGMM_iter, "mGMM_iter/i");
+        t_t->Branch("mGMMc_iter", &fTmGMMc_iter, "mGMMc_iter/i");
+        t_t->Branch("mGMMs_iter", &fTmGMMs_iter, "mGMMs_iter/i");
+        t_t->Branch("mTGMM_iter", &fTmTGMM_iter, "mTGMM_iter/i");
+        t_t->Branch("mTGMMs_iter", &fTmTGMMs_iter, "mTGMMs_iter/i");
+        t_t->Branch("mUMM_iter", &fTmUMM_iter, "mUMM_iter/i");
 
-    // declare vector branches
-    t_t->Branch("CA_nsubjettiness", "vector<float>", &CA_nsubjettiness);
-    t_t->Branch("antikt_nsubjettiness", "vector<float>", &antikt_nsubjettiness);
+        // declare vector branches
+        t_t->Branch("CA_nsubjettiness", "vector<float>", &CA_nsubjettiness);
+        t_t->Branch("antikt_nsubjettiness", "vector<float>", &antikt_nsubjettiness);
 
-    t_t->Branch("mGMM_etas", "vector<float>", &fTmGMM_etas);
-    t_t->Branch("mGMM_phis", "vector<float>", &fTmGMM_phis);
-    t_t->Branch("mGMMc_etas", "vector<float>", &fTmGMMc_etas);
-    t_t->Branch("mGMMc_phis", "vector<float>", &fTmGMMc_phis);
-    t_t->Branch("mGMMs_etas", "vector<float>", &fTmGMMs_etas);
-    t_t->Branch("mGMMs_phis", "vector<float>", &fTmGMMs_phis);
-    t_t->Branch("mUMM_etas", "vector<float>", &fTmUMM_etas);
-    t_t->Branch("mUMM_phis", "vector<float>", &fTmUMM_phis);
-    t_t->Branch("mTGMM_etas", "vector<float>", &fTmTGMM_etas);
-    t_t->Branch("mTGMM_phis", "vector<float>", &fTmTGMM_phis);
-    t_t->Branch("mTGMMs_etas", "vector<float>", &fTmTGMMs_etas);
-    t_t->Branch("mTGMMs_phis", "vector<float>", &fTmTGMMs_phis);
+        t_t->Branch("mGMM_etas", "vector<float>", &fTmGMM_etas);
+        t_t->Branch("mGMM_phis", "vector<float>", &fTmGMM_phis);
+        t_t->Branch("mGMMc_etas", "vector<float>", &fTmGMMc_etas);
+        t_t->Branch("mGMMc_phis", "vector<float>", &fTmGMMc_phis);
+        t_t->Branch("mGMMs_etas", "vector<float>", &fTmGMMs_etas);
+        t_t->Branch("mGMMs_phis", "vector<float>", &fTmGMMs_phis);
+        t_t->Branch("mUMM_etas", "vector<float>", &fTmUMM_etas);
+        t_t->Branch("mUMM_phis", "vector<float>", &fTmUMM_phis);
+        t_t->Branch("mTGMM_etas", "vector<float>", &fTmTGMM_etas);
+        t_t->Branch("mTGMM_phis", "vector<float>", &fTmTGMM_phis);
+        t_t->Branch("mTGMMs_etas", "vector<float>", &fTmTGMMs_etas);
+        t_t->Branch("mTGMMs_phis", "vector<float>", &fTmTGMMs_phis);
 
-    t_t->Branch("mGMM_weight_vec", "vector<float>", &mGMM_weight_vec);
-    t_t->Branch("mGMMs_weight_vec", "vector<float>", &mGMMs_weight_vec);
-    t_t->Branch("mGMMc_weight_vec", "vector<float>", &mGMMc_weight_vec);
-    t_t->Branch("mTGMM_weight_vec", "vector<float>", &mTGMM_weight_vec);
-    t_t->Branch("mTGMMs_weight_vec", "vector<float>", &mTGMMs_weight_vec);
-    t_t->Branch("mUMM_weight_vec", "vector<float>", &mUMM_weight_vec);
+        t_t->Branch("mGMM_weight_vec", "vector<float>", &mGMM_weight_vec);
+        t_t->Branch("mGMMs_weight_vec", "vector<float>", &mGMMs_weight_vec);
+        t_t->Branch("mGMMc_weight_vec", "vector<float>", &mGMMc_weight_vec);
+        t_t->Branch("mTGMM_weight_vec", "vector<float>", &mTGMM_weight_vec);
+        t_t->Branch("mTGMMs_weight_vec", "vector<float>", &mTGMMs_weight_vec);
+        t_t->Branch("mUMM_weight_vec", "vector<float>", &mUMM_weight_vec);
 
-    t_t->Branch("mGMM_distance_vec", "vector<float>", &mGMM_distance_vec);
-    t_t->Branch("mGMMs_distance_vec", "vector<float>", &mGMMs_distance_vec);
-    t_t->Branch("mGMMc_distance_vec", "vector<float>", &mGMMc_distance_vec);
-    t_t->Branch("mTGMM_distance_vec", "vector<float>", &mTGMM_distance_vec);
-    t_t->Branch("mTGMMs_distance_vec", "vector<float>", &mTGMMs_distance_vec);
-    t_t->Branch("mUMM_distance_vec", "vector<float>", &mUMM_distance_vec);
+        t_t->Branch("mGMM_distance_vec", "vector<float>", &mGMM_distance_vec);
+        t_t->Branch("mGMMs_distance_vec", "vector<float>", &mGMMs_distance_vec);
+        t_t->Branch("mGMMc_distance_vec", "vector<float>", &mGMMc_distance_vec);
+        t_t->Branch("mTGMM_distance_vec", "vector<float>", &mTGMM_distance_vec);
+        t_t->Branch("mTGMMs_distance_vec", "vector<float>", &mTGMMs_distance_vec);
+        t_t->Branch("mUMM_distance_vec", "vector<float>", &mUMM_distance_vec);
 
-    t_t->Branch("is_pileup_vec", &is_pileup_vec);
-    t_t->Branch("is_lead_antikt_constituent_vec", &is_lead_antikt_constituent_vec);
-    t_t->Branch("is_lead_antikt_trimmed_two_constituent_vec", &is_lead_antikt_trimmed_two_constituent_vec);
+        t_t->Branch("is_pileup_vec", &is_pileup_vec);
+        t_t->Branch("is_lead_antikt_constituent_vec", &is_lead_antikt_constituent_vec);
+        t_t->Branch("is_lead_antikt_trimmed_two_constituent_vec", &is_lead_antikt_trimmed_two_constituent_vec);
 
-    stringstream ss;
-    map<string, float*>::const_iterator iter;
-    for (iter = tree_vars.begin(); iter != tree_vars.end(); iter++) {
-        string branch_name = iter->first;
-        ss.clear();
-        ss.str("");
-        ss << branch_name << "/F";
-        string branch_typename = ss.str();
-        t_t->Branch(branch_name.c_str(), iter->second, branch_typename.c_str());
-    }
-    #endif
+        stringstream ss;
+        map<string, float*>::const_iterator iter;
+        for (iter = tree_vars.begin(); iter != tree_vars.end(); iter++) {
+            string branch_name = iter->first;
+            ss.clear();
+            ss.str("");
+            ss << branch_name << "/F";
+            string branch_typename = ss.str();
+            t_t->Branch(branch_name.c_str(), iter->second, branch_typename.c_str());
+        }
+#endif
 
-    return;
-}
-
-
-// resets vars
-void FuzzyAnalysis::ResetBranches(){
-    // reset branches
-    fTEventNumber = -999;
-    fTNPV         = -999;
-    map<string, float*>::const_iterator iter;
-    for (iter = tree_vars.begin(); iter != tree_vars.end(); iter++) {
-        *(iter->second) = -999999;
+        return;
     }
 
-    // reset non-float basic branches
-    fTmGMM_iter = 0;
-    fTmGMMc_iter = 0;
-    fTmGMMs_iter = 0;
-    fTmTGMM_iter = 0;
-    fTmTGMMs_iter = 0;
-    fTmUMM_iter = 0;
 
-    // reset vector branches
+    // resets vars
+    void FuzzyAnalysis::ResetBranches(){
+        // reset branches
+        fTEventNumber = -999;
+        fTNPV         = -999;
+        map<string, float*>::const_iterator iter;
+        for (iter = tree_vars.begin(); iter != tree_vars.end(); iter++) {
+            *(iter->second) = -999999;
+        }
 
-    CA_nsubjettiness.clear();
-    antikt_nsubjettiness.clear();
+        // reset non-float basic branches
+        fTmGMM_iter = 0;
+        fTmGMMc_iter = 0;
+        fTmGMMs_iter = 0;
+        fTmTGMM_iter = 0;
+        fTmTGMMs_iter = 0;
+        fTmUMM_iter = 0;
 
-    fTmGMM_etas.clear();
-    fTmGMM_phis.clear();
-    fTmGMMc_etas.clear();
-    fTmGMMc_phis.clear();
-    fTmGMMs_etas.clear();
-    fTmGMMs_phis.clear();
-    fTmUMM_etas.clear();
-    fTmUMM_phis.clear();
-    fTmTGMM_etas.clear();
-    fTmTGMM_phis.clear();
-    fTmTGMMs_etas.clear();
-    fTmTGMMs_phis.clear();
+        // reset vector branches
 
-    mGMM_weight_vec.clear();
-    mGMMs_weight_vec.clear();
-    mGMMc_weight_vec.clear();
-    mTGMM_weight_vec.clear();
-    mTGMMs_weight_vec.clear();
-    mUMM_weight_vec.clear();
+        CA_nsubjettiness.clear();
+        antikt_nsubjettiness.clear();
 
-    mGMM_distance_vec.clear();
-    mGMMs_distance_vec.clear();
-    mGMMc_distance_vec.clear();
-    mTGMM_distance_vec.clear();
-    mTGMMs_distance_vec.clear();
-    mUMM_distance_vec.clear();
+        fTmGMM_etas.clear();
+        fTmGMM_phis.clear();
+        fTmGMMc_etas.clear();
+        fTmGMMc_phis.clear();
+        fTmGMMs_etas.clear();
+        fTmGMMs_phis.clear();
+        fTmUMM_etas.clear();
+        fTmUMM_phis.clear();
+        fTmTGMM_etas.clear();
+        fTmTGMM_phis.clear();
+        fTmTGMMs_etas.clear();
+        fTmTGMMs_phis.clear();
 
-    is_pileup_vec.clear();
-    is_lead_antikt_constituent_vec.clear();
-    is_lead_antikt_trimmed_two_constituent_vec.clear();
-}
+        mGMM_weight_vec.clear();
+        mGMMs_weight_vec.clear();
+        mGMMc_weight_vec.clear();
+        mTGMM_weight_vec.clear();
+        mTGMMs_weight_vec.clear();
+        mUMM_weight_vec.clear();
+
+        mGMM_distance_vec.clear();
+        mGMMs_distance_vec.clear();
+        mGMMc_distance_vec.clear();
+        mTGMM_distance_vec.clear();
+        mTGMMs_distance_vec.clear();
+        mUMM_distance_vec.clear();
+
+        is_pileup_vec.clear();
+        is_lead_antikt_constituent_vec.clear();
+        is_lead_antikt_trimmed_two_constituent_vec.clear();
+    }

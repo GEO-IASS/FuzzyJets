@@ -133,6 +133,20 @@ class FuzzyTools {
         UNIFORM
     };
 
+    enum EventJet {
+        NONE,         // Standard tool mode
+        FLAT,      // In this mode some likelihood is uniformly
+                      // smeared out as and attributed to pileup vertices.
+                      // Particle weights will *not* sum to 1 in this mode,
+                      // because every particle probabilistically belongs to this
+                      // pileup jet.
+        ONE_CLUSTER   // Runs the tool on input particles with k=1 before running
+                      // on k=k_0 + 1 where the last jet is the one found in the
+                      // k=1 mode. Weights will once again not sum to 1 in this
+                      // mode.
+    };
+
+
     enum Mode {
         NOCLUSTERINGMODE,
         RECOMBINATION,
@@ -158,6 +172,9 @@ class FuzzyTools {
 
     double log_log_likelihood_limit;
 
+    EventJet event_jet_type;
+    double event_jet_weight;
+
     int cluster_count;
     Mode clustering_mode;
     Kernel kernel_type;
@@ -170,6 +187,10 @@ class FuzzyTools {
     vecPseudoJet Initialize(vecPseudoJet particles,
                             int k,
                             vecPseudoJet jets);
+
+    void SetEventJetWeight(double w) {
+        event_jet_weight = w;
+    }
 
     void SetDefaultSigma(MatTwo s) {
         default_sigma = s;
@@ -185,6 +206,10 @@ class FuzzyTools {
 
     void SetR(double r) {
         R = r;
+    }
+
+    void SetEventJetType(EventJet type) {
+        event_jet_type = type;
     }
 
     void SetKernelType(Kernel k) {
@@ -225,6 +250,10 @@ class FuzzyTools {
         alpha = a;
     }
 
+    double GetEventJetWeight() const {
+        return event_jet_weight;
+    }
+
     double GetAlpha() const {
         return alpha;
     }
@@ -247,6 +276,10 @@ class FuzzyTools {
 
     Mode GetClusteringMode() const {
         return clustering_mode;
+    }
+
+    EventJet GetEventJetType() const {
+        return event_jet_type;
     }
 
     set<unsigned int> ClustersForRemovalGaussian(vecPseudoJet const& mGMM_jets,
@@ -367,6 +400,12 @@ class FuzzyTools {
                           std::string const& file_name,
                           std::string const& title);
 
+    void EventJetDisplay(vecPseudoJet const& particles,
+                                vecPseudoJet const& mGMM_jets,
+                                vector<vector<double> > const& weights,
+                                vector<MatTwo> const& mGMM_jets_params,
+                                vector<double> const& mGMM_weights,
+                                std::string const& label, int iter);
 
     void EventDisplay(vecPseudoJet const& particles,
                       vecPseudoJet const& ca_jets,
@@ -416,6 +455,9 @@ class FuzzyTools {
                                 int m_type,
                                 std::string out,
                                 int iter);
+
+    int belongs_idx(vector<vector<double> > const& weights,
+                    int particle_index);
 
     double MLpT(vecPseudoJet particles,
                 vector<vector<double> > weights,

@@ -298,6 +298,9 @@ FuzzyTools::ComputeWeightsGaussian(vecPseudoJet const& particles,
                           mGMM_jets_params[j])
                 * mGMM_weights[j];
         }
+        if (event_jet_type == FLAT) {
+            denom += event_jet_weight;
+        }
         for (unsigned int j=0; j<mGMM_jets.size(); j++){
             weights->at(i).at(j) = doGaus(particles[i].rapidity(),
                                        particles[i].phi(),
@@ -325,6 +328,9 @@ FuzzyTools::ComputeWeightsTruncGaus(vecPseudoJet const& particles,
                                  mTGMM_jets[j].phi(),
                                  mTGMM_jets_params[j])
                 * mTGMM_weights[j];
+        }
+        if (event_jet_type == FLAT) {
+            denom += event_jet_weight;
         }
         for (unsigned int j = 0; j < mTGMM_jets.size(); j++) {
             double new_weight = doTruncGaus(particles[i].rapidity(),
@@ -357,6 +363,9 @@ FuzzyTools::ComputeWeightsUniform(vecPseudoJet const& particles,
                 // pT to scale by cluster weight
                 denom += mUMM_weights[j]/(M_PI * R*R);
             }
+        }
+        if (event_jet_type == FLAT) {
+            denom += event_jet_weight;
         }
         for (unsigned int j=0; j <  mUMM_jets.size(); j++) {
             dist = particles[i].delta_R(mUMM_jets[j]);
@@ -1303,6 +1312,90 @@ double FuzzyTools::LogLikelihoodUniform(vecPseudoJet const& particles,
 }
 
 void
+FuzzyTools::EventJetDisplay(vecPseudoJet const& particles,
+                            vecPseudoJet const& mGMM_jets,
+                            vector<vector<double> > const& weights,
+                            vector<MatTwo> const& mGMM_jets_params,
+                            vector<double> const& mGMM_weights,
+                            std::string const& label, int iter) {
+    #ifdef WITHROOT
+    double min_eta = -5;
+    double max_eta = 5;
+    TCanvas canv(TString::Format("NEVC_%s_%d", label.c_str(), iter), "", 1200, 600);
+    TH2F hist(TString::Format("NEVH_%s_%d", label.c_str(), iter), "", 30, min_eta, max_eta, 28, 0, 7);
+
+    double loc_eta;
+    double loc_phi;
+    double theta;
+    double x_r;
+    double y_r;
+    double w;
+
+    double eta, phi, pT;
+    vector<int> which_jets;
+    for (unsigned int i = 0; i < particles.size(); i++) {
+        which_jets.push_back(belongs_idx(weights, i));
+        eta = particles[i].eta();
+        phi = particles[i].phi();
+        pT = particles[i].pt();
+        if (which_jets.at(i) >= 0)
+            hist.Fill(eta, phi, pT);
+    }
+
+    vector<TEllipse> ellipses;
+    for (unsigned int i=0; i < mGMM_jets_params.size(); i++) {
+        double var_eta = mGMM_jets_params[i].xx;
+        double var_phi = mGMM_jets_params[i].yy;
+        double covar  = mGMM_jets_params[i].yx;
+        double temp_a  = 0.5*(var_eta + var_phi);
+        double temp_b  = 0.5*sqrt((var_eta-var_phi)*(var_eta-var_phi) + 4*covar*covar);
+        double lambda_eta = temp_a + temp_b;
+        double lambda_phi = temp_a - temp_b;
+        theta = 0;
+        if(covar > 0) theta=atan((lambda_eta - var_eta)/covar);
+        loc_eta = mGMM_jets[i].eta();
+        loc_phi = mGMM_jets[i].phi();
+        x_r = sqrt(lambda_eta);
+        y_r = sqrt(lambda_phi);
+        w = mGMM_weights[i];
+        theta = theta * 180 / TMath::Pi();
+        TEllipse current_ellipse(loc_eta, loc_phi,
+                                 x_r, y_r,
+                                 0, 360, theta);
+        current_ellipse.SetFillStyle(0);
+        if(learn_weights) {
+            current_ellipse.SetLineWidth(2);
+            current_ellipse.SetLineWidth(w);
+        } else {
+            current_ellipse.SetLineWidth(2);
+        }
+        if(loc_eta < max_eta && loc_eta > min_eta)
+            ellipses.push_back(current_ellipse);
+    }
+
+    hist.Write();
+    canv.Divide(2, 1);
+
+    canv.cd(1);
+    hist.Draw("colz");
+    for (unsigned int eli = 0; eli < ellipses.size(); eli++) {
+        ellipses[eli].Draw();
+    }
+
+    canv.cd(2);
+    hist.Draw("colz");
+    for (unsigned int eli = 0; eli < ellipses.size(); eli++) {
+        ellipses[eli].Draw();
+    }
+    gPad->SetLogz();
+    canv.Update();
+    canv.Print(TString::Format("%sEventJetDisplay_%s_%d.pdf",
+                               directory_prefix.c_str(),
+                               label.c_str(), iter));
+    #endif
+}
+
+void
 FuzzyTools::NewEventDisplay(__attribute__((unused)) vecPseudoJet const& particles,
                             __attribute__((unused)) vecPseudoJet const& ca_jets,
                             __attribute__((unused)) vecPseudoJet const& tops,
@@ -1972,22 +2065,36 @@ FuzzyTools::CentralMoments(vecPseudoJet const& particles,
     return moments;
 }
 
+int
+FuzzyTools::belongs_idx(vector<vector<double> > const& weights,
+                        int particle_index) {
+    // finds the index of the jet which the particle_indexth particle
+    // belongs to. In the case that
+    double max_weight = -1;
+    double which_jet = -1;
+    double encountered_weight = 0;
+    for (unsigned int j = 0; j < weights.at(0).size(); j++) {
+        encountered_weight += weights.at(particle_index).at(j);
+        if (weights.at(particle_index).at(j)>max_weight) {
+            max_weight = weights.at(particle_index).at(j);
+            which_jet = j;
+        }
+    }
+    if (max_weight < (1-encountered_weight))
+        return -1;
+    return which_jet;
+}
+
+
 double
 FuzzyTools::MLpT(vecPseudoJet particles,
                  vector<vector<double> > weights,
                  int jet_index,
-                 int k,
+                 __attribute__((unused)) int k,
                  int m_type){
     fastjet::PseudoJet my_jet;
     for (unsigned int i=0; i<particles.size(); i++){
-        double my_max = -1;
-        double which_jet = -1;
-        for (int j=0; j<k; j++){
-            if (weights[i][j]>my_max){
-                my_max = weights[i][j];
-                which_jet = j;
-            }
-        }
+        int which_jet = belongs_idx(weights, i);
         if (which_jet==jet_index){
             my_jet+=particles[i];
         }

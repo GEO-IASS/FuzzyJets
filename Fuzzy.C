@@ -92,7 +92,7 @@ int main(int argc, char* argv[]){
         ("PythiaConfig", po::value<string>(&pythia_config_name)->default_value("configs/default.pythia"), "Pythia configuration file location")
         ("pTMin", po::value<float>(&pT_min)->default_value(5), "Minimum pT for standard jets. (Including those used as seeds")
         ("Batch",   po::value<bool>(&is_batch)->default_value(false), "Is this running on the batch?")
-        ("Recombination", po::value<bool>(&do_recombination)->default_value(true), "Should we use fixed clusters or all particles with recombination?")
+        ("Recombination", po::value<bool>(&do_recombination)->default_value(false), "Should we use fixed clusters or all particles with recombination?")
         ("ModPiTest", po::value<bool>(&do_mod_pi_test)->default_value(false), "Whether to run the mod pi testing suite.")
         ("Directory", po::value<string>(&directory)->default_value("results/tmp/"), "Directory in which to place results (.root files etc.)");
     po::variables_map vm;

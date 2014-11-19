@@ -266,6 +266,12 @@ class FuzzyAnalysis{
     void SetupHistosMap();
     void WriteHistosMap();
     void PiFixStudy();
+    vecPseudoJet DiscretizeParticles(vecPseudoJet const& arg_particles,
+                                                    int n_phi, int n_eta,
+                                                    float eta_cutoff);
+    vecPseudoJet ChargedParticles(vecPseudoJet const& arg_particles);
+    vecPseudoJet UnchargedParticles(vecPseudoJet const& arg_particles);
+    void GroomingStudy(vecPseudoJet leading_particles, int event_iter);
     void SubstructureStudy(vecPseudoJet ca_jets, vecPseudoJet antikt_jets, int event_iter);
     void AnalyzeEventNew(int i_evt, Pythia8::Pythia *pythia8, Pythia8::Pythia *pythia_MB, int NPV);
     void AnalyzeEvent(int i_evt, Pythia8::Pythia *pythia8, Pythia8::Pythia *pythia_MB, int NPV);
