@@ -133,19 +133,23 @@ class FuzzyTools {
         UNIFORM
     };
 
+    enum PostProcess {
+        NO_POST_PROCESS,                  // Standard tool mode
+        ONE_DISTANCE_MERGER    // Do one merger step at the end of clustering
+    };
+
     enum EventJet {
         NONE,         // Standard tool mode
         FLAT,      // In this mode some likelihood is uniformly
-                      // smeared out as and attributed to pileup vertices.
-                      // Particle weights will *not* sum to 1 in this mode,
-                      // because every particle probabilistically belongs to this
-                      // pileup jet.
+        // smeared out as and attributed to pileup vertices.
+        // Particle weights will *not* sum to 1 in this mode,
+        // because every particle probabilistically belongs to this
+        // pileup jet.
         ONE_CLUSTER   // Runs the tool on input particles with k=1 before running
                       // on k=k_0 + 1 where the last jet is the one found in the
                       // k=1 mode. Weights will once again not sum to 1 in this
                       // mode.
     };
-
 
     enum Mode {
         NOCLUSTERINGMODE,
@@ -171,6 +175,8 @@ class FuzzyTools {
     double min_sigma;
 
     double log_log_likelihood_limit;
+
+    PostProcess post_process_method;
 
     EventJet event_jet_type;
     double event_jet_weight;
@@ -206,6 +212,10 @@ class FuzzyTools {
 
     void SetR(double r) {
         R = r;
+    }
+
+    void SetPostProcess(PostProcess ppm) {
+        post_process_method = ppm;
     }
 
     void SetEventJetType(EventJet type) {
@@ -248,6 +258,10 @@ class FuzzyTools {
 
     void SetAlpha(double a) {
         alpha = a;
+    }
+
+    PostProcess GetPostProcess() {
+        return post_process_method;
     }
 
     double GetEventJetWeight() const {

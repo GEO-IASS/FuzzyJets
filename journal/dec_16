@@ -1,0 +1,15 @@
+Basic problems with current event jet methods:
+    1) Jets get "caught" on event noise, spreading coaxial jets slightly. This is addressed somewhat in the jet post-processing section at the end.
+    2) The other is that jet multiplicity can be absurdly high as a result of all the junk. Using pT cuts, at least raw ones, is a poor way of addressing this issue. Please see the selecting initial jet locations section below.
+
+Selecting initial jet locations:
+    Making initial jet locations IRC safe is at least a philosophically admirable thing to do, and it is necessary in order to make the algorithm IRC safe overall. Inside the IRC safe framework of available options, the most obvious thing is to use groomed anti-kt jets instead of the ungroomed versions.
+
+Jet post-processing:
+    To address the issues of jet smearing, I'm adding a post-processing phase to the algorithmwhich maintains IRC safety. In practice this will consist of a *single* jet merger phase.
+
+General considerations:
+    The above two points should be implemented in a way that makes it obvious and easy to change or experiment with the way in which these are selected.
+
+Estimating background:
+    Setting the event jet threshold in an intelligent way can be difficult. One possible method is to use a fastjet background estimator to get rho for the event. This is probably the best and most reasonable way to do things. 

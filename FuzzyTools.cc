@@ -758,7 +758,33 @@ FuzzyTools::UpdateJetsGaussian(vecPseudoJet const& particles,
     return out_jets;
 }
 
+set<unsigned int>
+ClustersForRemovalDistance(vecPseudoJet const& jets,
+                           vector<double> const& jet_weights) {
+    set<unsigned int>removal_indices;
+    // remove any jets which are candidates for mergers
+    for (unsigned int j=0; j<jets.size(); j++){
+        if (removal_indices.count(j)) continue; // skip flagged indices
+        for (unsigned int k=j+1; k<jets.size(); k++){
+            if (jets[j].delta_R(jets[k]) < 0.1){
+                if(jet_weights[k] <= jet_weights[j]) {
+                    removal_indices.insert(k);
+                } else {
+                    removal_indices.insert(j);
+                    continue;
+                }
+            }
+        }
+    }
 
+    //for (unsigned int j=0; j < mGMM_jets.size(); j++) {
+    //    if (mGMM_weights[j] < min_weight) {
+    //        removal_indices.insert(j);
+    //    }
+    //}
+
+    return removal_indices;
+}
 
 set<unsigned int>
 FuzzyTools::ClustersForRemovalGaussian(vecPseudoJet const& mGMM_jets,
@@ -793,9 +819,7 @@ FuzzyTools::ClustersForRemovalGaussian(vecPseudoJet const& mGMM_jets,
             removal_indices.insert(j);
         }
     }
-    if (kernel_type == FuzzyTools::UNIFORM) {
-        cout << removal_indices.size() << endl;
-    }
+
     return removal_indices;
 }
 
@@ -887,6 +911,41 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet const& particles,
         std::transform(mUMM_weights.begin(), mUMM_weights.end(), mUMM_weights.begin(),
                        std::bind2nd(std::multiplies<double>(), 1.0/total_weight));
     }
+
+    if (post_process_method == FuzzyTools::ONE_DISTANCE_MERGER) {
+        set<unsigned int> to_remove =
+            ClustersForRemovalDistance(mUMM_jets, mUMM_weights);
+        vector<vector<double> >weights_hold;
+        vecPseudoJet mUMM_jets_hold;
+        vector<double> mUMM_weights_hold;
+
+        for (unsigned int q=0; q<particles.size(); q++){
+            vector<double> hhh;
+            weights_hold.push_back(hhh);
+        }
+        for (unsigned int j=0; j<mUMM_jets.size(); j++){
+            if (to_remove.count(j) == 0){
+                for (unsigned int q=0; q<particles.size(); q++){
+                    weights_hold[q].push_back(weights[q][j]);
+                }
+                mUMM_jets_hold.push_back(mUMM_jets[j]);
+                mUMM_weights_hold.push_back(mUMM_weights[j]);
+            }
+        }
+
+        // now replace and update weights and parameters vectors
+        weights.clear();
+        mUMM_jets.clear();
+        mUMM_weights.clear();
+
+        weights = weights_hold;
+        mUMM_jets = mUMM_jets_hold;
+        mUMM_weights = mUMM_weights_hold;
+        cluster_count = mUMM_jets_hold.size();
+        ComputeWeightsUniform(particles, &weights, cluster_count, mUMM_jets,
+                              mUMM_weights);
+    }
+
     iter_count = iter;
     weights_out->clear();
     for (unsigned int i=0; i<weights.size(); i++){
@@ -969,8 +1028,46 @@ FuzzyTools::ClusterFuzzyTruncGaus(vecPseudoJet const& particles,
         std::transform(mTGMM_weights.begin(), mTGMM_weights.end(), mTGMM_weights.begin(),
                        std::bind2nd(std::multiplies<double>(), 1.0/total_weight));
         cluster_count = mTGMM_jets_hold.size();
-
     }
+
+    if (post_process_method == FuzzyTools::ONE_DISTANCE_MERGER) {
+        set<unsigned int> to_remove =
+            ClustersForRemovalDistance(mTGMM_jets, mTGMM_weights);
+        vector<vector<double> >weights_hold;
+        vecPseudoJet mTGMM_jets_hold;
+        vector<MatTwo> mTGMM_jets_params_hold;
+        vector<double> mTGMM_weights_hold;
+
+        for (unsigned int q=0; q<particles.size(); q++){
+            vector<double> hhh;
+            weights_hold.push_back(hhh);
+        }
+        for (unsigned int j=0; j<mTGMM_jets.size(); j++){
+            if (to_remove.count(j) == 0){
+                for (unsigned int q=0; q<particles.size(); q++){
+                    weights_hold[q].push_back(weights[q][j]);
+                }
+                mTGMM_jets_hold.push_back(mTGMM_jets[j]);
+                mTGMM_jets_params_hold.push_back(mTGMM_jets_params[j]);
+                mTGMM_weights_hold.push_back(mTGMM_weights[j]);
+            }
+        }
+
+        // now replace and update weights and parameters vectors
+        weights.clear();
+        mTGMM_jets.clear();
+        mTGMM_jets_params.clear();
+        mTGMM_weights.clear();
+
+        weights = weights_hold;
+        mTGMM_jets = mTGMM_jets_hold;
+        mTGMM_jets_params = mTGMM_jets_params_hold;
+        mTGMM_weights = mTGMM_weights_hold;
+        cluster_count = mTGMM_jets_hold.size();
+        ComputeWeightsTruncGaus(particles, &weights, cluster_count, mTGMM_jets,
+                                mTGMM_jets_params, mTGMM_weights);
+    }
+
     iter_count = iter;
     weights_out->clear();
     for (unsigned int i=0; i<weights.size(); i++){
@@ -1060,7 +1157,46 @@ FuzzyTools::ClusterFuzzyGaussianC(vecPseudoJet const& particles,
         cluster_count = mGMMc_jets_hold.size();
 
     }
-    iter_count= iter;
+
+    if (post_process_method == FuzzyTools::ONE_DISTANCE_MERGER) {
+        set<unsigned int> to_remove =
+            ClustersForRemovalDistance(mGMMc_jets, mGMMc_weights);
+        vector<vector<double> >weights_hold;
+        vecPseudoJet mGMMc_jets_hold;
+        vector<MatTwo> mGMMc_jets_params_hold;
+        vector<double> mGMMc_weights_hold;
+
+        for (unsigned int q=0; q<particles.size(); q++){
+            vector<double> hhh;
+            weights_hold.push_back(hhh);
+        }
+        for (unsigned int j=0; j<mGMMc_jets.size(); j++){
+            if (to_remove.count(j) == 0){
+                for (unsigned int q=0; q<particles.size(); q++){
+                    weights_hold[q].push_back(weights[q][j]);
+                }
+                mGMMc_jets_hold.push_back(mGMMc_jets[j]);
+                mGMMc_jets_params_hold.push_back(mGMMc_jets_params[j]);
+                mGMMc_weights_hold.push_back(mGMMc_weights[j]);
+            }
+        }
+
+        // now replace and update weights and parameters vectors
+        weights.clear();
+        mGMMc_jets.clear();
+        mGMMc_jets_params.clear();
+        mGMMc_weights.clear();
+
+        weights = weights_hold;
+        mGMMc_jets = mGMMc_jets_hold;
+        mGMMc_jets_params = mGMMc_jets_params_hold;
+        mGMMc_weights = mGMMc_weights_hold;
+        cluster_count = mGMMc_jets_hold.size();
+        ComputeWeightsGaussian(particles, &weights, cluster_count, mGMMc_jets,
+                               mGMMc_jets_params, mGMMc_weights);
+    }
+
+    iter_count = iter;
     weights_out->clear();
     for (unsigned int i=0; i<weights.size(); i++){
         weights_out->push_back(weights[i]);
@@ -1241,6 +1377,45 @@ FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet const& particles,
         cluster_count = mGMM_jets_hold.size();
 
     }
+
+    if (post_process_method == FuzzyTools::ONE_DISTANCE_MERGER) {
+        set<unsigned int> to_remove =
+            ClustersForRemovalDistance(mGMM_jets, mGMM_weights);
+        vector<vector<double> >weights_hold;
+        vecPseudoJet mGMM_jets_hold;
+        vector<MatTwo> mGMM_jets_params_hold;
+        vector<double> mGMM_weights_hold;
+
+        for (unsigned int q=0; q<particles.size(); q++){
+            vector<double> hhh;
+            weights_hold.push_back(hhh);
+        }
+        for (unsigned int j=0; j<mGMM_jets.size(); j++){
+            if (to_remove.count(j) == 0){
+                for (unsigned int q=0; q<particles.size(); q++){
+                    weights_hold[q].push_back(weights[q][j]);
+                }
+                mGMM_jets_hold.push_back(mGMM_jets[j]);
+                mGMM_jets_params_hold.push_back(mGMM_jets_params[j]);
+                mGMM_weights_hold.push_back(mGMM_weights[j]);
+            }
+        }
+
+        // now replace and update weights and parameters vectors
+        weights.clear();
+        mGMM_jets.clear();
+        mGMM_jets_params.clear();
+        mGMM_weights.clear();
+
+        weights = weights_hold;
+        mGMM_jets = mGMM_jets_hold;
+        mGMM_jets_params = mGMM_jets_params_hold;
+        mGMM_weights = mGMM_weights_hold;
+        cluster_count = mGMM_jets_hold.size();
+        ComputeWeightsGaussian(particles, &weights, cluster_count, mGMM_jets,
+                               mGMM_jets_params, mGMM_weights);
+    }
+
     iter_count = iter;
     weights_out->clear();
     for (unsigned int i=0; i<weights.size(); i++){
