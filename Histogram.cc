@@ -895,6 +895,61 @@ void RadiusPtSeedHistogram::Update(EventManager const* event_manager) {
     _hists[2]->Fill(sigma, reweight);
 }
 
+void SigmaEventJetStrength::Update(EventManager const* event_manager) {
+    for (unsigned int i = 0; i < util::EJWs.size(); i++) {
+        std::string en =
+            util::eventname(_process, _NPV, util::EJWs.at(i),
+                            _EJO, _PP, _seed_pT_cut);
+        float reweight = event_manager->Reweight(en);
+        float sigma = (*event_manager)[en].mGMMc_r;
+        _hists[i]->Fill(sigma, reweight);
+    }
+}
+
+void SigmaEventJetNPV::Update(EventManager const* event_manager) {
+    for (unsigned int i = 0; i < util::NPVs.size(); i++) {
+        std::string en =
+            util::eventname(_process, util::NPVs.at(i), _EJW,
+                            _EJO, _PP, _seed_pT_cut);
+        float reweight = event_manager->Reweight(en);
+        float sigma = (*event_manager)[en].mGMMc_r;
+        _hists[i]->Fill(sigma, reweight);
+    }
+}
+
+void SigmaEventJetOffset::Update(EventManager const* event_manager) {
+    for (unsigned int i = 0; i < util::EJOs.size(); i++) {
+        std::string en =
+            util::eventname(_process, _NPV, _EJW,
+                            util::EJOs.at(i), _PP, _seed_pT_cut);
+        float reweight = event_manager->Reweight(en);
+        float sigma = (*event_manager)[en].mGMMc_r;
+        _hists[i]->Fill(sigma, reweight);
+    }
+}
+
+void SigmaEventJetPP::Update(EventManager const* event_manager) {
+    for (unsigned int i = 0; i < util::PPs.size(); i++) {
+        std::string en =
+            util::eventname(_process, _NPV, _EJW,
+                            _EJO, util::PPs.at(i), _seed_pT_cut);
+        float reweight = event_manager->Reweight(en);
+        float sigma = (*event_manager)[en].mGMMc_r;
+        _hists[i]->Fill(sigma, reweight);
+    }
+}
+
+void SigmaEventJetSeedCut::Update(EventManager const* event_manager) {
+    for (unsigned int i = 0; i < util::seed_pT_cuts.size(); i++) {
+        std::string en =
+            util::eventname(_process, _NPV, _EJW,
+                            _EJO, _PP, util::seed_pT_cuts.at(i));
+        float reweight = event_manager->Reweight(en);
+        float sigma = (*event_manager)[en].mGMMc_r;
+        _hists[i]->Fill(sigma, reweight);
+    }
+}
+
 void AverageRadiusPtSeedHistogram::Update(EventManager const* event_manager) {
     float reweight = event_manager->Reweight(_event_label_base + "_5");
     float sigma = (*event_manager)[_event_label_base + "_5"].mGMMc_r_avg;

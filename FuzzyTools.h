@@ -25,6 +25,10 @@ typedef std::vector<fastjet::PseudoJet> vecPseudoJet;
 double totalMass(vecPseudoJet particles, vector<unsigned int> indices);
 double totalpT(vecPseudoJet particles, vector<unsigned int> indices);
 
+// used to extract meaningful signed pTs
+int pTSign(fastjet::PseudoJet p);
+float signedPt(fastjet::PseudoJet p);
+
 class MatTwo {
 public:
     double xx;
@@ -158,6 +162,8 @@ class FuzzyTools {
     };
 
  private:
+    unsigned int _n_events;
+
     int m_test;
     double alpha;
     double R;
@@ -200,6 +206,10 @@ class FuzzyTools {
 
     void SetDefaultSigma(MatTwo s) {
         default_sigma = s;
+    }
+
+    void SetNEvents (unsigned int n) {
+        _n_events = n;
     }
 
     void SetLogLogLikelihoodLimit(double l) {

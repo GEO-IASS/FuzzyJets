@@ -9,8 +9,11 @@
 
 #include "myFastJetBase.h"
 #include "fastjet/ClusterSequenceActiveAreaExplicitGhosts.hh"
+#include "fastjet/tools/JetMedianBackgroundEstimator.hh"
+#include "fastjet/tools/GridMedianBackgroundEstimator.hh"
 #include "fastjet/ClusterSequenceArea.hh"
 #include "fastjet/ClusterSequenceActiveArea.hh"
+#include "fastjet/RangeDefinition.hh"
 #include "fastjet/PseudoJet.hh"
 #include "fastjet/tools/Filter.hh"
 #include "fastjet/Selector.hh"
@@ -302,14 +305,26 @@ namespace {
         }
     }
 
+    double estimateRho(vecPseudoJet arg_particles) {
+        fastjet::JetDefinition jet_def_estimator =
+            fastjet::JetDefinition(fastjet::kt_algorithm, 0.4);
+        fastjet::AreaDefinition area_def_estimator = fastjet::AreaDefinition(fastjet::active_area_explicit_ghosts);
+        fastjet::Selector rap_sel = fastjet::SelectorAbsRapMax(1.5);
+        fastjet::JetMedianBackgroundEstimator bge(rap_sel, jet_def_estimator,
+                                                  area_def_estimator);
+        bge.set_particles(arg_particles);
+        double rho = bge.rho();
+        return rho;
+    }
+
     vecPseudoJet groomedInitialLocations(vecPseudoJet const& particles,
                                          float akt_jet_size, float filter_size,
-                                         float filter_pT_frac, float pT_min) {
+                                         float filter_pT_frac, float pT_min, double rho) {
         // build a list of input jet locations on the basis of groomed anti-kt
         // jet locations
         fastjet::JetDefinition m_jet_def(fastjet::antikt_algorithm, akt_jet_size);
-
-        fastjet::ClusterSequence cs_seed_akt_ungroomed(particles, m_jet_def);
+        fastjet::AreaDefinition a_def = fastjet::AreaDefinition(fastjet::active_area_explicit_ghosts);
+        fastjet::ClusterSequenceArea cs_seed_akt_ungroomed(particles, m_jet_def, a_def);
         fastjet::Filter seed_filter(filter_size,
                                     fastjet::SelectorPtFractionMin(filter_pT_frac));
 
@@ -319,7 +334,7 @@ namespace {
 
         for (unsigned int j_i = 0; j_i < original_jets.size(); j_i++) {
             fastjet::PseudoJet trimmed = seed_filter(original_jets.at(j_i));
-            if (trimmed.pt() > pT_min) {
+            if (trimmed.pt() > pT_min + rho * trimmed.area()) {
                 final_locations.push_back(trimmed);
             }
         }
@@ -340,14 +355,13 @@ namespace {
                           vector<double>& jet_weights,
                           unsigned int &iters,
                           FuzzyTools::EventJet event_jet_type,
-                          FuzzyTools::PostProcess post_processing_method) {
+                          FuzzyTools::PostProcess post_processing_method,
+                          double event_jet_weight) {
         vecPseudoJet parts = particles;
         tool->SetEventJetType(event_jet_type);
         tool->SetPostProcess(post_processing_method);
         if (event_jet_type == FuzzyTools::FLAT) {
-            // use inverse calorimeter area as a first order reasonable guess
-            // in reality this should depend on the amount of pileup?
-            tool->SetEventJetWeight(1/(2*M_PI*10));
+            tool->SetEventJetWeight(event_jet_weight);
         }
         tool->SetKernelType(FuzzyTools::UNIFORM);
         tool->SetLearnWeights(learn_weights);
@@ -381,15 +395,14 @@ namespace {
                            vector<double>& jet_weights,
                            unsigned int &iters,
                            FuzzyTools::EventJet event_jet_type,
-                           FuzzyTools::PostProcess post_processing_method) {
+                           FuzzyTools::PostProcess post_processing_method,
+                           double event_jet_weight) {
         tool->SetKernelType(FuzzyTools::TRUNCGAUSSIAN);
         tool->SetLearnWeights(learn_weights);
         tool->SetEventJetType(event_jet_type);
         tool->SetPostProcess(post_processing_method);
         if (event_jet_type == FuzzyTools::FLAT) {
-            // use inverse calorimeter area as a first order reasonable guess
-            // in reality this should depend on the amount of pileup?
-            tool->SetEventJetWeight(1/(2*M_PI*10));
+            tool->SetEventJetWeight(event_jet_weight);
         }
         if(learn_shape) {
             tool->SetClusteringMode(FuzzyTools::FIXED);
@@ -426,15 +439,14 @@ namespace {
                            vector<double>& jet_weights,
                            unsigned int &iters,
                            FuzzyTools::EventJet event_jet_type,
-                           FuzzyTools::PostProcess post_processing_method) {
+                           FuzzyTools::PostProcess post_processing_method,
+                           double event_jet_weight) {
         tool->SetKernelType(FuzzyTools::GAUSSIAN);
         tool->SetLearnWeights(learn_weights);
         tool->SetEventJetType(event_jet_type);
         tool->SetPostProcess(post_processing_method);
         if (event_jet_type == FuzzyTools::FLAT) {
-            // use inverse calorimeter area as a first order reasonable guess
-            // in reality this should depend on the amount of pileup?
-            tool->SetEventJetWeight(1/(2*M_PI*10));
+            tool->SetEventJetWeight(event_jet_weight);
         }
         if (do_recombination) {
             tool->SetClusteringMode(FuzzyTools::RECOMBINATION);
@@ -466,15 +478,14 @@ namespace {
                           vector<double>& jet_weights,
                           unsigned int &iters,
                           FuzzyTools::EventJet event_jet_type,
-                          FuzzyTools::PostProcess post_processing_method) {
+                          FuzzyTools::PostProcess post_processing_method,
+                          double event_jet_weight) {
         tool->SetKernelType(FuzzyTools::GAUSSIAN);
         tool->SetLearnWeights(learn_weights);
         tool->SetEventJetType(event_jet_type);
         tool->SetPostProcess(post_processing_method);
         if (event_jet_type == FuzzyTools::FLAT) {
-            // use inverse calorimeter area as a first order reasonable guess
-            // in reality this should depend on the amount of pileup?
-            tool->SetEventJetWeight(1/(2*M_PI*10));
+            tool->SetEventJetWeight(event_jet_weight);
         }
         if(learn_shape) {
             tool->SetClusteringMode(FuzzyTools::FIXED);
@@ -561,7 +572,7 @@ vecPseudoJet FuzzyAnalysis::DiscretizeParticles(vecPseudoJet const& arg_particle
                                                 int n_phi, int n_eta,
                                                 float eta_cutoff) {
     TH2F *grid_E = new TH2F("grid_E", "", n_eta, -eta_cutoff, eta_cutoff, n_phi,
-                             0, 2*M_PI);
+                            0, 2*M_PI);
     TH2F *grid_charge = new TH2F("grid_charge", "", n_eta, -eta_cutoff, eta_cutoff, n_phi,
                                  0, 2*M_PI);
     for (unsigned int p_i = 0; p_i < arg_particles.size(); p_i++) {
@@ -570,7 +581,7 @@ vecPseudoJet FuzzyAnalysis::DiscretizeParticles(vecPseudoJet const& arg_particle
         float phi = p.phi();
         if (phi < 0) phi += (2*M_PI);
         float charge = p.user_info<MyUserInfo>().charge();
-        float E = p.pt();
+        float E = p.E();
         grid_E->Fill(eta, phi, E);
         grid_charge->Fill(eta, phi, charge);
     }
@@ -584,10 +595,11 @@ vecPseudoJet FuzzyAnalysis::DiscretizeParticles(vecPseudoJet const& arg_particle
             float E = grid_E->GetBinContent(x_i, y_i);
             float charge = grid_charge->GetBinContent(x_i, y_i);
             fastjet::PseudoJet p;
-            p.reset_PtYPhiM(E, eta, phi, 0); // equivalent to energy with m=0
+            // eta = phi because m = 0
+            p.reset_PtYPhiM(E/cosh(eta), eta, phi, 0); // equivalent to energy with m=0
 
             // don't have a particle ID anymore
-            p.set_user_info(new MyUserInfo(0, 0, charge, false));
+            p.set_user_info(new MyUserInfo(0, 0, charge, false, false));
             if (p.pt()) {
                 out.push_back(p);
             }
@@ -599,11 +611,13 @@ vecPseudoJet FuzzyAnalysis::DiscretizeParticles(vecPseudoJet const& arg_particle
     return out;
 }
 
-vecPseudoJet FuzzyAnalysis::ChargedParticles(vecPseudoJet const& arg_particles) {
+vecPseudoJet FuzzyAnalysis::ChargedParticles(vecPseudoJet const& arg_particles,
+                                             double eta_max) {
     vecPseudoJet charged_particles;
     for (unsigned int particle_iter = 0; particle_iter < arg_particles.size(); particle_iter++) {
         double charge = arg_particles[particle_iter].user_info<MyUserInfo>().charge();
-        if (fabs(charge) > 1000 * DBL_EPSILON) {
+        double abs_eta = fabs(arg_particles[particle_iter].eta());
+        if ((fabs(charge) > 1000 * DBL_EPSILON) && abs_eta < eta_max) {
             // is charged
             charged_particles.push_back(arg_particles[particle_iter]);
         }
@@ -611,16 +625,18 @@ vecPseudoJet FuzzyAnalysis::ChargedParticles(vecPseudoJet const& arg_particles) 
     return charged_particles;
 }
 
-vecPseudoJet FuzzyAnalysis::UnchargedParticles(vecPseudoJet const& arg_particles) {
-    vecPseudoJet charged_particles;
+vecPseudoJet FuzzyAnalysis::UnchargedParticles(vecPseudoJet const& arg_particles,
+                                               double eta_max) {
+    vecPseudoJet uncharged_particles;
     for (unsigned int particle_iter = 0; particle_iter < arg_particles.size(); particle_iter++) {
         double charge = arg_particles[particle_iter].user_info<MyUserInfo>().charge();
-        if (fabs(charge) <= 1000 * DBL_EPSILON) {
-            // is charged
-            charged_particles.push_back(arg_particles[particle_iter]);
+        double abs_eta = fabs(arg_particles[particle_iter].eta());
+        if ((fabs(charge) <= 1000 * DBL_EPSILON) || abs_eta >= eta_max) {
+            // is uncharged
+            uncharged_particles.push_back(arg_particles[particle_iter]);
         }
     }
-    return charged_particles;
+    return uncharged_particles;
 }
 
 void FuzzyAnalysis::GroomingStudy(vecPseudoJet leading_particles,
@@ -654,6 +670,7 @@ void FuzzyAnalysis::GroomingStudy(vecPseudoJet leading_particles,
     unsigned int dummy;
     FuzzyTools::EventJet event_jet_type = FuzzyTools::NONE;
     FuzzyTools::PostProcess post_processing_method = FuzzyTools::NO_POST_PROCESS;
+    double event_jet_weight = 0;
 
     // Fuzzy Jets: mGMMs --------------------
     vector<vector<double> > mGMMs_particle_weights;
@@ -668,7 +685,8 @@ void FuzzyAnalysis::GroomingStudy(vecPseudoJet leading_particles,
                          mGMMs_indices, max_pT_mGMMs,
                          tool, mGMMs_jets, mGMMs_particle_weights,
                          mGMMs_jets_params, mGMMs_weights, dummy,
-                         event_jet_type, post_processing_method);
+                         event_jet_type, post_processing_method,
+                         event_jet_weight);
     }
     __attribute__((unused)) int lead_mGMMs_index = mGMMs_indices.size() ? mGMMs_indices.at(0) : -1;
 
@@ -686,7 +704,8 @@ void FuzzyAnalysis::GroomingStudy(vecPseudoJet leading_particles,
                           mGMMc_indices, max_pT_mGMMc,
                           tool, mGMMc_jets, mGMMc_particle_weights,
                           mGMMc_jets_params, mGMMc_weights, dummy,
-                          event_jet_type, post_processing_method);
+                          event_jet_type, post_processing_method,
+                          event_jet_weight);
     }
     __attribute__((unused)) int lead_mGMMc_index = mGMMc_indices.size() ? mGMMc_indices.at(0) : -1;
 
@@ -703,7 +722,8 @@ void FuzzyAnalysis::GroomingStudy(vecPseudoJet leading_particles,
                           f_size, mTGMMs_indices, max_pT_mTGMMs,
                           tool, mTGMMs_jets, mTGMMs_particle_weights,
                           mTGMMs_jets_params, mTGMMs_weights, dummy,
-                          event_jet_type, post_processing_method);
+                          event_jet_type, post_processing_method,
+                          event_jet_weight);
     }
     __attribute__((unused)) int lead_mTGMMs_index = mTGMMs_indices.size() ? mTGMMs_indices.at(0) : -1;
 
@@ -719,7 +739,8 @@ void FuzzyAnalysis::GroomingStudy(vecPseudoJet leading_particles,
                          f_learn_weights, false, false,
                          mGMM_indices, max_pT_mGMM,
                          tool, mGMM_jets, mGMM_particle_weights,
-                         mGMM_jets_params, mGMM_weights, dummy, event_jet_type, post_processing_method);
+                         mGMM_jets_params, mGMM_weights, dummy, event_jet_type,
+                         post_processing_method, event_jet_weight);
     }
     __attribute__((unused)) int lead_mGMM_index = mGMM_indices.size() ? mGMM_indices.at(0) : -1;
 
@@ -733,7 +754,8 @@ void FuzzyAnalysis::GroomingStudy(vecPseudoJet leading_particles,
         DoMUMMJetFinding(leading_particles, seeds,
                          f_learn_weights, f_size, false,
                          mUMM_indices, max_pT_mUMM, tool, mUMM_jets,
-                         mUMM_particle_weights, mUMM_weights, dummy, event_jet_type, post_processing_method);
+                         mUMM_particle_weights, mUMM_weights, dummy, event_jet_type,
+                         post_processing_method, event_jet_weight);
     }
     __attribute__((unused)) int lead_mUMM_index = mUMM_indices.size() ? mUMM_indices.at(0) : -1;
 
@@ -749,7 +771,8 @@ void FuzzyAnalysis::GroomingStudy(vecPseudoJet leading_particles,
                           f_learn_weights, false, false, f_size,
                           mTGMM_indices, max_pT_mTGMM, tool, mTGMM_jets,
                           mTGMM_particle_weights, mTGMM_jets_params,
-                          mTGMM_weights, dummy, event_jet_type, post_processing_method);
+                          mTGMM_weights, dummy, event_jet_type,
+                          post_processing_method, event_jet_weight);
     }
     __attribute__((unused)) int lead_mTGMM_index = mTGMM_indices.size() ? mTGMM_indices.at(0) : -1;
 
@@ -1062,6 +1085,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
         unsigned int dummy;
         FuzzyTools::EventJet event_jet_type = FuzzyTools::NONE;
         FuzzyTools::PostProcess post_processing_method = FuzzyTools::NO_POST_PROCESS;
+        double event_jet_weight = 0;
 
         // Fuzzy Jets: mGMMs --------------------
         vector<vector<double> > mGMMs_particle_weights;
@@ -1076,7 +1100,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                              mGMMs_indices, max_pT_mGMMs,
                              tool, mGMMs_jets, mGMMs_particle_weights,
                              mGMMs_jets_params, mGMMs_weights, dummy,
-                             event_jet_type, post_processing_method);
+                             event_jet_type, post_processing_method, event_jet_weight);
         }
         int lead_mGMMs_index = mGMMs_indices.size() ? mGMMs_indices.at(0) : -1;
 
@@ -1094,7 +1118,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                               mGMMc_indices, max_pT_mGMMc,
                               tool, mGMMc_jets, mGMMc_particle_weights,
                               mGMMc_jets_params, mGMMc_weights, dummy,
-                              event_jet_type, post_processing_method);
+                              event_jet_type, post_processing_method, event_jet_weight);
         }
         int lead_mGMMc_index = mGMMc_indices.size() ? mGMMc_indices.at(0) : -1;
 
@@ -1111,7 +1135,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                               f_size, mTGMMs_indices, max_pT_mTGMMs,
                               tool, mTGMMs_jets, mTGMMs_particle_weights,
                               mTGMMs_jets_params, mTGMMs_weights, dummy,
-                              event_jet_type, post_processing_method);
+                              event_jet_type, post_processing_method, event_jet_weight);
         }
         int lead_mTGMMs_index = mTGMMs_indices.size() ? mTGMMs_indices.at(0) : -1;
 
@@ -1128,7 +1152,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                              mGMM_indices, max_pT_mGMM,
                              tool, mGMM_jets, mGMM_particle_weights,
                              mGMM_jets_params, mGMM_weights, dummy,
-                             event_jet_type, post_processing_method);
+                             event_jet_type, post_processing_method, event_jet_weight);
         }
         int lead_mGMM_index = mGMM_indices.size() ? mGMM_indices.at(0) : -1;
 
@@ -1143,7 +1167,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                              f_learn_weights, f_size, false,
                              mUMM_indices, max_pT_mUMM, tool, mUMM_jets,
                              mUMM_particle_weights, mUMM_weights, dummy,
-                             event_jet_type, post_processing_method);
+                             event_jet_type, post_processing_method, event_jet_weight);
         }
         __attribute__((unused)) int lead_mUMM_index = mUMM_indices.size() ? mUMM_indices.at(0) : -1;
 
@@ -1160,7 +1184,7 @@ void FuzzyAnalysis::SubstructureStudy(vecPseudoJet ca_jets,
                               mTGMM_indices, max_pT_mTGMM, tool, mTGMM_jets,
                               mTGMM_particle_weights, mTGMM_jets_params,
                               mTGMM_weights, dummy, event_jet_type,
-                              post_processing_method);
+                              post_processing_method, event_jet_weight);
         }
         int lead_mTGMM_index = mTGMM_indices.size() ? mTGMM_indices.at(0) : -1;
 
@@ -1429,7 +1453,7 @@ void FuzzyAnalysis::AnalyzeEventNew(int event_iter, Pythia8::Pythia* pythia8, Py
             fastjet::PseudoJet p(px, py, pz, e);
             p.reset_PtYPhiM(p.pt(), p.rapidity(), p.phi(), 0.);
             // note that we don't really keep the particle number! only store particle_idx, should really store particle_idx and pileup_idx
-            p.set_user_info(new MyUserInfo(pythia_MB->event[particle_idx].id(),particle_idx,pythia_MB->event[particle_idx].charge(),true));
+            p.set_user_info(new MyUserInfo(pythia_MB->event[particle_idx].id(),particle_idx,pythia_MB->event[particle_idx].charge(),true,false));
             particles_for_jets.push_back(p);
         }
         if (!pythia_MB->next()) continue;
@@ -1445,7 +1469,7 @@ void FuzzyAnalysis::AnalyzeEventNew(int event_iter, Pythia8::Pythia* pythia8, Py
         pz = pythia8->event[particle_idx].pz();
         e  = pythia8->event[particle_idx].e();
         fastjet::PseudoJet p(px, py, pz, e);
-        p.set_user_info(new MyUserInfo(pythia8->event[particle_idx].id(),particle_idx,pythia8->event[particle_idx].charge(),false));
+        p.set_user_info(new MyUserInfo(pythia8->event[particle_idx].id(),particle_idx,pythia8->event[particle_idx].charge(),false,false));
 
         // In reality we should be more careful about finding tops,
         // but this will do for now. In the future consider refactoring
@@ -1514,7 +1538,7 @@ void FuzzyAnalysis::PiFixStudy() {
                           mGMMc_indices, max_pT_mGMMc,
                           tool, mGMMc_jets, mGMMc_particle_weights,
                           mGMMc_jets_params, mGMMc_weights, fTmGMMc_iter,
-                          FuzzyTools::NONE, FuzzyTools::NO_POST_PROCESS);
+                          FuzzyTools::NONE, FuzzyTools::NO_POST_PROCESS, 0);
     }
     int lead_mGMMc_index = mGMMc_indices.size() ? mGMMc_indices.at(0) : -1;
 
@@ -1531,7 +1555,7 @@ void FuzzyAnalysis::PiFixStudy() {
                          mGMM_indices, max_pT_mGMM,
                          tool, mGMM_jets, mGMM_particle_weights,
                          mGMM_jets_params, mGMM_weights, fTmGMM_iter,
-                          FuzzyTools::NONE, FuzzyTools::NO_POST_PROCESS);
+                         FuzzyTools::NONE, FuzzyTools::NO_POST_PROCESS, 0);
     }
     int lead_mGMM_index = mGMM_indices.size() ? mGMM_indices.at(0) : -1;
 
@@ -1600,18 +1624,16 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
             e  = pythia_MB->event[particle_idx].e();
 
             fastjet::PseudoJet p(px, py, pz, e);
-            // should do: reset pT to be given though E = pT/cosh(eta)
+
             p.reset_PtYPhiM(p.pt(), p.rapidity(), p.phi(), 0.);
             // note that we don't really keep the particle number! only store particle_idx, should really store particle_idx and pileup_idx
-            p.set_user_info(new MyUserInfo(pythia_MB->event[particle_idx].id(),particle_idx,pythia_MB->event[particle_idx].charge(),true));
+            p.set_user_info(new MyUserInfo(pythia_MB->event[particle_idx].id(),particle_idx,pythia_MB->event[particle_idx].charge(),true,false));
 
             max_rap = max_rap < fabs(p.rap()) ? fabs(p.rap()) : max_rap;
             pileup_for_jets.push_back(p);
         }
         if (!pythia_MB->next()) continue;
     }
-
-    vecPseudoJet uncharged_pileup = UnchargedParticles(pileup_for_jets);
 
     // Particle loop -----------------------------------------------------------
     // The Pythia event listing contains a lot more than we want to process,
@@ -1623,7 +1645,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         pz = pythia8->event[particle_idx].pz();
         e  = pythia8->event[particle_idx].e();
         fastjet::PseudoJet p(px, py, pz, e);
-        p.set_user_info(new MyUserInfo(pythia8->event[particle_idx].id(),particle_idx,pythia8->event[particle_idx].charge(),false));
+        p.set_user_info(new MyUserInfo(pythia8->event[particle_idx].id(),particle_idx,pythia8->event[particle_idx].charge(),false,false));
 
         // In reality we should be more careful about finding tops,
         // but this will do for now. In the future consider refactoring
@@ -1641,14 +1663,18 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         if (pythia8->event[particle_idx].pT()       < 0.5) continue; // ...   low pT
 
         max_rap = max_rap < fabs(p.rap()) ? fabs(p.rap()) : max_rap;
-        // should do: reset pT to be given though E = pT/cosh(eta)
+        // should do: reset pT to be given though E = pT*cosh(eta)
 
         particles_for_jets.push_back(p);
 
     } // end particle loop -----------------------------------------------
 
-    vecPseudoJet charged_hs = ChargedParticles(particles_for_jets);
-    vecPseudoJet uncharged_hs = UnchargedParticles(particles_for_jets);
+
+
+    vecPseudoJet charged_hs = ChargedParticles(particles_for_jets, 2.5);
+    vecPseudoJet uncharged_hs = UnchargedParticles(particles_for_jets, 2.5);
+    vecPseudoJet charged_pileup = ChargedParticles(pileup_for_jets, 2.5);
+    vecPseudoJet uncharged_pileup = UnchargedParticles(pileup_for_jets, 2.5);
 
     vecPseudoJet all_uncharged;
     for (unsigned int p_i = 0; p_i < uncharged_hs.size(); p_i++) {
@@ -1657,16 +1683,41 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     for (unsigned int p_i = 0; p_i < uncharged_pileup.size(); p_i++) {
         all_uncharged.push_back(uncharged_pileup.at(p_i));
     }
-
-    vecPseudoJet discretized_all_uncharged = DiscretizeParticles(all_uncharged,
-                                                                 60, 100, 5);
-
-    vecPseudoJet all_particles_for_jets = discretized_all_uncharged;
+    vecPseudoJet pre_disc_for_jets = all_uncharged;
     for (unsigned int p_i = 0; p_i < charged_hs.size(); p_i++) {
-        all_particles_for_jets.push_back(charged_hs.at(p_i));
+        pre_disc_for_jets.push_back(charged_hs.at(p_i));
     }
 
+    double disc_max_eta = 5;
+    int bins_eta = 100;
+    int bins_phi = 60;
+    vecPseudoJet discretized_all_for_jets =
+        DiscretizeParticles(pre_disc_for_jets, bins_phi, bins_eta, disc_max_eta);
+
+    vecPseudoJet all_particles_for_jets = discretized_all_for_jets;
+    //for (unsigned int p_i = 0; p_i < charged_hs.size(); p_i++) {
+    //    all_particles_for_jets.push_back(charged_hs.at(p_i));
+    //}
+
     particles_for_jets = all_particles_for_jets;
+
+    // ======================================
+    // Calculate rho ------------------------
+    // ======================================
+    // use charged pileup and all uncharged for background estimation
+    vecPseudoJet rho_estimator_particles;
+    for (unsigned int p_i = 0; p_i < all_uncharged.size(); p_i++) {
+        rho_estimator_particles.push_back(all_uncharged.at(p_i));
+    }
+    for (unsigned int p_i = 0; p_i < charged_pileup.size(); p_i++) {
+        rho_estimator_particles.push_back(charged_pileup.at(p_i));
+    }
+
+
+    vecPseudoJet discretized_rho_estimator_particles =
+        DiscretizeParticles(rho_estimator_particles, bins_phi, bins_eta, disc_max_eta);
+
+    fTrho = estimateRho(discretized_rho_estimator_particles);
 
     // Area Definition ---------------------
     fastjet::GhostedAreaSpec area_spec(max_rap);
@@ -1753,11 +1804,13 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
             fastjet::PseudoJet const& particle = particles_for_jets[particle_iter];
             is_lead_antikt_constituent_vec.push_back(lead_akt.contains(particle));
         }
+        is_lead_antikt_constituent_vec.clear(); // don't need this info, doesn't make sense
     }
     for (unsigned int particle_iter = 0; particle_iter < particles_for_jets.size(); particle_iter++) {
         fastjet::PseudoJet const& particle = particles_for_jets[particle_iter];
         is_pileup_vec.push_back(particle.user_info<MyUserInfo>().isPU());
     }
+    is_pileup_vec.clear(); // this doesn't make sense anymore after discretizing
 
     bool do_substructure_study = false;
     if (do_substructure_study && !batched && event_iter < 10) {
@@ -1781,13 +1834,35 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     }
 
     // ======================================
+    // Tower based subtraction --------------
+    // ======================================
+    double area_per_cell = (2*M_PI) * (2*disc_max_eta) / (bins_phi * bins_eta);
+    vecPseudoJet tower_subtracted_particles_for_jets;
+    for (unsigned int p_i = 0; p_i < particles_for_jets.size(); p_i++) {
+        fastjet::PseudoJet p_orig = particles_for_jets.at(p_i);
+        if (_do_tower_subtraction) {
+            double npt = p_orig.pt() - (area_per_cell * fTrho);
+            double eta = p_orig.eta();
+            double phi = p_orig.phi();
+            double charge = p_orig.user_info<MyUserInfo>().charge();
+            fastjet::PseudoJet p_new;
+            p_new.reset_PtYPhiM(fabs(npt), eta, phi, 0);
+            p_new.set_user_info(new MyUserInfo(0, 0, charge, false,
+                                               npt > 0 ? false : true));
+            tower_subtracted_particles_for_jets.push_back(p_new);
+        } else {
+            tower_subtracted_particles_for_jets.push_back(p_orig);
+        }
+    }
+
+    // ======================================
     // Various mixture models ---------------
     // ======================================
     tool->SetMergeDistance(0.05);
     double sigma_squared = 0.5;
     tool->SetDefaultSigma(MatTwo(sigma_squared, 0, 0, sigma_squared));
-    vecPseudoJet seeds = groomedInitialLocations(particles_for_jets,
-                                                 1.0, 0.2, 0.05, 15);
+    vecPseudoJet seeds = groomedInitialLocations(tower_subtracted_particles_for_jets,
+                                                 1.0, 0.2, 0.05, 5, fTrho);
 
     // which jets to run
     bool mUMM_on = true;
@@ -1797,9 +1872,15 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     bool mTGMM_on = true;
     bool mTGMMs_on = true;
 
-    FuzzyTools::EventJet event_jet_type = FuzzyTools::FLAT;
-    FuzzyTools::PostProcess post_processing_method = FuzzyTools::ONE_DISTANCE_MERGER;
-    // NO_POST_PROCESS
+    fTevent_jet_strength = _event_jet_strength;
+    fTevent_jet_rho_offset = _event_jet_rho_offset;
+
+    // convention is that offsets should be positive, so that a reasonable
+    // offset is <hs_rho>.
+    double event_jet_weight = (fTrho - fTevent_jet_rho_offset) * fTevent_jet_strength;
+    // don't allow negative likelihood backgrounds
+    if (event_jet_weight < 0)
+        event_jet_weight = 0;
 
     // Fuzzy Jets: mGMMs --------------------
     vector<vector<double> > mGMMs_particle_weights;
@@ -1809,12 +1890,12 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     vector<int> mGMMs_indices;
     double max_pT_mGMMs;
     if(mGMMs_on) {
-        DoMGMMJetFinding(particles_for_jets, seeds,
+        DoMGMMJetFinding(tower_subtracted_particles_for_jets, seeds,
                          f_learn_weights, true, do_recombination,
                          mGMMs_indices, max_pT_mGMMs,
                          tool, mGMMs_jets, mGMMs_particle_weights,
                          mGMMs_jets_params, mGMMs_weights, fTmGMMs_iter,
-                         event_jet_type, post_processing_method);
+                         _event_jet_type, _post_processing_method, event_jet_weight);
     }
     int lead_mGMMs_index = mGMMs_indices.size() ? mGMMs_indices.at(0) : -1;
 
@@ -1827,12 +1908,12 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     vector<int> mGMMc_indices;
     double max_pT_mGMMc;
     if(mGMMc_on) {
-        DoMGMMCJetFinding(particles_for_jets, seeds,
+        DoMGMMCJetFinding(tower_subtracted_particles_for_jets, seeds,
                           f_learn_weights, do_recombination,
                           mGMMc_indices, max_pT_mGMMc,
                           tool, mGMMc_jets, mGMMc_particle_weights,
                           mGMMc_jets_params, mGMMc_weights, fTmGMMc_iter,
-                          event_jet_type, post_processing_method);
+                          _event_jet_type, _post_processing_method, event_jet_weight);
     }
     int lead_mGMMc_index = mGMMc_indices.size() ? mGMMc_indices.at(0) : -1;
 
@@ -1844,12 +1925,12 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     vector<int> mTGMMs_indices;
     double max_pT_mTGMMs;
     if(mTGMMs_on) {
-        DoMTGMMJetFinding(particles_for_jets, seeds,
+        DoMTGMMJetFinding(tower_subtracted_particles_for_jets, seeds,
                           f_learn_weights, true, do_recombination,
                           f_size, mTGMMs_indices, max_pT_mTGMMs,
                           tool, mTGMMs_jets, mTGMMs_particle_weights,
                           mTGMMs_jets_params, mTGMMs_weights, fTmTGMMs_iter,
-                          event_jet_type, post_processing_method);
+                          _event_jet_type, _post_processing_method, event_jet_weight);
     }
     int lead_mTGMMs_index = mTGMMs_indices.size() ? mTGMMs_indices.at(0) : -1;
 
@@ -1861,12 +1942,12 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     vector<int> mGMM_indices;
     double max_pT_mGMM;
     if(mGMM_on) {
-        DoMGMMJetFinding(particles_for_jets, seeds,
+        DoMGMMJetFinding(tower_subtracted_particles_for_jets, seeds,
                          f_learn_weights, false, do_recombination,
                          mGMM_indices, max_pT_mGMM,
                          tool, mGMM_jets, mGMM_particle_weights,
                          mGMM_jets_params, mGMM_weights, fTmGMM_iter,
-                         event_jet_type, post_processing_method);
+                         _event_jet_type, _post_processing_method, event_jet_weight);
     }
     int lead_mGMM_index = mGMM_indices.size() ? mGMM_indices.at(0) : -1;
 
@@ -1877,11 +1958,11 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     vector<int> mUMM_indices;
     double max_pT_mUMM;
     if(mUMM_on) {
-        DoMUMMJetFinding(particles_for_jets, seeds,
+        DoMUMMJetFinding(tower_subtracted_particles_for_jets, seeds,
                          f_learn_weights, f_size, do_recombination,
                          mUMM_indices, max_pT_mUMM, tool, mUMM_jets,
                          mUMM_particle_weights, mUMM_weights, fTmUMM_iter,
-                         event_jet_type, post_processing_method);
+                         _event_jet_type, _post_processing_method, event_jet_weight);
     }
     int lead_mUMM_index = mUMM_indices.size() ? mUMM_indices.at(0) : -1;
 
@@ -1893,12 +1974,12 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     vector<int> mTGMM_indices;
     double max_pT_mTGMM;
     if(mTGMM_on) {
-        DoMTGMMJetFinding(particles_for_jets, seeds,
+        DoMTGMMJetFinding(tower_subtracted_particles_for_jets, seeds,
                           f_learn_weights, false, do_recombination, f_size,
                           mTGMM_indices, max_pT_mTGMM, tool, mTGMM_jets,
                           mTGMM_particle_weights, mTGMM_jets_params,
-                          mTGMM_weights, fTmTGMM_iter, event_jet_type,
-                          post_processing_method);
+                          mTGMM_weights, fTmTGMM_iter, _event_jet_type,
+                          _post_processing_method, event_jet_weight);
     }
     int lead_mTGMM_index = mTGMM_indices.size() ? mTGMM_indices.at(0) : -1;
 
@@ -1975,7 +2056,7 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     bool do_event_displays = true;
     if (do_event_displays && !batched) {
         if(event_iter < 10 && mGMM_on) {
-            tool->EventDisplay(particles_for_jets,
+            tool->EventDisplay(tower_subtracted_particles_for_jets,
                                my_jets_large_r_ca,tops,
                                mGMM_jets,
                                mGMM_particle_weights,
@@ -1984,8 +2065,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                "",
                                event_iter);
         }
-        if(mGMM_on) {
-            tool->NewEventDisplay(particles_for_jets,
+        if(mGMM_on && static_cast<unsigned int>(event_iter) < _n_events) {
+            tool->NewEventDisplay(tower_subtracted_particles_for_jets,
                                   my_jets_large_r_ca,tops,
                                   mGMM_jets,
                                   mGMM_particle_weights,
@@ -1994,20 +2075,20 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                   mGMM_weights,
                                   "mGMM",
                                   event_iter);
-            tool->JetContributionDisplay(particles_for_jets,
+            tool->JetContributionDisplay(tower_subtracted_particles_for_jets,
                                          mGMM_particle_weights,
                                          lead_mGMM_index,
                                          1,
                                          "m_mGMM",
                                          event_iter);
-            tool->JetContributionDisplay(particles_for_jets,
+            tool->JetContributionDisplay(tower_subtracted_particles_for_jets,
                                          mGMM_particle_weights,
                                          lead_mGMM_index,
                                          0,
                                          "pt_mGMM",
                                          event_iter);
-            if (event_jet_type != FuzzyTools::NONE) {
-                tool->EventJetDisplay(particles_for_jets,
+            if (_event_jet_type != FuzzyTools::NONE) {
+                tool->EventJetDisplay(tower_subtracted_particles_for_jets,
                                       mGMM_jets,
                                       mGMM_particle_weights,
                                       mGMM_jets_params,
@@ -2015,8 +2096,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                       "mGMM", event_iter);
             }
         }
-        if(mTGMM_on) {
-            tool->NewEventDisplay(particles_for_jets,
+        if(mTGMM_on && static_cast<unsigned int>(event_iter) < _n_events) {
+            tool->NewEventDisplay(tower_subtracted_particles_for_jets,
                                   my_jets_large_r_ca,tops,
                                   mTGMM_jets,
                                   mTGMM_particle_weights,
@@ -2025,8 +2106,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                   mTGMM_weights,
                                   "mTGMM",
                                   event_iter);
-            if (event_jet_type != FuzzyTools::NONE) {
-                tool->EventJetDisplay(particles_for_jets,
+            if (_event_jet_type != FuzzyTools::NONE) {
+                tool->EventJetDisplay(tower_subtracted_particles_for_jets,
                                       mTGMM_jets,
                                       mTGMM_particle_weights,
                                       mTGMM_jets_params,
@@ -2034,8 +2115,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                       "mTGMM", event_iter);
             }
         }
-        if(mUMM_on) {
-            tool->NewEventDisplayUniform(particles_for_jets,
+        if(mUMM_on && static_cast<unsigned int>(event_iter) < _n_events) {
+            tool->NewEventDisplayUniform(tower_subtracted_particles_for_jets,
                                          my_jets_large_r_ca,tops,
                                          mUMM_jets,
                                          mUMM_particle_weights,
@@ -2043,8 +2124,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                          mUMM_weights,
                                          "mUMM",
                                          event_iter);
-            if (event_jet_type != FuzzyTools::NONE) {
-                //tool->EventJetDisplay(particles_for_jets,
+            if (_event_jet_type != FuzzyTools::NONE) {
+                //tool->EventJetDisplay(tower_subtracted_particles_for_jets,
                 //                      mUMM_jets,
                 //                      mUMM_particle_weights,
                 //                      mUMM_jets_params,
@@ -2052,8 +2133,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                 //                      "mUMM", event_iter);
             }
         }
-        if(mGMMs_on) {
-            tool->NewEventDisplay(particles_for_jets,
+        if(mGMMs_on && static_cast<unsigned int>(event_iter) < _n_events) {
+            tool->NewEventDisplay(tower_subtracted_particles_for_jets,
                                   my_jets_large_r_ca, tops,
                                   mGMMs_jets,
                                   mGMMs_particle_weights,
@@ -2062,8 +2143,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                   mGMMs_weights,
                                   "mGMMs",
                                   event_iter);
-            if (event_jet_type != FuzzyTools::NONE) {
-                tool->EventJetDisplay(particles_for_jets,
+            if (_event_jet_type != FuzzyTools::NONE) {
+                tool->EventJetDisplay(tower_subtracted_particles_for_jets,
                                       mGMMs_jets,
                                       mGMMs_particle_weights,
                                       mGMMs_jets_params,
@@ -2071,8 +2152,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                       "mGMMs", event_iter);
             }
         }
-        if(mGMMc_on) {
-            tool->NewEventDisplay(particles_for_jets,
+        if(mGMMc_on && static_cast<unsigned int>(event_iter) < _n_events) {
+            tool->NewEventDisplay(tower_subtracted_particles_for_jets,
                                   my_jets_large_r_ca, tops,
                                   mGMMc_jets,
                                   mGMMc_particle_weights,
@@ -2081,15 +2162,15 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                   mGMMc_weights,
                                   "mGMMc",
                                   event_iter);
-            if (event_jet_type != FuzzyTools::NONE) {
-                tool->EventJetDisplay(particles_for_jets,
+            if (_event_jet_type != FuzzyTools::NONE) {
+                tool->EventJetDisplay(tower_subtracted_particles_for_jets,
                                       mGMMc_jets,
                                       mGMMc_particle_weights,
                                       mGMMc_jets_params,
                                       mGMMc_weights,
                                       "mGMMc", event_iter);
             }
-            tool->NewEventDisplayPoster(particles_for_jets,
+            tool->NewEventDisplayPoster(tower_subtracted_particles_for_jets,
                                         my_jets_large_r_ca, tops,
                                         mGMMc_jets,
                                         mGMMc_particle_weights,
@@ -2099,8 +2180,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                         "mGMMc",
                                         event_iter);
         }
-        if(mTGMMs_on) {
-            tool->NewEventDisplay(particles_for_jets,
+        if(mTGMMs_on && static_cast<unsigned int>(event_iter) < _n_events) {
+            tool->NewEventDisplay(tower_subtracted_particles_for_jets,
                                   my_jets_large_r_ca,tops,
                                   mTGMMs_jets,
                                   mTGMMs_particle_weights,
@@ -2109,8 +2190,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
                                   mTGMMs_weights,
                                   "mTGMMs",
                                   event_iter);
-            if (event_jet_type != FuzzyTools::NONE) {
-                tool->EventJetDisplay(particles_for_jets,
+            if (_event_jet_type != FuzzyTools::NONE) {
+                tool->EventJetDisplay(tower_subtracted_particles_for_jets,
                                       mTGMMs_jets,
                                       mTGMMs_particle_weights,
                                       mTGMMs_jets_params,
@@ -2162,8 +2243,8 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         fTmTGMMs_etas.push_back(mTGMMs_jets.at(cluster_iter).eta());
         fTmTGMMs_phis.push_back(mTGMMs_jets.at(cluster_iter).eta());
     }
-    for(unsigned int particle_iter = 0; particle_iter < particles_for_jets.size(); particle_iter++) {
-        fastjet::PseudoJet const& p = particles_for_jets[particle_iter];
+    for(unsigned int particle_iter = 0; particle_iter < tower_subtracted_particles_for_jets.size(); particle_iter++) {
+        fastjet::PseudoJet const& p = tower_subtracted_particles_for_jets[particle_iter];
         if (mGMM_on) {
             mGMM_weight_vec.push_back(mGMM_particle_weights[particle_iter][lead_mGMM_index]);
             mGMM_distance_vec.push_back(p.delta_R(mGMM_jets[lead_mGMM_index]));
@@ -2206,7 +2287,6 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
             mUMM_weight_vec.push_back(-1);
             mUMM_distance_vec.push_back(-1);
         }
-
         // some older weight histo stuff, can be rebuilt from above
         if (p.user_info<MyUserInfo>().isPU()) {
             if(mGMM_on) {
@@ -2248,85 +2328,100 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
             }
         }
     }
+    // weight information takes up a ton of room, until we need it, turn it off
+    mUMM_weight_vec.clear();
+    mGMM_weight_vec.clear();
+    mGMMc_weight_vec.clear();
+    mGMMs_weight_vec.clear();
+    mTGMM_weight_vec.clear();
+    mTGMMs_weight_vec.clear();
+
+    // same goes for distance
+    mUMM_distance_vec.clear();
+    mGMM_distance_vec.clear();
+    mGMMc_distance_vec.clear();
+    mGMMs_distance_vec.clear();
+    mTGMM_distance_vec.clear();
+    mTGMMs_distance_vec.clear();
 
     if(mGMM_on) {
-        fTmGMM_m = tool->MLpT(particles_for_jets,mGMM_particle_weights,
+        fTmGMM_m = tool->MLpT(tower_subtracted_particles_for_jets,mGMM_particle_weights,
                               lead_mGMM_index,mGMM_particle_weights[0].size(),1);
-        fTmGMM_pt = tool->MLpT(particles_for_jets,mGMM_particle_weights,
+        fTmGMM_pt = tool->MLpT(tower_subtracted_particles_for_jets,mGMM_particle_weights,
                                lead_mGMM_index,mGMM_particle_weights[0].size(),0);
-        fTmGMM_ml = tool->MLlpTGaussian(particles_for_jets,mGMM_jets[lead_mGMM_index],
+        fTmGMM_ml = tool->MLlpTGaussian(tower_subtracted_particles_for_jets,mGMM_jets[lead_mGMM_index],
                                         mGMM_jets_params[lead_mGMM_index], mGMM_weights[lead_mGMM_index], 1);
-        fTmGMM_ptl = tool->MLlpTGaussian(particles_for_jets,mGMM_jets[lead_mGMM_index],
+        fTmGMM_ptl = tool->MLlpTGaussian(tower_subtracted_particles_for_jets,mGMM_jets[lead_mGMM_index],
                                          mGMM_jets_params[lead_mGMM_index], mGMM_weights[lead_mGMM_index], 0);
-        fTmGMM_pufrac_soft = JetPuFracSoft(particles_for_jets, mGMM_particle_weights, lead_mGMM_index);
-        fTmGMM_pufrac_hard = JetPuFracHard(particles_for_jets, mGMM_particle_weights, lead_mGMM_index);
-        fTmGMM_m_pu_soft = JetPuMassSoft(particles_for_jets, mGMM_particle_weights, lead_mGMM_index);
-        fTmGMM_m_pu_hard = JetPuMassHard(particles_for_jets, mGMM_particle_weights, lead_mGMM_index);
+        fTmGMM_pufrac_soft = JetPuFracSoft(tower_subtracted_particles_for_jets, mGMM_particle_weights, lead_mGMM_index);
+        fTmGMM_pufrac_hard = JetPuFracHard(tower_subtracted_particles_for_jets, mGMM_particle_weights, lead_mGMM_index);
+        fTmGMM_m_pu_soft = JetPuMassSoft(tower_subtracted_particles_for_jets, mGMM_particle_weights, lead_mGMM_index);
+        fTmGMM_m_pu_hard = JetPuMassHard(tower_subtracted_particles_for_jets, mGMM_particle_weights, lead_mGMM_index);
     }
     if(mUMM_on) {
-        fTmUMM_m = tool->MLpT(particles_for_jets, mUMM_particle_weights,
+        fTmUMM_m = tool->MLpT(tower_subtracted_particles_for_jets, mUMM_particle_weights,
                               lead_mUMM_index, mUMM_particle_weights[0].size(), 1);
         fTmUMM_pt = max_pT_mUMM;
-        fTmUMM_ml = tool->MLlpTUniform(particles_for_jets,mUMM_jets[lead_mUMM_index],
+        fTmUMM_ml = tool->MLlpTUniform(tower_subtracted_particles_for_jets,mUMM_jets[lead_mUMM_index],
                                        mUMM_weights[lead_mUMM_index], 1);
-        fTmUMM_ptl = tool->MLlpTUniform(particles_for_jets,mUMM_jets[lead_mUMM_index],
+        fTmUMM_ptl = tool->MLlpTUniform(tower_subtracted_particles_for_jets,mUMM_jets[lead_mUMM_index],
                                         mUMM_weights[lead_mUMM_index], 0);
-        fTmUMM_pufrac_soft = JetPuFracSoft(particles_for_jets, mUMM_particle_weights, lead_mUMM_index);
-        fTmUMM_pufrac_hard = JetPuFracHard(particles_for_jets, mUMM_particle_weights, lead_mUMM_index);
-        fTmUMM_m_pu_soft = JetPuMassSoft(particles_for_jets, mUMM_particle_weights, lead_mUMM_index);
-        fTmUMM_m_pu_hard = JetPuMassHard(particles_for_jets, mUMM_particle_weights, lead_mUMM_index);
+        fTmUMM_pufrac_soft = JetPuFracSoft(tower_subtracted_particles_for_jets, mUMM_particle_weights, lead_mUMM_index);
+        fTmUMM_pufrac_hard = JetPuFracHard(tower_subtracted_particles_for_jets, mUMM_particle_weights, lead_mUMM_index);
+        fTmUMM_m_pu_soft = JetPuMassSoft(tower_subtracted_particles_for_jets, mUMM_particle_weights, lead_mUMM_index);
+        fTmUMM_m_pu_hard = JetPuMassHard(tower_subtracted_particles_for_jets, mUMM_particle_weights, lead_mUMM_index);
     }
     if(mTGMM_on) {
-        fTmTGMM_m = tool->MLpT(particles_for_jets, mTGMM_particle_weights,
+        fTmTGMM_m = tool->MLpT(tower_subtracted_particles_for_jets, mTGMM_particle_weights,
                                lead_mTGMM_index, mTGMM_particle_weights[0].size(), 1);
         fTmTGMM_pt = max_pT_mTGMM;
-        fTmTGMM_ml = tool->MLlpTTruncGaus(particles_for_jets,mTGMM_jets[lead_mTGMM_index],
+        fTmTGMM_ml = tool->MLlpTTruncGaus(tower_subtracted_particles_for_jets,mTGMM_jets[lead_mTGMM_index],
                                           mTGMM_jets_params[lead_mTGMM_index], mTGMM_weights[lead_mTGMM_index],1);
-        fTmTGMM_ptl = tool->MLlpTTruncGaus(particles_for_jets,mTGMM_jets[lead_mTGMM_index],
+        fTmTGMM_ptl = tool->MLlpTTruncGaus(tower_subtracted_particles_for_jets,mTGMM_jets[lead_mTGMM_index],
                                            mTGMM_jets_params[lead_mTGMM_index], mTGMM_weights[lead_mTGMM_index],0);
-        fTmTGMM_pufrac_soft = JetPuFracSoft(particles_for_jets, mTGMM_particle_weights, lead_mTGMM_index);
-        fTmTGMM_pufrac_hard = JetPuFracHard(particles_for_jets, mTGMM_particle_weights, lead_mTGMM_index);
-        fTmTGMM_m_pu_soft = JetPuMassSoft(particles_for_jets, mTGMM_particle_weights, lead_mTGMM_index);
-        fTmTGMM_m_pu_hard = JetPuMassHard(particles_for_jets, mTGMM_particle_weights, lead_mTGMM_index);
+        fTmTGMM_pufrac_soft = JetPuFracSoft(tower_subtracted_particles_for_jets, mTGMM_particle_weights, lead_mTGMM_index);
+        fTmTGMM_pufrac_hard = JetPuFracHard(tower_subtracted_particles_for_jets, mTGMM_particle_weights, lead_mTGMM_index);
+        fTmTGMM_m_pu_soft = JetPuMassSoft(tower_subtracted_particles_for_jets, mTGMM_particle_weights, lead_mTGMM_index);
+        fTmTGMM_m_pu_hard = JetPuMassHard(tower_subtracted_particles_for_jets, mTGMM_particle_weights, lead_mTGMM_index);
     }
     if(mTGMMs_on) {
-        fTmTGMMs_m = tool->MLpT(particles_for_jets, mTGMMs_particle_weights,
+        fTmTGMMs_m = tool->MLpT(tower_subtracted_particles_for_jets, mTGMMs_particle_weights,
                                 lead_mTGMMs_index, mTGMMs_particle_weights[0].size(), 1);
         fTmTGMMs_pt = max_pT_mTGMMs;
-        fTmTGMMs_ml = tool->MLlpTTruncGaus(particles_for_jets,mTGMMs_jets[lead_mTGMMs_index],
+        fTmTGMMs_ml = tool->MLlpTTruncGaus(tower_subtracted_particles_for_jets,mTGMMs_jets[lead_mTGMMs_index],
                                            mTGMMs_jets_params[lead_mTGMMs_index], mTGMMs_weights[lead_mTGMMs_index],1);
-        fTmTGMMs_ptl = tool->MLlpTTruncGaus(particles_for_jets,mTGMMs_jets[lead_mTGMMs_index],
+        fTmTGMMs_ptl = tool->MLlpTTruncGaus(tower_subtracted_particles_for_jets,mTGMMs_jets[lead_mTGMMs_index],
                                             mTGMMs_jets_params[lead_mTGMMs_index], mTGMMs_weights[lead_mTGMMs_index],0);
-        fTmTGMMs_pufrac_soft = JetPuFracSoft(particles_for_jets, mTGMMs_particle_weights, lead_mTGMMs_index);
-        fTmTGMMs_pufrac_hard = JetPuFracHard(particles_for_jets, mTGMMs_particle_weights, lead_mTGMMs_index);
-        fTmTGMMs_m_pu_soft = JetPuMassSoft(particles_for_jets, mTGMMs_particle_weights, lead_mTGMMs_index);
-        fTmTGMMs_m_pu_hard = JetPuMassHard(particles_for_jets, mTGMMs_particle_weights, lead_mTGMMs_index);
+        fTmTGMMs_pufrac_soft = JetPuFracSoft(tower_subtracted_particles_for_jets, mTGMMs_particle_weights, lead_mTGMMs_index);
+        fTmTGMMs_pufrac_hard = JetPuFracHard(tower_subtracted_particles_for_jets, mTGMMs_particle_weights, lead_mTGMMs_index);
+        fTmTGMMs_m_pu_soft = JetPuMassSoft(tower_subtracted_particles_for_jets, mTGMMs_particle_weights, lead_mTGMMs_index);
+        fTmTGMMs_m_pu_hard = JetPuMassHard(tower_subtracted_particles_for_jets, mTGMMs_particle_weights, lead_mTGMMs_index);
     }
     if(mGMMs_on) {
-        fTmGMMs_m = tool->MLpT(particles_for_jets, mGMMs_particle_weights,
+        fTmGMMs_m = tool->MLpT(tower_subtracted_particles_for_jets, mGMMs_particle_weights,
                                lead_mGMMs_index, mGMMs_particle_weights[0].size(), 1);
         fTmGMMs_pt = max_pT_mGMMs;
-        fTmGMMs_ml = tool->MLlpTGaussian(particles_for_jets,mGMMs_jets[lead_mGMMs_index],
+        fTmGMMs_ml = tool->MLlpTGaussian(tower_subtracted_particles_for_jets,mGMMs_jets[lead_mGMMs_index],
                                          mGMMs_jets_params[lead_mGMMs_index], mGMMs_weights[lead_mGMMs_index],1);
-        fTmGMMs_ptl = tool->MLlpTGaussian(particles_for_jets,mGMMs_jets[lead_mGMMs_index],
+        fTmGMMs_ptl = tool->MLlpTGaussian(tower_subtracted_particles_for_jets,mGMMs_jets[lead_mGMMs_index],
                                           mGMMs_jets_params[lead_mGMMs_index], mGMMs_weights[lead_mGMMs_index],0);
-        fTmGMMs_pufrac_soft = JetPuFracSoft(particles_for_jets, mGMMs_particle_weights, lead_mGMMs_index);
-        fTmGMMs_pufrac_hard = JetPuFracHard(particles_for_jets, mGMMs_particle_weights, lead_mGMMs_index);
-        fTmGMMs_m_pu_soft = JetPuMassSoft(particles_for_jets, mGMMs_particle_weights, lead_mGMMs_index);
-        fTmGMMs_m_pu_hard = JetPuMassHard(particles_for_jets, mGMMs_particle_weights, lead_mGMMs_index);
+        fTmGMMs_pufrac_soft = JetPuFracSoft(tower_subtracted_particles_for_jets, mGMMs_particle_weights, lead_mGMMs_index);
+        fTmGMMs_pufrac_hard = JetPuFracHard(tower_subtracted_particles_for_jets, mGMMs_particle_weights, lead_mGMMs_index);
+        fTmGMMs_m_pu_soft = JetPuMassSoft(tower_subtracted_particles_for_jets, mGMMs_particle_weights, lead_mGMMs_index);
+        fTmGMMs_m_pu_hard = JetPuMassHard(tower_subtracted_particles_for_jets, mGMMs_particle_weights, lead_mGMMs_index);
     }
     if(mGMMc_on) {
-        fTmGMMc_m = tool->MLpT(particles_for_jets, mGMMc_particle_weights,
+        fTmGMMc_m = tool->MLpT(tower_subtracted_particles_for_jets, mGMMc_particle_weights,
                                lead_mGMMc_index, mGMMc_particle_weights[0].size(), 1);
         fTmGMMc_pt = max_pT_mGMMc;
-        fTmGMMc_ml = tool->MLlpTGaussian(particles_for_jets,mGMMc_jets[lead_mGMMc_index],
+        fTmGMMc_ml = tool->MLlpTGaussian(tower_subtracted_particles_for_jets,mGMMc_jets[lead_mGMMc_index],
                                          mGMMc_jets_params[lead_mGMMc_index], mGMMc_weights[lead_mGMMc_index],1);
-        fTmGMMc_ptl = tool->MLlpTGaussian(particles_for_jets,mGMMc_jets[lead_mGMMc_index],
+        fTmGMMc_ptl = tool->MLlpTGaussian(tower_subtracted_particles_for_jets,mGMMc_jets[lead_mGMMc_index],
                                           mGMMc_jets_params[lead_mGMMc_index], mGMMc_weights[lead_mGMMc_index],0);
-        fTmGMMc_pufrac_soft = JetPuFracSoft(particles_for_jets, mGMMc_particle_weights, lead_mGMMc_index);
-        fTmGMMc_pufrac_hard = JetPuFracHard(particles_for_jets, mGMMc_particle_weights, lead_mGMMc_index);
-        fTmGMMc_m_pu_soft = JetPuMassSoft(particles_for_jets, mGMMc_particle_weights, lead_mGMMc_index);
-        fTmGMMc_m_pu_hard = JetPuMassHard(particles_for_jets, mGMMc_particle_weights, lead_mGMMc_index);
+        fTmGMMc_pufrac_soft = JetPuFracSoft(tower_subtracted_particles_for_jets, mGMMc_particle_weights, lead_mGMMc_index);
+        fTmGMMc_pufrac_hard = JetPuFracHard(tower_subtracted_particles_for_jets, mGMMc_particle_weights, lead_mGMMc_index);
+        fTmGMMc_m_pu_soft = JetPuMassSoft(tower_subtracted_particles_for_jets, mGMMc_particle_weights, lead_mGMMc_index);
+        fTmGMMc_m_pu_hard = JetPuMassHard(tower_subtracted_particles_for_jets, mGMMc_particle_weights, lead_mGMMc_index);
     }
 
     int my_top = 0;
@@ -2343,17 +2438,17 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
             fTdeltatop_mGMM = tops[1].delta_R(mGMM_jets[lead_mGMM_index]);
             fTtoppt = tops[1].pt();
         }
-        fTmGMM_m_soft = tool->SoftpT(particles_for_jets,
+        fTmGMM_m_soft = tool->SoftpT(tower_subtracted_particles_for_jets,
                                      mGMM_particle_weights,
                                      lead_mGMM_index,
                                      1);
-        fTmGMM_pt_soft = tool->SoftpT(particles_for_jets,
+        fTmGMM_pt_soft = tool->SoftpT(tower_subtracted_particles_for_jets,
                                       mGMM_particle_weights,
                                       lead_mGMM_index,
                                       0);
-        fTmGMM_ucpu = UnclusteredPileupComposition(particles_for_jets,
+        fTmGMM_ucpu = UnclusteredPileupComposition(tower_subtracted_particles_for_jets,
                                                    mGMM_particle_weights);
-        fTmGMM_clpu = ClusteredPileupFrac(particles_for_jets,
+        fTmGMM_clpu = ClusteredPileupFrac(tower_subtracted_particles_for_jets,
                                           mGMM_particle_weights);
     }
     if(mUMM_on) {
@@ -2361,17 +2456,17 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         if (tops[1].delta_R(mUMM_jets[lead_mUMM_index]) <  fTdeltatop_mUMM) {
             fTdeltatop_mUMM = tops[1].delta_R(mUMM_jets[lead_mUMM_index]);
         }
-        fTmUMM_m_soft = tool->SoftpT(particles_for_jets,
+        fTmUMM_m_soft = tool->SoftpT(tower_subtracted_particles_for_jets,
                                      mUMM_particle_weights,
                                      lead_mUMM_index,
                                      1);
-        fTmUMM_pt_soft = tool->SoftpT(particles_for_jets,
+        fTmUMM_pt_soft = tool->SoftpT(tower_subtracted_particles_for_jets,
                                       mUMM_particle_weights,
                                       lead_mUMM_index,
                                       0);
-        fTmUMM_ucpu = UnclusteredPileupComposition(particles_for_jets,
+        fTmUMM_ucpu = UnclusteredPileupComposition(tower_subtracted_particles_for_jets,
                                                    mUMM_particle_weights);
-        fTmUMM_clpu = ClusteredPileupFrac(particles_for_jets,
+        fTmUMM_clpu = ClusteredPileupFrac(tower_subtracted_particles_for_jets,
                                           mUMM_particle_weights);
     }
     if(mTGMM_on) {
@@ -2379,17 +2474,17 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         if (tops[1].delta_R(mTGMM_jets[lead_mTGMM_index]) < fTdeltatop_mTGMM) {
             fTdeltatop_mTGMM = tops[1].delta_R(mTGMM_jets[lead_mTGMM_index]);
         }
-        fTmTGMM_m_soft = tool->SoftpT(particles_for_jets,
+        fTmTGMM_m_soft = tool->SoftpT(tower_subtracted_particles_for_jets,
                                       mTGMM_particle_weights,
                                       lead_mTGMM_index,
                                       1);
-        fTmTGMM_pt_soft = tool->SoftpT(particles_for_jets,
+        fTmTGMM_pt_soft = tool->SoftpT(tower_subtracted_particles_for_jets,
                                        mTGMM_particle_weights,
                                        lead_mTGMM_index,
                                        0);
-        fTmTGMM_ucpu = UnclusteredPileupComposition(particles_for_jets,
+        fTmTGMM_ucpu = UnclusteredPileupComposition(tower_subtracted_particles_for_jets,
                                                     mTGMM_particle_weights);
-        fTmTGMM_clpu = ClusteredPileupFrac(particles_for_jets,
+        fTmTGMM_clpu = ClusteredPileupFrac(tower_subtracted_particles_for_jets,
                                            mTGMM_particle_weights);
     }
     if(mTGMMs_on) {
@@ -2397,17 +2492,17 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         if (tops[1].delta_R(mTGMMs_jets[lead_mTGMMs_index]) < fTdeltatop_mTGMMs) {
             fTdeltatop_mTGMMs = tops[1].delta_R(mTGMMs_jets[lead_mTGMMs_index]);
         }
-        fTmTGMMs_m_soft = tool->SoftpT(particles_for_jets,
+        fTmTGMMs_m_soft = tool->SoftpT(tower_subtracted_particles_for_jets,
                                        mTGMMs_particle_weights,
                                        lead_mTGMMs_index,
                                        1);
-        fTmTGMMs_pt_soft = tool->SoftpT(particles_for_jets,
+        fTmTGMMs_pt_soft = tool->SoftpT(tower_subtracted_particles_for_jets,
                                         mTGMMs_particle_weights,
                                         lead_mTGMMs_index,
                                         0);
-        fTmTGMMs_ucpu = UnclusteredPileupComposition(particles_for_jets,
+        fTmTGMMs_ucpu = UnclusteredPileupComposition(tower_subtracted_particles_for_jets,
                                                      mTGMMs_particle_weights);
-        fTmTGMMs_clpu = ClusteredPileupFrac(particles_for_jets,
+        fTmTGMMs_clpu = ClusteredPileupFrac(tower_subtracted_particles_for_jets,
                                             mTGMMs_particle_weights);
     }
     if(mGMMs_on) {
@@ -2415,17 +2510,17 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         if (tops[1].delta_R(mGMMs_jets[lead_mGMMs_index]) < fTdeltatop_mGMMs) {
             fTdeltatop_mGMMs = tops[1].delta_R(mGMMs_jets[lead_mGMMs_index]);
         }
-        fTmGMMs_m_soft = tool->SoftpT(particles_for_jets,
+        fTmGMMs_m_soft = tool->SoftpT(tower_subtracted_particles_for_jets,
                                       mGMMs_particle_weights,
                                       lead_mGMMs_index,
                                       1);
-        fTmGMMs_pt_soft = tool->SoftpT(particles_for_jets,
+        fTmGMMs_pt_soft = tool->SoftpT(tower_subtracted_particles_for_jets,
                                        mGMMs_particle_weights,
                                        lead_mGMMs_index,
                                        0);
-        fTmGMMs_ucpu = UnclusteredPileupComposition(particles_for_jets,
+        fTmGMMs_ucpu = UnclusteredPileupComposition(tower_subtracted_particles_for_jets,
                                                     mGMMs_particle_weights);
-        fTmGMMs_clpu = ClusteredPileupFrac(particles_for_jets,
+        fTmGMMs_clpu = ClusteredPileupFrac(tower_subtracted_particles_for_jets,
                                            mGMMs_particle_weights);
     }
     if(mGMMc_on) {
@@ -2433,17 +2528,17 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
         if (tops[1].delta_R(mGMMc_jets[lead_mGMMc_index]) < fTdeltatop_mGMMc) {
             fTdeltatop_mGMMc = tops[1].delta_R(mGMMc_jets[lead_mGMMc_index]);
         }
-        fTmGMMc_m_soft = tool->SoftpT(particles_for_jets,
+        fTmGMMc_m_soft = tool->SoftpT(tower_subtracted_particles_for_jets,
                                       mGMMc_particle_weights,
                                       lead_mGMMc_index,
                                       1);
-        fTmGMMc_pt_soft = tool->SoftpT(particles_for_jets,
+        fTmGMMc_pt_soft = tool->SoftpT(tower_subtracted_particles_for_jets,
                                        mGMMc_particle_weights,
                                        lead_mGMMc_index,
                                        0);
-        fTmGMMc_ucpu = UnclusteredPileupComposition(particles_for_jets,
+        fTmGMMc_ucpu = UnclusteredPileupComposition(tower_subtracted_particles_for_jets,
                                                     mGMMc_particle_weights);
-        fTmGMMc_clpu = ClusteredPileupFrac(particles_for_jets,
+        fTmGMMc_clpu = ClusteredPileupFrac(tower_subtracted_particles_for_jets,
                                            mGMMc_particle_weights);
     }
 
@@ -2452,10 +2547,10 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     vector<double> moments_pt;
     double sig;
     if(mGMM_on) {
-        moments_m = tool->CentralMoments(particles_for_jets, mGMM_particle_weights,
+        moments_m = tool->CentralMoments(tower_subtracted_particles_for_jets, mGMM_particle_weights,
                                          lead_mGMM_index, 3, &totalMass);
 
-        moments_pt = tool->CentralMoments(particles_for_jets, mGMM_particle_weights,
+        moments_pt = tool->CentralMoments(tower_subtracted_particles_for_jets, mGMM_particle_weights,
                                           lead_mGMM_index, 3, &totalpT);
 
         fTmGMM_m_mean = moments_m[0];
@@ -2472,10 +2567,10 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     moments_pt.clear();
 
     if(mUMM_on) {
-        moments_m = tool->CentralMoments(particles_for_jets, mUMM_particle_weights,
+        moments_m = tool->CentralMoments(tower_subtracted_particles_for_jets, mUMM_particle_weights,
                                          lead_mUMM_index, 3, &totalMass);
 
-        moments_pt = tool->CentralMoments(particles_for_jets, mUMM_particle_weights,
+        moments_pt = tool->CentralMoments(tower_subtracted_particles_for_jets, mUMM_particle_weights,
                                           lead_mUMM_index, 3, &totalpT);
 
         fTmUMM_m_mean = moments_m[0];
@@ -2491,10 +2586,10 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     moments_pt.clear();
 
     if(mTGMM_on) {
-        moments_m = tool->CentralMoments(particles_for_jets, mTGMM_particle_weights,
+        moments_m = tool->CentralMoments(tower_subtracted_particles_for_jets, mTGMM_particle_weights,
                                          lead_mTGMM_index, 3, &totalMass);
 
-        moments_pt = tool->CentralMoments(particles_for_jets, mTGMM_particle_weights,
+        moments_pt = tool->CentralMoments(tower_subtracted_particles_for_jets, mTGMM_particle_weights,
                                           lead_mTGMM_index, 3, &totalpT);
 
         fTmTGMM_m_mean = moments_m[0];
@@ -2511,10 +2606,10 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     moments_pt.clear();
 
     if(mTGMMs_on) {
-        moments_m = tool->CentralMoments(particles_for_jets, mTGMMs_particle_weights,
+        moments_m = tool->CentralMoments(tower_subtracted_particles_for_jets, mTGMMs_particle_weights,
                                          lead_mTGMMs_index, 3, &totalMass);
 
-        moments_pt = tool->CentralMoments(particles_for_jets, mTGMMs_particle_weights,
+        moments_pt = tool->CentralMoments(tower_subtracted_particles_for_jets, mTGMMs_particle_weights,
                                           lead_mTGMMs_index, 3, &totalpT);
 
         fTmTGMMs_m_mean = moments_m[0];
@@ -2531,10 +2626,10 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     moments_pt.clear();
 
     if(mGMMs_on) {
-        moments_m = tool->CentralMoments(particles_for_jets, mGMMs_particle_weights,
+        moments_m = tool->CentralMoments(tower_subtracted_particles_for_jets, mGMMs_particle_weights,
                                          lead_mGMMs_index, 3, &totalMass);
 
-        moments_pt = tool->CentralMoments(particles_for_jets, mGMMs_particle_weights,
+        moments_pt = tool->CentralMoments(tower_subtracted_particles_for_jets, mGMMs_particle_weights,
                                           lead_mGMMs_index, 3, &totalpT);
 
         fTmGMMs_m_mean = moments_m[0];
@@ -2551,10 +2646,10 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
     moments_pt.clear();
 
     if(mGMMc_on) {
-        moments_m = tool->CentralMoments(particles_for_jets, mGMMc_particle_weights,
+        moments_m = tool->CentralMoments(tower_subtracted_particles_for_jets, mGMMc_particle_weights,
                                          lead_mGMMc_index, 3, &totalMass);
 
-        moments_pt = tool->CentralMoments(particles_for_jets, mGMMc_particle_weights,
+        moments_pt = tool->CentralMoments(tower_subtracted_particles_for_jets, mGMMc_particle_weights,
                                           lead_mGMMc_index, 3, &totalpT);
 
         fTmGMMc_m_mean = moments_m[0];
@@ -2591,6 +2686,10 @@ void FuzzyAnalysis::AnalyzeEvent(int event_iter, Pythia8::Pythia* pythia8, Pythi
 
     // declate branches
     void FuzzyAnalysis::DeclareBranches(){
+        tree_vars["rho"] = &fTrho;
+        tree_vars["event_jet_strength"] = &fTevent_jet_strength;
+        tree_vars["event_jet_rho_offset"] = &fTevent_jet_rho_offset;
+
         tree_vars["CA_m"] = &fTCA_m;
         tree_vars["CA_pt"] = &fTCA_pt;
         tree_vars["CA_pufrac"] = &fTCA_pufrac;

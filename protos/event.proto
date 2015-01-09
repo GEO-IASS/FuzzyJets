@@ -1,0 +1,18 @@
+package event;
+
+message EventListHeader 
+{
+    required int32 events_to_follow = 1;
+}
+
+message Event 
+{
+    // minimal test message
+    optional float pt = 1;
+    optional int32 event_number = 2;
+}
+
+// transmitted files have the format
+// header + [size of first message] + first message +
+//          [size of second message] + second message + ...
+

@@ -32,8 +32,8 @@ FASTJETFLAGS = `$(FASTJETLOCATION)/bin/fastjet-config --cxxflags --plugins`
 
 all: Fuzzy Histogrammer
 
-Histogrammer: Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so Event.so Histogram.so MVA.so
-	$(CXX) Histogrammer.so AnalyzeFuzzyTools.so AtlasUtils.so Event.so Histogram.so MVA.so -o $@ \
+Histogrammer: Histogrammer.so Util.so AnalyzeFuzzyTools.so AtlasUtils.so Event.so Histogram.so MVA.so
+	$(CXX) Histogrammer.so Util.so AnalyzeFuzzyTools.so AtlasUtils.so Event.so Histogram.so MVA.so -o $@ \
 	$(CXXFLAGS) $(CXXFLAGSEXTRA) $(ROOTLIBSREAL) -lTMVA \
 	-L$(BOOSTLIBLOCATION) -lboost_program_options
 
@@ -47,6 +47,10 @@ AnalyzeFuzzyTools.so: AnalyzeFuzzyTools.cc AnalyzeFuzzyTools.h
 	$(CXXFLAGS) $(CXXFLAGSEXTRA) -fPIC -shared $(ROOTFLAGSREAL) \
 
 Event.so: Event.cc Event.h
+	$(CXX) -o $@ -c $<  \
+	$(CXXFLAGS) $(CXXFLAGSEXTRA) -fPIC -shared $(ROOTFLAGSREAL) \
+
+Util.so: Util.cc Util.h
 	$(CXX) -o $@ -c $<  \
 	$(CXXFLAGS) $(CXXFLAGSEXTRA) -fPIC -shared $(ROOTFLAGSREAL) \
 

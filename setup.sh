@@ -16,8 +16,10 @@ setup_fastjet() {
 }
 
 setup_boost() {
-    export BOOSTINCDIR=/usr/include
-    export BOOSTLIBLOCATION=/usr/lib64
+    export BOOSTINCDIR=/nfs/slac/g/atlas/u01/users/chstan/src/boost_1_56_0
+    export BOOSTLIBLOCATION=/nfs/slac/g/atlas/u01/users/chstan/src/boost_1_56_0/stage/lib
+    export LD_LIBRARY_PATH=${BOOSTLIBLOCATION}:$LD_LIBRARY_PATH
+
 }
 
 setup_ROOT

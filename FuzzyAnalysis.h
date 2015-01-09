@@ -30,6 +30,7 @@ class FuzzyAnalysis{
  private:
     int  f_test;
     int  f_debug;
+    unsigned int _n_events;
     double  f_size;
     float pT_min;
     bool f_learn_weights;
@@ -38,6 +39,8 @@ class FuzzyAnalysis{
     bool do_recombination;
     string f_out_name;
     string directory_prefix;
+
+    bool do_protobuf_serialize;
 
     std::map<string, float*> tree_vars;
     std::map<string, std::vector<float> > map_weight_vecs;
@@ -67,10 +70,20 @@ class FuzzyAnalysis{
 
     FuzzyTools *tool;
 
+    double _event_jet_strength;
+    double _event_jet_rho_offset;
+    FuzzyTools::EventJet _event_jet_type;
+    FuzzyTools::PostProcess _post_processing_method;
+
+    bool _do_tower_subtraction;
+
     // Tree Vars ---------------------------------------
     int   fTEventNumber;
     int   fTNPV;
     float fTtoppt;
+    float fTrho;
+    float fTevent_jet_strength;
+    float fTevent_jet_rho_offset;
 
     float fTCA_pt;
     float fTCA_m;
@@ -269,8 +282,8 @@ class FuzzyAnalysis{
     vecPseudoJet DiscretizeParticles(vecPseudoJet const& arg_particles,
                                                     int n_phi, int n_eta,
                                                     float eta_cutoff);
-    vecPseudoJet ChargedParticles(vecPseudoJet const& arg_particles);
-    vecPseudoJet UnchargedParticles(vecPseudoJet const& arg_particles);
+    vecPseudoJet ChargedParticles(vecPseudoJet const& arg_particles, double eta_max);
+    vecPseudoJet UnchargedParticles(vecPseudoJet const& arg_particles, double eta_max);
     void GroomingStudy(vecPseudoJet leading_particles, int event_iter);
     void SubstructureStudy(vecPseudoJet ca_jets, vecPseudoJet antikt_jets, int event_iter);
     void AnalyzeEventNew(int i_evt, Pythia8::Pythia *pythia8, Pythia8::Pythia *pythia_MB, int NPV);
@@ -281,6 +294,46 @@ class FuzzyAnalysis{
     void Debug(int debug){
         f_debug = debug;
     }
+
+    bool QueryFloatValue(std::string name, float *f_out) {
+        std::map<string, float*>::iterator it = tree_vars.find(name);
+        if (it == tree_vars.end()) {
+            // no such value in tree
+            return false;
+        } else {
+            // found it! write to output parameter
+            *f_out = *(it->second);
+            return true;
+        }
+    }
+
+    void SetNEvents(unsigned int n) {
+        _n_events = n;
+        if (tool) {
+            tool->SetNEvents(n);
+        }
+    }
+
+    void SetDoTowerSubtraction(bool d) {
+        _do_tower_subtraction = d;
+    }
+
+    void SetEventJetRhoOffset(double off) {
+        _event_jet_rho_offset = off;
+    }
+
+    void SetEventJetType(FuzzyTools::EventJet ejt)  {
+        _event_jet_type = ejt;
+    }
+
+    void SetPostProcessingMethod(FuzzyTools::PostProcess pj) {
+        _post_processing_method = pj;
+    }
+
+    void SetEventJetStrength(float s) {
+        _event_jet_strength = s;
+    }
+
     void SetPtMin(float p) {
         pT_min = p;
     }
@@ -304,6 +357,10 @@ class FuzzyAnalysis{
     }
     bool IsBatched() {
         return batched;
+    }
+
+    void SetProtobufSerialize(bool p) {
+        do_protobuf_serialize = p;
     }
 
     void SetShouldPrint(bool s) {

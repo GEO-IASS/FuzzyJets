@@ -15,10 +15,14 @@
 #include "AtlasStyle.h"
 #include "Event.h"
 #include "MVA.h"
+#include "Util.h"
 
 #include "boost/program_options.hpp"
+#include "boost/range/combine.hpp"
+#include "boost/foreach.hpp"
 
 namespace po = boost::program_options;
+using namespace boost;
 
 typedef std::tuple<int, int, int, int> map_key_t;
 
@@ -50,25 +54,25 @@ file_map_t
 constructFileMap(std::vector<int> const& sizes, std::vector<int> const& learns,
                  std::vector<int> const& do_recs, std::vector<int> const& pileup_vertices,
                  std::string const& prefix) {
-  file_map_t m;
-  for (unsigned int size_iter = 0; size_iter < sizes.size(); size_iter++) {
-      for (unsigned int learn_iter = 0; learn_iter < learns.size(); learn_iter++) {
-          for (unsigned int pileup_iter = 0; pileup_iter < pileup_vertices.size(); pileup_iter++) {
-              for (unsigned int rec_iter = 0; rec_iter < do_recs.size(); rec_iter++) {
-                  int current_do_rec = do_recs[rec_iter];
-                  int current_size = sizes[size_iter];
-                  int current_learn = learns[learn_iter];
-                  int current_n_pileup = pileup_vertices[pileup_iter];
-                  TString file_location = buildFileLocation(current_size, current_learn,
-                                                            current_n_pileup, current_do_rec,
-                                                            prefix);
-                  map_key_t new_key = std::make_tuple(current_size, current_learn, current_n_pileup, current_do_rec);
-                  m[new_key] = file_location;
-              }
-          }
-      }
-  }
-  return m;
+    file_map_t m;
+    for (unsigned int size_iter = 0; size_iter < sizes.size(); size_iter++) {
+        for (unsigned int learn_iter = 0; learn_iter < learns.size(); learn_iter++) {
+            for (unsigned int pileup_iter = 0; pileup_iter < pileup_vertices.size(); pileup_iter++) {
+                for (unsigned int rec_iter = 0; rec_iter < do_recs.size(); rec_iter++) {
+                    int current_do_rec = do_recs[rec_iter];
+                    int current_size = sizes[size_iter];
+                    int current_learn = learns[learn_iter];
+                    int current_n_pileup = pileup_vertices[pileup_iter];
+                    TString file_location = buildFileLocation(current_size, current_learn,
+                                                              current_n_pileup, current_do_rec,
+                                                              prefix);
+                    map_key_t new_key = std::make_tuple(current_size, current_learn, current_n_pileup, current_do_rec);
+                    m[new_key] = file_location;
+                }
+            }
+        }
+    }
+    return m;
 }
 
 void doSanityPlot(std::string branch, std::string old_loc, std::string new_loc, std::string title,
@@ -368,6 +372,93 @@ void pTOverlay() {
     prettyHist<float>(v_hist_decs, c_dec_untrimmed);
 }
 
+void PolishVec(std::vector<std::string> bases, std::string reweight_base) {
+    std::vector<std::string> locations;
+    std::vector<std::string> new_locations;
+    std::vector<TFile *> location_fs;
+    std::vector<TFile *> new_location_fs;
+    std::vector<TTree *> location_ts;
+    std::vector<TTree *> new_location_ts;
+    std::vector<float> pT_reweights;
+    std::vector<float> pTs;
+    std::vector<TBranch *> reweight_branches;
+    std::vector<TH1F *> pT_histos;
+
+    // ensure memory stability AHH!!!
+    size_t n = bases.size();
+    locations.reserve(n);
+    new_locations.reserve(n);
+    location_fs.reserve(n);
+    new_location_fs.reserve(n);
+    location_ts.reserve(n);
+    new_location_ts.reserve(n);
+    pT_reweights.reserve(n);
+    pTs.reserve(n);
+    reweight_branches.reserve(n);
+    pT_histos.reserve(n);
+
+    // setup
+    assert(bases.size() > 0);
+    int reweight_idx = -1;
+    for(unsigned int i = 0; i < bases.size(); i++) {
+        if (bases.at(i) == reweight_base) {
+            reweight_idx = i;
+        }
+        locations.push_back(bases.at(i) + ".root");
+        new_locations.push_back(bases.at(i) + "_w.root");
+        location_fs.push_back(new TFile(locations.at(i).c_str(), "READ"));
+        new_location_fs.push_back(new TFile(new_locations.at(i).c_str(), "RECREATE"));
+        location_ts.push_back((TTree *) location_fs.at(i)->Get("EventTree"));
+        new_location_fs.at(i)->cd();
+        new_location_ts.push_back(new TTree("EventTree", ""));
+
+        pT_reweights.push_back(0);
+        pTs.push_back(0);
+
+        TTree *o = new_location_ts.at(i);
+        reweight_branches.push_back(o->Branch("pT_reweight",
+                                              &pT_reweights.at(i),
+                                              "pT_reweight/F"));
+
+        location_ts.at(i)->SetBranchStatus("*", 0);
+        location_ts.at(i)->SetBranchStatus("antikt_pt", 1);
+        std::string temp_str = "_pT_spectrum_" + bases.at(i); // should be a valid name?
+        pT_histos.push_back(new TH1F(temp_str.c_str(), "", 100, 0, 500));
+        location_ts.at(i)->SetBranchAddress("antikt_pt", &pTs.at(i));
+    }
+    assert(reweight_idx >= 0);
+
+    Long64_t n_entries = location_ts.at(0)->GetEntries();
+
+    // fill pT histograms
+    for (Long64_t event_iter = 0; event_iter < n_entries; event_iter++) {
+        for (unsigned int i = 0; i < bases.size(); i++) {
+            location_ts.at(i)->GetEntry(event_iter);
+            pT_histos.at(i)->Fill(pTs.at(i));
+        }
+    }
+
+    for (Long64_t event_iter = 0; event_iter < n_entries; event_iter++) {
+        for (unsigned int i = 0; i < bases.size(); i++) {
+            location_ts.at(i)->GetEntry(event_iter);
+            Int_t bin_number = pT_histos.at(i)->FindBin(pTs.at(i));
+            pT_reweights.at(i) =
+                pT_histos.at(reweight_idx)->GetBinContent(bin_number) /
+                pT_histos.at(i)->GetBinContent(bin_number);
+            new_location_ts.at(i)->Fill();
+        }
+    }
+
+    // cleanup
+    for (unsigned int i = 0; i < bases.size(); i++) {
+        delete pT_histos.at(i);
+        new_location_fs.at(i)->cd();
+        new_location_ts.at(i)->Write();
+        delete location_fs.at(i);
+        delete new_location_fs.at(i);
+    }
+}
+
 void PolishTrees() {
     // Creates additional friend trees so that the reweighting values can be
     // found in trees for use in TMVA. Would prefer to pass them event by event,
@@ -589,12 +680,12 @@ void EventTest() {
     manager << new FuzzyAntiktPtCorrelation()
             << new EfficiencyGenTest()
 
-    // RADIUS PLOTS
+        // RADIUS PLOTS
             << new RadiusComparisonHistogram()
             << new AverageRadiusComparisonHistogram()
 
 
-    // POSTER STUFF
+        // POSTER STUFF
             << new SigmaJetSizeCorrelationPoster()
             << new SigmaEfficiencyPosterPlot()
             << new SkewEfficiencyPlot()
@@ -687,9 +778,9 @@ void EventTest() {
 
     for (unsigned int event_label_iter = 0; event_label_iter < event_labels.size(); event_label_iter++) {
         for (unsigned int alg_iter = 0; alg_iter < all_algs.size(); alg_iter++) {
-                std::string event_label = event_labels[event_label_iter];
-                std::string alg = all_algs[alg_iter];
-                manager << new SigmaJetSizeCorrelation(event_label + "_5", alg);
+            std::string event_label = event_labels[event_label_iter];
+            std::string alg = all_algs[alg_iter];
+            manager << new SigmaJetSizeCorrelation(event_label + "_5", alg);
         }
     }
 
@@ -700,6 +791,116 @@ void EventTest() {
 
     manager.StartUpdaters();
     while (manager.NextEvent()) {
+        manager.UpdateUpdaters();
+    }
+    manager.FinishUpdaters();
+}
+
+void EventJetTest() {
+    static const std::vector<std::string> all_algs
+    {"mGMM", "mGMMs", "mGMMc", "mTGMM", "mTGMMs", "mUMM", "CA", "antikt"};
+
+    static const std::vector<std::string> cs_algs {"CA", "antikt"};
+    static const std::vector<std::string> cs_algs_all
+    {"CA", "antikt", "antikt_trimmed_two", "antikt_trimmed_three"};
+
+    static const std::vector<std::string> algs
+    {"mGMM", "mGMMs", "mGMMc", "mTGMM", "mTGMMs", "mUMM"};
+
+    static const std::vector<float> pT_bins {0, 300, 400, 500, 1000};
+
+    EventManager manager;
+    std::string reweight_en = util::eventname("qcd", 0, 0, 0, 0, 5);
+    std::string reweight_fn = util::filename("qcd", 0, 0, 0, 0, 5);
+    // ensure we have our reweighting spectrum available
+    manager.InstallEvent(reweight_en, reweight_fn);
+
+    // INSTALL EVENTS
+    BOOST_FOREACH(auto process, util::processes) {
+        BOOST_FOREACH(auto NPV, util::NPVs) {
+            BOOST_FOREACH(auto EJW, util::EJWs) {
+                BOOST_FOREACH(auto EJO, util::EJOs) {
+                    BOOST_FOREACH(auto PP, util::PPs) {
+                        BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+                            std::string en =
+                                util::eventname(process, NPV, EJW,
+                                                EJO, PP, seed_pT_cut);
+                            std::string fn =
+                                util::filename(process, NPV, EJW,
+                                               EJO, PP, seed_pT_cut);
+                            std::cout << en << std::endl;
+                            manager.InstallEvent(en, fn);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // INSTALL HISTOGRAMS
+    // Standard order:
+    // process, NPV, EJW, EJO, PP, seed_pT_cut
+    BOOST_FOREACH(auto process, util::processes) {
+        BOOST_FOREACH(auto EJO, util::EJOs) {
+            BOOST_FOREACH(auto PP, util::PPs) {
+                //BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+                //    BOOST_FOREACH(auto NPV, util::NPVs) {
+                //        manager <<
+                //            new SigmaEventJetStrength(process, NPV, EJO, PP,
+                //                                      seed_pT_cut);
+                //    }
+                //    BOOST_FOREACH(auto EJW, util::EJWs) {
+                //        manager <<
+                //            new SigmaEventJetNPV(process, EJW, EJO, PP,
+                //                                 seed_pT_cut);
+                //    }
+                //}
+
+                BOOST_FOREACH(auto NPV, util::NPVs) {
+                    BOOST_FOREACH(auto EJW, util::EJWs) {
+                        manager <<
+                            new SigmaEventJetSeedCut(process, NPV, EJW, EJO, PP);
+                    }
+                }
+            }
+
+            BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+                BOOST_FOREACH(auto NPV, util::NPVs) {
+                    BOOST_FOREACH(auto EJW, util::EJWs) {
+                        manager <<
+                            new SigmaEventJetPP(process, NPV, EJW,
+                                                EJO, seed_pT_cut);
+                    }
+                }
+            }
+        }
+
+        BOOST_FOREACH(auto PP, util::PPs) {
+            BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+                BOOST_FOREACH(auto NPV, util::NPVs) {
+                    BOOST_FOREACH(auto EJW, util::EJWs) {
+                        manager <<
+                            new SigmaEventJetOffset(process, NPV, EJW, PP,
+                                                    seed_pT_cut);
+                    }
+                }
+            }
+        }
+    }
+
+    // START RUNNING THE ANALYSIS
+    manager.SetEventCount(2500);
+    manager.Init();
+
+    std::cout << "Reweighting." << std::endl;
+    manager.PreparePtReweighting(util::eventname("qcd", 0, 0, 0, 0, 5));
+
+    std::cout << "Starting analysis." << std::endl;
+    manager.StartUpdaters();
+    while (manager.NextEvent()) {
+        if ((manager._event_iter % 100) == 0) {
+            std::cout << manager._event_iter << std::endl;
+        }
         manager.UpdateUpdaters();
     }
     manager.FinishUpdaters();
@@ -727,16 +928,40 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-
-
     SetAtlasStyle();
 
     gROOT->ProcessLine("#include <vector>");
+
+    EventJetTest();
+    return 0;
+
     std::cout << "Adding event weights." << std::endl;
-    //PolishTrees();
+
+    std::string reweight_base = util::filename_base("qcd", 0, 0, 0, 0, 5);
+    std::vector<std::string> bases;
+
+    BOOST_FOREACH(auto process, util::processes) {
+        BOOST_FOREACH(auto NPV, util::NPVs) {
+            BOOST_FOREACH(auto EJW, util::EJWs) {
+                BOOST_FOREACH(auto EJO, util::EJOs) {
+                    BOOST_FOREACH(auto PP, util::PPs) {
+                        BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+                            std::string fnb =
+                                util::filename(process, NPV, EJW,
+                                               EJO, PP, seed_pT_cut);
+                            bases.push_back(fnb);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    PolishVec(bases, reweight_base);
     std::cout << "Starting analysis." << std::endl;
 
-    MVATest();
+    MVAEventJetTest();
+
     return 0;
     EventTest();
 
@@ -764,7 +989,7 @@ int main(int argc, char *argv[]) {
     file_map_t file_m = constructFileMap(sizes, learns, do_recs, NPVs, file_prefix);
 
     for (auto iter = file_m.begin(); iter != file_m.end(); iter++) {
-      std::cout << ":" << iter->second << std::endl;
+        std::cout << ":" << iter->second << std::endl;
     }
 
     std::string out_dir = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/20kevts_wprime_mu0_and_mu5_norec/";

@@ -13,9 +13,12 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include "Util.h"
+#include "boost/foreach.hpp"
+
 class EventManager;
 
-const std::string plot_prefix = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/testing/";
+const std::string plot_prefix = "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/event_jet_test/";
 
 class UpdatesOnEvent {
 public:
@@ -254,9 +257,9 @@ protected:
 
 public:
     SigmaImprovementEfficiencyTau32 (std::string event_signal,
-                                std::string event_background,
-                                float cut_low,
-                                float cut_high) {
+                                     std::string event_background,
+                                     float cut_low,
+                                     float cut_high) {
         _event_signal = event_signal;
         _event_background = event_background;
 
@@ -297,9 +300,9 @@ protected:
 
 public:
     SigmaImprovementEfficiencyTau21 (std::string event_signal,
-                                std::string event_background,
-                                float cut_low,
-                                float cut_high) {
+                                     std::string event_background,
+                                     float cut_low,
+                                     float cut_high) {
         _event_signal = event_signal;
         _event_background = event_background;
 
@@ -497,7 +500,7 @@ protected:
     float _cut_low, _cut_high;
 public:
     SigmaNSubjettinessEfficiencyPlot(std::string event_signal, std::string event_background,
-                                float cut_low, float cut_high) {
+                                     float cut_low, float cut_high) {
         _event_signal = event_signal;
         _event_background = event_background;
 
@@ -1006,6 +1009,265 @@ public:
         _labels = {"Z'#rightarrow tt'", "W'#rightarrow qq'", "QCD"};
 
         _ticks = 505;
+    }
+
+    void Update(EventManager const* event_manager);
+};
+
+class SigmaEventJetStrength : public StackedHistogramBase {
+protected:
+    std::string _process;
+    int _NPV;
+ // int _EJW;
+    int _EJO;
+    int _PP;
+    int _seed_pT_cut;
+
+public:
+    SigmaEventJetStrength(std::string process, int NPV, int EJO,
+                          int PP, int seed_pT_cut) {
+        _process = process;
+        _NPV = NPV;
+        _EJO = EJO;
+        _PP = PP;
+        _seed_pT_cut = seed_pT_cut;
+
+        _high = 1;
+        _n_bins = 20;
+
+        _x_label = "Learned #sigma";
+        _y_label = "Arb. units";
+        _title = "";
+
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "SigmaEventJetStrength_" << _process << "_"
+           << _NPV << "mu_"
+           << _EJO << "off_"
+           << _PP  << "PP_"
+           << _seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+
+        // use EJWs from util
+        _labels = {};
+        BOOST_FOREACH(auto EJW, util::EJWs) {
+            float EJW_f = static_cast<float>(EJW)/1000;
+            _labels.push_back(util::format_float(EJW_f, 3));
+        }
+        _colors = util::get_colors(_labels.size());
+        _styles = std::vector<Style_t>(_labels.size(), 1);
+
+        _ticks = 502;
+    }
+
+    void Update(EventManager const* event_manager);
+};
+
+class SigmaEventJetOffset : public StackedHistogramBase {
+protected:
+    std::string _process;
+    int _NPV;
+    int _EJW;
+  //int _EJO;
+    int _PP;
+    int _seed_pT_cut;
+
+public:
+    SigmaEventJetOffset(std::string process, int NPV, int EJW,
+                        int PP, int seed_pT_cut) {
+        _process = process;
+        _NPV = NPV;
+        _EJW = EJW;
+      //_EJO = EJO;
+        _PP = PP;
+        _seed_pT_cut = seed_pT_cut;
+
+        _high = 1;
+        _n_bins = 20;
+
+        _x_label = "Learned #sigma";
+        _y_label = "Arb. units";
+        _title = "";
+
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "SigmaEventJetOffset_" << _process << "_"
+           << _NPV << "mu_"
+           << _EJW << "ejw_"
+         //<< _EJO << "off_"
+           << _PP  << "PP_"
+           << _seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+
+        // use EJOs from util
+        _labels = {};
+        BOOST_FOREACH(auto EJO, util::EJOs) {
+            ss.str(std::string());
+            ss << EJO;
+            _labels.push_back(ss.str());
+        }
+        _colors = util::get_colors(_labels.size());
+        _styles = std::vector<Style_t>(_labels.size(), 1);
+
+        _ticks = 502;
+    }
+
+    void Update(EventManager const* event_manager);
+};
+
+class SigmaEventJetPP : public StackedHistogramBase {
+protected:
+    std::string _process;
+    int _NPV;
+    int _EJW;
+    int _EJO;
+  //int _PP;
+    int _seed_pT_cut;
+
+public:
+    SigmaEventJetPP(std::string process, int NPV, int EJW,
+                    int EJO, int seed_pT_cut) {
+        _process = process;
+        _NPV = NPV;
+        _EJW = EJW;
+        _EJO = EJO;
+      //_PP = PP;
+        _seed_pT_cut = seed_pT_cut;
+
+        _high = 1;
+        _n_bins = 20;
+
+        _x_label = "Learned #sigma";
+        _y_label = "Arb. units";
+        _title = "";
+
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "SigmaEventJetPP_" << _process << "_"
+           << _NPV << "mu_"
+           << _EJW << "ejw_"
+           << _EJO << "off_"
+         //<< _PP  << "PP_"
+           << _seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+
+        // use PPs from util
+        _labels = {};
+        BOOST_FOREACH(auto PP, util::PPs) {
+            ss.str(std::string());
+            ss << PP;
+            _labels.push_back(ss.str());
+        }
+        _colors = util::get_colors(_labels.size());
+        _styles = std::vector<Style_t>(_labels.size(), 1);
+
+        _ticks = 502;
+    }
+
+    void Update(EventManager const* event_manager);
+};
+
+class SigmaEventJetSeedCut : public StackedHistogramBase {
+protected:
+    std::string _process;
+    int _NPV;
+    int _EJW;
+    int _EJO;
+    int _PP;
+  //int _seed_pT_cut;
+
+public:
+    SigmaEventJetSeedCut(std::string process, int NPV, int EJW,
+                    int EJO, int PP) {
+        _process = process;
+        _NPV = NPV;
+        _EJW = EJW;
+        _EJO = EJO;
+        _PP = PP;
+      //_seed_pT_cut = seed_pT_cut;
+
+        _high = 1;
+        _n_bins = 20;
+
+        _x_label = "Learned #sigma";
+        _y_label = "Arb. units";
+        _title = "";
+
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "SigmaEventJetSeedCut_" << _process << "_"
+           << _NPV << "mu_"
+           << _EJW << "ejw_"
+           << _EJO << "off_"
+           << _PP  << "PP" // note the no _
+         //<< _seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+
+        // use cuts from util
+        _labels = {};
+        BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+            ss.str(std::string());
+            ss << seed_pT_cut;
+            _labels.push_back(ss.str());
+        }
+        _colors = util::get_colors(_labels.size());
+        _styles = std::vector<Style_t>(_labels.size(), 1);
+
+        _ticks = 502;
+    }
+
+    void Update(EventManager const* event_manager);
+};
+
+class SigmaEventJetNPV : public StackedHistogramBase {
+protected:
+    std::string _process;
+  //int _NPV;
+    int _EJW;
+    int _EJO;
+    int _PP;
+    int _seed_pT_cut;
+
+public:
+    SigmaEventJetNPV(std::string process, int EJW, int EJO,
+                          int PP, int seed_pT_cut) {
+        _process = process;
+        _EJW = EJW;
+        _EJO = EJO;
+        _PP = PP;
+        _seed_pT_cut = seed_pT_cut;
+
+        _high = 1;
+        _n_bins = 20;
+
+        _x_label = "Learned #sigma";
+        _y_label = "Arb. units";
+        _title = "";
+
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "SigmaEventJetStrength_" << _process << "_"
+           << _EJW << "ejw_"
+           << _EJO << "off_"
+           << _PP  << "PP_"
+           << _seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+
+        _labels = {};
+        BOOST_FOREACH(auto NPV, util::NPVs) {
+            ss.str(std::string());
+            ss << "#mu = " << NPV;
+            _labels.push_back(ss.str());
+        }
+        _colors = util::get_colors(_labels.size());
+        _styles = std::vector<Style_t>(_labels.size(), 1);
+
+        _ticks = 502;
     }
 
     void Update(EventManager const* event_manager);

@@ -49,6 +49,15 @@ ostream& operator<< (ostream& out, const vector<T> v) {
     return out;
 }
 
+int pTSign(fastjet::PseudoJet p) {
+    bool is_neg_pT = p.user_info<MyUserInfo>().isNegPt();
+    return is_neg_pT ? -1 : 1;
+}
+
+float signedPt(fastjet::PseudoJet p) {
+    return p.pt() * pTSign(p);
+}
+
 // Constructor
 FuzzyTools::FuzzyTools()
     : default_sigma(MatTwo(0.5, 0, 0, 0.5)) {
@@ -108,7 +117,7 @@ GaussianKernel::AdditionalUpdate(vecPseudoJet const& particles,
     _sigma.yx = 0;
     for (unsigned int particle_iter=0; particle_iter<particles.size(); particle_iter++){
         // pt scaled particle weight
-        double q_ji = pow(particles[particle_iter].pt(), tool.GetAlpha()) * _weights[particle_iter];
+        double q_ji = pow(signedPt(particles[particle_iter]), static_cast<int>(tool.GetAlpha())) * _weights[particle_iter];
         fastjet::PseudoJet const& particle = particles[particle_iter];
         double x_diff = particle.rapidity() - _mu_x;
         double y_diff = particle.rapidity() - _mu_y;
@@ -390,7 +399,7 @@ FuzzyTools::UpdateJetsUniform(vecPseudoJet const& particles,
     double total_particle_pt = 0;
     unsigned int particle_count = weights.size();
     for (unsigned int particle_iter = 0; particle_iter < particle_count; particle_iter++) {
-        total_particle_pt += pow(particles[particle_iter].pt(), alpha);
+        total_particle_pt += pow(signedPt(particles[particle_iter]), static_cast<int>(alpha));
     }
     // iterate over clusters and update parameters and the covariance matrix
     for (int cluster_iter=0; cluster_iter<cluster_count; cluster_iter++){
@@ -401,12 +410,12 @@ FuzzyTools::UpdateJetsUniform(vecPseudoJet const& particles,
 
         // build the pT fraction belonging to cluster cluster_iter
         for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++) {
-            cluster_weighted_pt += pow(particles[particle_iter].pt(),alpha)*weights[particle_iter][cluster_iter];
+            cluster_weighted_pt += pow(signedPt(particles[particle_iter]), static_cast<int>(alpha))*weights[particle_iter][cluster_iter];
         }
 
         // compute new cluster location on the basis of the EM update steps
         for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++){
-            double delta_jet_y = pow(particles[particle_iter].pt(),alpha)
+            double delta_jet_y = pow(signedPt(particles[particle_iter]), static_cast<int>(alpha))
                 * weights[particle_iter][cluster_iter] / cluster_weighted_pt;
             double delta_jet_phi = delta_jet_y;
             delta_jet_y *= particles[particle_iter].rapidity();
@@ -456,7 +465,7 @@ FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet const& particles,
     double total_particle_pt = 0;
     unsigned int particle_count = weights.size();
     for (unsigned int particle_iter = 0; particle_iter < particle_count; particle_iter++) {
-        total_particle_pt += pow(particles[particle_iter].pt(), alpha);
+        total_particle_pt += pow(signedPt(particles[particle_iter]), static_cast<int>(alpha));
     }
     // iterate over clusters and update parameters and the covariance matrix
     for (int cluster_iter=0; cluster_iter<cluster_count; cluster_iter++){
@@ -468,12 +477,12 @@ FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet const& particles,
 
         // build the pT fraction belonging to cluster cluster_iter
         for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++){
-            cluster_weighted_pt += pow(particles[particle_iter].pt(),alpha)*weights[particle_iter][cluster_iter];
+            cluster_weighted_pt += pow(signedPt(particles[particle_iter]), static_cast<int>(alpha))*weights[particle_iter][cluster_iter];
         }
 
         // compute new cluster location on the basis of the EM update steps
         for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++){
-            double delta_jet_y = pow(particles[particle_iter].pt(),alpha)
+            double delta_jet_y = pow(signedPt(particles[particle_iter]), static_cast<int>(alpha))
                 * weights[particle_iter][cluster_iter] / cluster_weighted_pt;
             double delta_jet_phi = delta_jet_y;
             delta_jet_y *= particles[particle_iter].rapidity();
@@ -509,7 +518,7 @@ FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet const& particles,
             MatTwo sigma_update(0, 0, 0, 0);
             for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++){
                 // pt scaled particle weight
-                double q_ji = pow(particles[particle_iter].pt(),alpha) * weights[particle_iter][cluster_iter];
+                double q_ji = pow(signedPt(particles[particle_iter]), static_cast<int>(alpha)) * weights[particle_iter][cluster_iter];
                 double eff_delta_phi = particles[particle_iter].phi()
                     -my_jet.phi();
 #ifdef FIXED_MOD_PI
@@ -567,7 +576,7 @@ FuzzyTools::UpdateJetsGaussianC(vecPseudoJet const& particles,
     double total_particle_pt = 0;
     unsigned int particle_count = weights.size();
     for (unsigned int particle_iter = 0; particle_iter < particle_count; particle_iter++) {
-        total_particle_pt += pow(particles[particle_iter].pt(), alpha);
+        total_particle_pt += pow(signedPt(particles[particle_iter]), static_cast<int>(alpha));
     }
 
     for (int cluster_iter = 0; cluster_iter < cluster_count; cluster_iter++) {
@@ -577,11 +586,11 @@ FuzzyTools::UpdateJetsGaussianC(vecPseudoJet const& particles,
         double cluster_pi = 0;
 
         for (unsigned int particle_iter = 0; particle_iter < particle_count; particle_iter++) {
-            cluster_weighted_pt += pow(particles[particle_iter].pt(), alpha) * weights[particle_iter][cluster_iter];
+            cluster_weighted_pt += pow(signedPt(particles[particle_iter]), static_cast<int>(alpha)) * weights[particle_iter][cluster_iter];
         }
 
         for (unsigned int particle_iter = 0; particle_iter < particle_count; particle_iter++) {
-            double delta_jet_y = pow(particles[particle_iter].pt(),alpha)
+            double delta_jet_y = pow(signedPt(particles[particle_iter]), static_cast<int>(alpha))
                 * weights[particle_iter][cluster_iter] / cluster_weighted_pt;
             double delta_jet_phi = delta_jet_y;
             delta_jet_y *= particles[particle_iter].rapidity();
@@ -619,7 +628,7 @@ FuzzyTools::UpdateJetsGaussianC(vecPseudoJet const& particles,
             MatTwo sigma_update(0, 0, 0, 0);
             double sum = 0;
             for (unsigned int particle_iter = 0; particle_iter < particle_count; particle_iter++) {
-                double q_ji = pow(particles[particle_iter].pt(), alpha) * weights[particle_iter][cluster_iter]
+                double q_ji = pow(signedPt(particles[particle_iter]), static_cast<int>(alpha)) * weights[particle_iter][cluster_iter]
                     / cluster_weighted_pt;
                 double v_off_x = particles[particle_iter].rapidity() - my_jet.rapidity();
                 double v_off_y = particles[particle_iter].phi() - my_jet.phi();
@@ -630,7 +639,8 @@ FuzzyTools::UpdateJetsGaussianC(vecPseudoJet const& particles,
 #endif
                 sum += q_ji * (v_off_x * v_off_x + v_off_y * v_off_y);
             }
-            double little_sigma = sqrt(sum / 2);
+            double little_sigma = sqrt(fabs(sum) / 2);
+
             if (2 * little_sigma < 0.001) {
                 little_sigma = 0.01;
             }
@@ -659,7 +669,7 @@ FuzzyTools::UpdateJetsGaussian(vecPseudoJet const& particles,
     double total_particle_pt = 0;
     unsigned int particle_count = weights.size();
     for (unsigned int particle_iter = 0; particle_iter < particle_count; particle_iter++) {
-        total_particle_pt += pow(particles[particle_iter].pt(), alpha);
+        total_particle_pt += pow(signedPt(particles[particle_iter]), static_cast<int>(alpha));
     }
     // iterate over clusters and update parameters and the covariance matrix
     for (int cluster_iter=0; cluster_iter<cluster_count; cluster_iter++){
@@ -671,12 +681,12 @@ FuzzyTools::UpdateJetsGaussian(vecPseudoJet const& particles,
 
         // build the pT fraction belonging to cluster cluster_iter
         for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++){
-            cluster_weighted_pt += pow(particles[particle_iter].pt(),alpha)*weights[particle_iter][cluster_iter];
+            cluster_weighted_pt += pow(signedPt(particles[particle_iter]), static_cast<int>(alpha))*weights[particle_iter][cluster_iter];
         }
 
         // compute new cluster location on the basis of the EM update steps
         for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++){
-            double delta_jet_y = pow(particles[particle_iter].pt(),alpha)
+            double delta_jet_y = pow(signedPt(particles[particle_iter]), static_cast<int>(alpha))
                 * weights[particle_iter][cluster_iter] / cluster_weighted_pt;
             double delta_jet_phi = delta_jet_y;
             delta_jet_y *= particles[particle_iter].rapidity();
@@ -713,7 +723,7 @@ FuzzyTools::UpdateJetsGaussian(vecPseudoJet const& particles,
             MatTwo sigma_update(0, 0, 0, 0);
             for (unsigned int particle_iter=0; particle_iter<particle_count; particle_iter++){
                 // pt scaled particle weight
-                double q_ji = pow(particles[particle_iter].pt(),alpha) * weights[particle_iter][cluster_iter];
+                double q_ji = pow(signedPt(particles[particle_iter]), static_cast<int>(alpha)) * weights[particle_iter][cluster_iter];
                 double eff_delta_phi = particles[particle_iter].phi()
                     -my_jet.phi();
 #ifdef FIXED_MOD_PI
@@ -1241,7 +1251,7 @@ void ClusterFuzzy(vecPseudoJet const& particles,
                   vector<AbstractKernel *> & jets) {
     double total_particle_pt = 0;
     for (fastjet::PseudoJet const& particle : particles) {
-        total_particle_pt += pow(particle.pt(), tool.GetAlpha());
+        total_particle_pt += pow(signedPt(particle), static_cast<int>(tool.GetAlpha()));
     }
 
     for (int iter = 0; iter < tool.GetMaxIters(); iter++) {
@@ -1264,7 +1274,7 @@ void ClusterFuzzy(vecPseudoJet const& particles,
             vector<double> const& particle_weights = p_jet->ParticleWeights();
 
             for (unsigned int particle_iter = 0; particle_iter < particles.size(); particle_iter++) {
-                cluster_weighted_pt += pow(particles[particle_iter].pt(), tool.GetAlpha()) * particle_weights[particle_iter];
+                cluster_weighted_pt += pow(signedPt(particles[particle_iter]), static_cast<int>(tool.GetAlpha())) * particle_weights[particle_iter];
             }
 
             p_jet->AdditionalUpdate(particles, tool, cluster_weighted_pt);
@@ -1274,9 +1284,9 @@ void ClusterFuzzy(vecPseudoJet const& particles,
             if (cluster_weighted_pt > 0) {
                 for (unsigned int particle_iter = 0; particle_iter < particles.size(); particle_iter++) {
                     fastjet::PseudoJet const& particle = particles[particle_iter];
-                    jet_y += pow(particle.pt(), tool.GetAlpha()) * particle_weights[particle_iter]
+                    jet_y += pow(signedPt(particle), static_cast<int>(tool.GetAlpha())) * particle_weights[particle_iter]
                         * particle.rapidity() / cluster_weighted_pt;
-                    jet_phi += pow(particle.pt(), tool.GetAlpha()) * particle_weights[particle_iter]
+                    jet_phi += pow(signedPt(particle), static_cast<int>(tool.GetAlpha())) * particle_weights[particle_iter]
                         * particle.phi() / cluster_weighted_pt;
                 }
             }
@@ -1512,7 +1522,7 @@ FuzzyTools::EventJetDisplay(vecPseudoJet const& particles,
         which_jets.push_back(belongs_idx(weights, i));
         eta = particles[i].eta();
         phi = particles[i].phi();
-        pT = particles[i].pt();
+        pT = signedPt(particles[i]);
         if (which_jets.at(i) >= 0)
             hist.Fill(eta, phi, pT);
     }
@@ -1564,9 +1574,16 @@ FuzzyTools::EventJetDisplay(vecPseudoJet const& particles,
     }
     gPad->SetLogz();
     canv.Update();
-    canv.Print(TString::Format("%sEventJetDisplay_%s_%d.pdf",
-                               directory_prefix.c_str(),
-                               label.c_str(), iter));
+
+    std::stringstream ss;
+    ss.str(std::string());
+    ss << directory_prefix << "EventJetDisplay_" << label << ".pdf";
+    if (iter == 0) {
+        ss << "(";
+    } else if (static_cast<unsigned int>(iter) == _n_events - 1) {
+        ss << ")";
+    }
+    canv.Print(ss.str().c_str(), "pdf");
     #endif
 }
 
@@ -1606,7 +1623,7 @@ FuzzyTools::NewEventDisplay(__attribute__((unused)) vecPseudoJet const& particle
     for (unsigned int i = 0; i < particles.size(); i++) {
         eta = particles[i].eta();
         phi = particles[i].phi();
-        pT = particles[i].pt();
+        pT = signedPt(particles[i]);
         hist.Fill(eta, phi, pT);
     }
 
@@ -1662,9 +1679,15 @@ FuzzyTools::NewEventDisplay(__attribute__((unused)) vecPseudoJet const& particle
     canv.Write(TString::Format("%sNewEventDisplay_%s_%d",
                                directory_prefix.c_str(),
                                out.c_str(), iter));
-    canv.Print(TString::Format("%sNewEventDisplay_%s_%d.pdf",
-                               directory_prefix.c_str(),
-                               out.c_str(), iter));
+    std::stringstream ss;
+    ss.str(std::string());
+    ss << directory_prefix << "NewEventDisplay_" << out << ".pdf";
+    if (iter == 0) {
+        ss << "(";
+    } else if (static_cast<unsigned int>(iter) == _n_events - 1) {
+        ss << ")";
+    }
+    canv.Print(ss.str().c_str(), "pdf");
     #endif
 }
 
@@ -1704,7 +1727,7 @@ FuzzyTools::NewEventDisplayPoster(__attribute__((unused)) vecPseudoJet const& pa
     for (unsigned int i = 0; i < particles.size(); i++) {
         eta = particles[i].eta();
         phi = particles[i].phi();
-        pT = particles[i].pt();
+        pT = signedPt(particles[i]);
         hist.Fill(eta, phi, pT);
     }
 
@@ -1753,9 +1776,15 @@ FuzzyTools::NewEventDisplayPoster(__attribute__((unused)) vecPseudoJet const& pa
     gPad->SetLogz();
     canv.Update();
 
-    canv.Print(TString::Format("%sNewEventDisplayPoster_%s_%d.pdf",
-                               directory_prefix.c_str(),
-                               out.c_str(), iter));
+    std::stringstream ss;
+    ss.str(std::string());
+    ss << directory_prefix << "NewEventDisplayPoster_" << out << ".pdf";
+    if (iter == 0) {
+        ss << "(";
+    } else if (static_cast<unsigned int>(iter) == _n_events - 1) {
+        ss << ")";
+    }
+    canv.Print(ss.str().c_str(), "pdf");
     #endif
 }
 
@@ -1796,7 +1825,7 @@ FuzzyTools::NewEventDisplayUniform(__attribute__((unused)) vecPseudoJet const& p
     for (unsigned int i = 0; i < particles.size(); i++) {
         eta = particles[i].eta();
         phi = particles[i].phi();
-        pT = particles[i].pt();
+        pT = signedPt(particles[i]);
         hist.Fill(eta, phi, pT);
     }
 
@@ -1842,9 +1871,15 @@ FuzzyTools::NewEventDisplayUniform(__attribute__((unused)) vecPseudoJet const& p
     gPad->SetLogz();
     canv.Update();
 
-    canv.Write(TString::Format("%sNewEventDisplay_%s_%d",
-                               directory_prefix.c_str(),
-                               out.c_str(), iter));
+    std::stringstream ss;
+    ss.str(std::string());
+    ss << directory_prefix << "NewEventDisplay_" << out << ".pdf";
+    if (iter == 0) {
+        ss << "(";
+    } else if (static_cast<unsigned int>(iter) == _n_events - 1) {
+        ss << ")";
+    }
+    canv.Print(ss.str().c_str(), "pdf");
     #endif
 }
 
@@ -1909,7 +1944,6 @@ FuzzyTools::SubsEventDisplay(vecPseudoJet const& particles,
         double lambda2 = 0.5*(a+b)-0.5*sqrt((a-b)*(a-b)+4.*c*c);
         double theta = 0.;
         if (c>0) theta=atan((lambda1-a)/c);
-        // std::cout << "yo " << i << " " << sqrt(lambda1) << " " << sqrt(lambda2) << " " << theta << std::endl;
         TEllipse *el4 = new TEllipse(x_jet[i],y_jet[i],sqrt(lambda1),sqrt(lambda2),0,360,theta*180/TMath::Pi());
         el4->SetFillStyle(0);
         el4->Draw("same");
@@ -1926,8 +1960,6 @@ FuzzyTools::SubsEventDisplay(vecPseudoJet const& particles,
 
 
     c->Print(file_name.c_str(), "pdf");
-
-
     delete c;
     #endif
 }
@@ -1957,23 +1989,16 @@ FuzzyTools::EventDisplay(__attribute__((unused)) vecPseudoJet const& particles,
     const int n=particles.size();
     map<int, TGraph*> vars;
     for (int i=0; i<n; i++) {
-        //std::cout << i << " " << std::endl;
         double x[1];
         double y[1];
         x[0] = particles[i].rapidity();
         y[0] = particles[i].phi();
-
-        //std::cout << i << " " << x[0] << " " << y[0] << std::endl;
-        //std::cout << which << " " << weights[i].size() << std::endl;
-        //std::cout << weights[i][which] << std::endl;
 
         vars[i] = new TGraph (1, x, y);
         int mycolor = 19-floor(weights[i][which]*10);
         if (mycolor < 12) mycolor =1;
         vars[i]->SetMarkerColor(1);//mycolor);
     }
-
-    // std::cout << "here1 ? " << std::endl;
 
     const int n2=ca_jets.size();
     double x2[n2];
@@ -1992,8 +2017,6 @@ FuzzyTools::EventDisplay(__attribute__((unused)) vecPseudoJet const& particles,
         y3[i] = tops[i].phi();
     }
     TGraph *gr3 = new TGraph (n3, x3, y3);
-
-    // std::cout << "here2 ? " << std::endl;
 
     const int n4=mGMM_jets.size();
     double x4[n4];
@@ -2124,7 +2147,7 @@ FuzzyTools::JetContributionDisplay(__attribute__((unused)) vecPseudoJet particle
             }
         }
         if (m_idx == which) {
-            double fill_val = m_type == 1 ? particles[i].m() : particles[i].pt();
+            double fill_val = m_type == 1 ? particles[i].m() : signedPt(particles[i]);
             hist.Fill(particles[i].eta(), particles[i].phi(), fill_val);
         }
     }
@@ -2132,7 +2155,7 @@ FuzzyTools::JetContributionDisplay(__attribute__((unused)) vecPseudoJet particle
 
     TH2F hist2(TString::Format("JCH_soft_%s_%d", out, iter), "", 30, min_eta, max_eta, 28, 0, 7);
     for (unsigned int i=0; i < particles.size(); i++) {
-        double fill_val = m_type == 1 ? particles[i].m() : particles[i].pt();
+        double fill_val = m_type == 1 ? particles[i].m() : signedPt(particles[i]);
         fill_val *= weights[i][which];
         hist2.Fill(particles[i].eta(), particles[i].phi(), fill_val);
     }
@@ -2152,7 +2175,7 @@ double totalMass(vecPseudoJet particles, vector<unsigned int> indices) {
 double totalpT(vecPseudoJet particles, vector<unsigned int> indices) {
     double pT = 0;
     for (unsigned int i = 0; i < indices.size(); i++) {
-        pT += particles[indices[i]].pt();
+        pT += signedPt(particles[indices[i]]);
     }
     return pT;
 }
@@ -2271,7 +2294,11 @@ FuzzyTools::MLpT(vecPseudoJet particles,
     for (unsigned int i=0; i<particles.size(); i++){
         int which_jet = belongs_idx(weights, i);
         if (which_jet==jet_index){
-            my_jet+=particles[i];
+            if (particles.at(i).user_info<MyUserInfo>().isNegPt()) {
+                my_jet-=particles.at(i);
+            } else {
+                my_jet+=particles.at(i);
+            }
         }
     }
     if (m_type==0) return my_jet.pt();
@@ -2285,7 +2312,11 @@ FuzzyTools::SoftpT(vecPseudoJet const& particles,
                    int m_type) {
     fastjet::PseudoJet my_jet;
     for (unsigned int i=0; i < particles.size(); i++) {
-        my_jet += particles[i]*weights[i][jet_index];
+        if (particles.at(i).user_info<MyUserInfo>().isNegPt()) {
+            my_jet-=particles.at(i)*weights[i][jet_index];
+        } else {
+            my_jet+=particles.at(i)*weights[i][jet_index];
+        }
     }
     if (m_type == 0) return my_jet.pt();
     return my_jet.m();
@@ -2302,7 +2333,11 @@ FuzzyTools::MLlpTGaussian(vecPseudoJet const& particles,
         const fastjet::PseudoJet p = particles[i];
         double l = doGaus(p.eta(), p.phi(), jet.eta(), jet.phi(), jet_params);
         l /= doGaus(jet.eta(), jet.phi(), jet.eta(), jet.phi(), jet_params);
-        my_jet += l * p;
+        if (p.user_info<MyUserInfo>().isNegPt()) {
+            my_jet -= l * p;
+        } else {
+            my_jet += l * p;
+        }
     }
     if (m_type == 0) return my_jet.pt()*jetWeight;
     return my_jet.m() * jetWeight;
@@ -2316,7 +2351,11 @@ FuzzyTools::MLlpTUniform(vecPseudoJet const& particles,
     for(unsigned int i = 0; i < particles.size(); i++) {
         const fastjet::PseudoJet p = particles[i];
         double l = p.delta_R(jet) <= R ? 1 : 0;
-        my_jet += l * p;
+        if (p.user_info<MyUserInfo>().isNegPt()) {
+            my_jet -= l * p;
+        } else {
+            my_jet += l * p;
+        }
     }
     if (m_type == 0) return my_jet.pt()*jetWeight;
     return my_jet.m() * jetWeight;
@@ -2332,7 +2371,11 @@ FuzzyTools::MLlpTTruncGaus(vecPseudoJet const& particles,
         const fastjet::PseudoJet p = particles[i];
         double l = doTruncGaus(p.eta(), p.phi(), p.eta(), p.phi(), jet_params);
         l /= doTruncGaus(jet.eta(), jet.phi(), jet.eta(), jet.phi(), jet_params);
-        my_jet += l * p;
+        if (p.user_info<MyUserInfo>().isNegPt()) {
+            my_jet -= l * p;
+        } else {
+            my_jet += l * p;
+        }
     }
     if (m_type == 0) return my_jet.pt()*jetWeight;
     return my_jet.m() * jetWeight;

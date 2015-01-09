@@ -2,6 +2,7 @@
 #define MVA_H
 
 void MVATest();
+void MVAEventJetTest();
 
 void MVAEfficiency(TTree *signal_tree, TTree *background_tree,
                    float cut_low, float cut_high,

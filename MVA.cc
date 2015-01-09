@@ -22,7 +22,104 @@
 #include "Histogram.h"
 #include "AtlasUtils.h"
 #include "AnalyzeFuzzyTools.h"
+#include "Util.h"
 
+#include "boost/foreach.hpp"
+
+using namespace boost;
+
+void MVAEventJetTest() {
+    // load the TMVA library
+    TMVA::Tools::Instance();
+
+    std::map<std::string, TFile *> base_file_map;
+    std::map<std::string, TFile *> addendum_file_map;
+    std::map<std::string, TTree *> base_ttree_map;
+    std::map<std::string, TTree *> addendum_ttree_map;
+
+    // instantiate TTrees and set up friendships
+    // that the the MVA will have event weights
+    BOOST_FOREACH(auto process, util::processes) {
+        BOOST_FOREACH(auto NPV, util::NPVs) {
+            BOOST_FOREACH(auto EJW, util::EJWs) {
+                BOOST_FOREACH(auto EJO, util::EJOs) {
+                    BOOST_FOREACH(auto PP, util::PPs) {
+                        BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+                            std::string en =
+                                util::eventname(process, NPV, EJW,
+                                                EJO, PP, seed_pT_cut);
+                            base_file_map[en] =
+                                new TFile(util::filename(process, NPV, EJW,
+                                                         EJO, PP, seed_pT_cut).c_str());
+
+                            addendum_file_map[en] =
+                                new TFile(util::filename_w(process, NPV, EJW,
+                                                           EJO, PP, seed_pT_cut).c_str());
+
+                            base_ttree_map[en] =
+                                (TTree *) base_file_map[en]->Get("EventTree");
+
+                            addendum_ttree_map[en] =
+                                (TTree *) addendum_file_map[en]->Get("EventTree");
+
+                            // marry ttree data temporarily with a tree friendship
+                            base_ttree_map[en]->AddFriend(addendum_ttree_map[en]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    std::vector<float> pT_cuts = {0, 300, 400, 1000};
+    std::cout << "Refer to standard variable order for name explanation."
+              << std::endl;
+    BOOST_FOREACH(auto background_process, util::processes) {
+        BOOST_FOREACH(auto signal_process, util::processes) {
+            BOOST_FOREACH(auto NPV, util::NPVs) {
+                BOOST_FOREACH(auto EJW, util::EJWs) {
+                    BOOST_FOREACH(auto EJO, util::EJOs) {
+                        BOOST_FOREACH(auto PP, util::PPs) {
+                            BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+                                std::string background_en =
+                                    util::eventname(background_process, NPV, EJW,
+                                                    EJO, PP, seed_pT_cut);
+
+                                std::string signal_en =
+                                    util::eventname(signal_process, NPV, EJW,
+                                                    EJO, PP, seed_pT_cut);
+
+                                for (unsigned int pT_it = 0; pT_it < pT_cuts.size() - 1; pT_it++) {
+                                    float pT_low = pT_cuts.at(pT_it);
+                                    float pT_high = pT_cuts.at(pT_it + 1);
+
+                                    std::cout << "Generating plots with " << background_en
+                                              << " background and "  << signal_en << " signal \n"
+                                              << "between pT GeV \t" << pT_low << " and " << pT_high
+                                              << "." << std::endl;
+
+                                    MVAPlots(base_ttree_map[signal_en],
+                                             base_ttree_map[background_en],
+                                             pT_low, pT_high,
+                                             signal_en,
+                                             background_en);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // cleanup
+    for (auto it = base_file_map.begin(); it != base_file_map.end(); it++) {
+        delete it->second;
+    }
+    for (auto it = addendum_file_map.begin(); it != addendum_file_map.end(); it++) {
+        delete it->second;
+    }
+}
 
 void MVATest() {
     // load the TMVA library

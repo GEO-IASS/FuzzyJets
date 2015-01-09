@@ -25,7 +25,7 @@ void EventBuffer::Init()
 
    CA_nsubjettiness = 0;
    antikt_nsubjettiness = 0;
-   
+
    mGMM_etas = 0;
    mGMM_phis = 0;
    mGMMc_etas = 0;
@@ -226,13 +226,15 @@ void EventBuffer::Init()
 void EventManager::InstallEvent(std::string name, std::string location) {
     std::stringstream ss;
     ss.str(std::string());
-    ss << "_pT_spectrum_" << name; 
+    ss << "_pT_spectrum_" << name;
+    if (_pT_spectrum_map.find(ss.str()) != _pT_spectrum_map.end())
+        return;
     TH1F *spectrum = new TH1F(ss.str().c_str(), "", _n_pT_bins, _pT_low, _pT_high);
     _pT_spectra.push_back(spectrum);
     _pT_spectrum_map[name] = spectrum;
     TFile *f = TFile::Open(location.c_str(), "READ");
     TTree *t = (TTree *) f->Get("EventTree");
-    
+
     EventBuffer *buffer = new EventBuffer();
     buffer->SetTree(t);
     _event_buffers.push_back(buffer);
