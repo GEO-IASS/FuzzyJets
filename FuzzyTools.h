@@ -162,6 +162,9 @@ class FuzzyTools {
     };
 
  private:
+    vector<vecPseudoJet> _historical_jets;
+    vector<vector<MatTwo> > _historical_params;
+
     unsigned int _n_events;
 
     int m_test;
@@ -175,6 +178,8 @@ class FuzzyTools {
 
     bool learn_weights;
     bool learn_shape;
+
+    bool _make_trace_diagrams;
 
     double merge_dist;
     double min_weight;
@@ -200,6 +205,12 @@ class FuzzyTools {
                             int k,
                             vecPseudoJet jets);
 
+    void LogVectors(vecPseudoJet jets, vector<MatTwo> jet_parameters);
+
+    void MakeTraceDiagram(vecPseudoJet const& particles,
+                          int max_pT_idx,
+                          std::string label, unsigned int iter);
+
     void SetEventJetWeight(double w) {
         event_jet_weight = w;
     }
@@ -214,6 +225,10 @@ class FuzzyTools {
 
     void SetLogLogLikelihoodLimit(double l) {
         log_log_likelihood_limit = l;
+    }
+
+    void SetMakeTraceDiagrams(bool b) {
+        _make_trace_diagrams = b;
     }
 
     void SetLearnWeights(bool b) {
@@ -441,6 +456,17 @@ class FuzzyTools {
                       std::string const& out,
                       int iter);
 
+    void ComparisonED(vecPseudoJet const& particles,
+                      vecPseudoJet const& ca_jets,
+                      vecPseudoJet const& tops,
+                      vecPseudoJet const& mGMM_jets,
+                      vector<vector<double> > const& weights,
+                      int which,
+                      vector<MatTwo> const& mGMM_jets_params,
+                      vector<double> const& mGMM_weights,
+                      std::string const& out,
+                      int iter);
+
     void NewEventDisplay(vecPseudoJet const& particles,
                          vecPseudoJet const& ca_jets,
                          vecPseudoJet const& tops,
@@ -481,13 +507,15 @@ class FuzzyTools {
                                 int iter);
 
     int belongs_idx(vector<vector<double> > const& weights,
-                    int particle_index);
+                    int particle_index,
+                    bool ignore_event_jet);
 
     double MLpT(vecPseudoJet particles,
                 vector<vector<double> > weights,
                 int jet_index,
                 int k,
-                int m_type);
+                int m_type,
+                bool ignore_event_jet);
 
     double MLlpTGaussian(vecPseudoJet const& particles,
                          fastjet::PseudoJet const& jet,

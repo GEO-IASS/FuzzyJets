@@ -18,7 +18,6 @@
 #include "Util.h"
 
 #include "boost/program_options.hpp"
-#include "boost/range/combine.hpp"
 #include "boost/foreach.hpp"
 
 namespace po = boost::program_options;
@@ -807,114 +806,438 @@ void EventJetTest() {
     static const std::vector<std::string> algs
     {"mGMM", "mGMMs", "mGMMc", "mTGMM", "mTGMMs", "mUMM"};
 
-    static const std::vector<float> pT_bins {0, 300, 400, 500, 1000};
+    static const std::vector<float> pT_bins {0, 200, 350, 450, 1000};
 
     EventManager manager;
-    std::string reweight_en = util::eventname("qcd", 0, 0, 0, 0, 5);
-    std::string reweight_fn = util::filename("qcd", 0, 0, 0, 0, 5);
+    std::string reweight_en = util::eventname("qcd", 0, 0, 0, 0, 0, 5, 0);
+    std::string reweight_fn = util::filename("qcd", 0, 0, 0, 0, 0, 5, 0);
     // ensure we have our reweighting spectrum available
     manager.InstallEvent(reweight_en, reweight_fn);
 
     // INSTALL EVENTS
+    BOOST_FOREACH(auto TBS, util::TBSs) {
     BOOST_FOREACH(auto process, util::processes) {
         BOOST_FOREACH(auto NPV, util::NPVs) {
             BOOST_FOREACH(auto EJW, util::EJWs) {
                 BOOST_FOREACH(auto EJO, util::EJOs) {
                     BOOST_FOREACH(auto PP, util::PPs) {
                         BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+                            BOOST_FOREACH(auto seed_noise, util::seed_noises) {
+                            if (process == "background" && NPV == 0)
+                                continue;
                             std::string en =
                                 util::eventname(process, NPV, EJW,
-                                                EJO, PP, seed_pT_cut);
+                                                EJO, PP, TBS, seed_pT_cut, seed_noise);
                             std::string fn =
                                 util::filename(process, NPV, EJW,
-                                               EJO, PP, seed_pT_cut);
+                                               EJO, PP, TBS, seed_pT_cut, seed_noise);
                             std::cout << en << std::endl;
                             manager.InstallEvent(en, fn);
+                            }
                         }
                     }
                 }
             }
         }
     }
+    }
+
+
+    // Install a few custom histograms
+    {
+        util::ParameterSet no_ej_params_qcd("qcd", 0, 0, 0, 0, 0, 5, 0);
+        util::ParameterSet no_ej_params_zprime("zprime", 0, 0, 0, 0, 0, 5, 0);
+        util::ParameterSet no_ej_params_wprime("wprime", 0, 0, 0, 0, 0, 5, 0);
+        std::vector<util::ParameterSet> no_ejs = {no_ej_params_qcd,
+                                                  no_ej_params_zprime,
+                                                  no_ej_params_wprime};
+        util::ParameterSet no_ej_params_qcd_hn("qcd", 0, 0, 0, 0, 0, 5, 100);
+        util::ParameterSet no_ej_params_zprime_hn("zprime", 0, 0, 0, 0, 0, 5, 100);
+        util::ParameterSet no_ej_params_wprime_hn("wprime", 0, 0, 0, 0, 0, 5, 100);
+        std::vector<util::ParameterSet> no_ejs_high_noise = {no_ej_params_qcd_hn,
+                                                             no_ej_params_zprime_hn,
+                                                             no_ej_params_wprime_hn};
+        manager << new GeneralDiffgram(no_ejs, no_ejs_high_noise,
+                                       "process", "mGMMc_r", 0, 1.2, 350, 450);
+    }
+    BOOST_FOREACH(auto seed_noise, util::seed_noises) {
+    BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+
+
+        util::ParameterSet no_ej_params_qcd("qcd", 0, 0, 0, 0, 0, seed_pT_cut, seed_noise);
+        //util::ParameterSet ej_params_qcd("qcd", 0, 1, 0, 0, 0, seed_pT_cut, seed_noise);
+        util::ParameterSet no_ej_params_zprime("zprime", 0, 0, 0, 0, 0, seed_pT_cut, seed_noise);
+        //util::ParameterSet ej_params_zprime("zprime", 0, 1, 0, 0, 0, seed_pT_cut, seed_noise);
+        util::ParameterSet no_ej_params_wprime("wprime", 0, 0, 0, 0, 0, seed_pT_cut, seed_noise);
+        //util::ParameterSet ej_params_wprime("wprime", 0, 1, 0, 0, 0, seed_pT_cut, seed_noise);
+    for (unsigned int pT_iter = 1; pT_iter < pT_bins.size(); pT_iter++) {
+        float pT_low = pT_bins.at(pT_iter - 1);
+        float pT_high = pT_bins.at(pT_iter);
+        // mGMMc_r     antikt_m/antikt_pt
+        manager << new GeneralCorrelation(no_ej_params_qcd, "antikt_m/antikt_pt",
+                                          "mGMMc_r", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_qcd, "antikt_m/antikt_pt",
+        //                                  "mGMMc_r", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_zprime, "antikt_m/antikt_pt",
+                                          "mGMMc_r", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_zprime, "antikt_m/antikt_pt",
+        //                                  "mGMMc_r", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_wprime, "antikt_m/antikt_pt",
+                                          "mGMMc_r", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_wprime, "antikt_m/antikt_pt",
+        //                                  "mGMMc_r", 0, 0.7, 0, 1.2, pT_low, pT_high);
+
+        // mGMMc_r     antikt_nsubjettiness_1
+        manager << new GeneralCorrelation(no_ej_params_qcd, "antikt_nsubjettiness:0",
+                                          "mGMMc_r", 0, 0.18, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_qcd, "antikt_nsubjettiness:0",
+        //                                  "mGMMc_r", 0, 0.18, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_zprime, "antikt_nsubjettiness:0",
+                                          "mGMMc_r", 0, 0.55, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_zprime, "antikt_nsubjettiness:0",
+        //                                  "mGMMc_r", 0, 0.55, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_wprime, "antikt_nsubjettiness:0",
+                                          "mGMMc_r", 0, 0.55, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_wprime, "antikt_nsubjettiness:0",
+        //                                  "mGMMc_r", 0, 0.55, 0, 1.2, pT_low, pT_high);
+
+        // mGMMc_r     antikt_nsubjettiness_2
+        manager << new GeneralCorrelation(no_ej_params_qcd, "antikt_nsubjettiness:1",
+                                          "mGMMc_r", 0, 0.25, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_qcd, "antikt_nsubjettiness:1",
+        //                                  "mGMMc_r", 0, 0.25, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_zprime, "antikt_nsubjettiness:1",
+                                          "mGMMc_r", 0, 0.32, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_zprime, "antikt_nsubjettiness:1",
+        //                                  "mGMMc_r", 0, 0.32, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_wprime, "antikt_nsubjettiness:1",
+                                          "mGMMc_r", 0, 0.32, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_wprime, "antikt_nsubjettiness:1",
+        //                                  "mGMMc_r", 0, 0.32, 0, 1.2, pT_low, pT_high);
+
+        // mGMMc_r     antikt_nsubjettiness_3
+        manager << new GeneralCorrelation(no_ej_params_qcd, "antikt_nsubjettiness:2",
+                                          "mGMMc_r", 0, 0.15, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_qcd, "antikt_nsubjettiness:2",
+        //                                  "mGMMc_r", 0, 0.15, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_zprime, "antikt_nsubjettiness:2",
+                                          "mGMMc_r", 0, 0.2, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_zprime, "antikt_nsubjettiness:2",
+        //                                  "mGMMc_r", 0, 0.2, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_wprime, "antikt_nsubjettiness:2",
+                                          "mGMMc_r", 0, 0.2, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_wprime, "antikt_nsubjettiness:2",
+        //                                  "mGMMc_r", 0, 0.2, 0, 1.2, pT_low, pT_high);
+
+        // mGMMc_r     antikt_nsubjettiness_3/antikt_nsubjettiness_2
+        manager << new GeneralCorrelation(no_ej_params_qcd,
+                                          "antikt_nsubjettiness:2/antikt_nsubjettiness:1",
+                                          "mGMMc_r", 0.2, 1.2, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_qcd,
+        //                                  "antikt_nsubjettiness:2/antikt_nsubjettiness:1",
+        //                                  "mGMMc_r", 0.2, 1.2, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_zprime,
+                                          "antikt_nsubjettiness:2/antikt_nsubjettiness:1",
+                                          "mGMMc_r", 0.1, 1.1, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_zprime,
+        //                                  "antikt_nsubjettiness:2/antikt_nsubjettiness:1",
+        //                                  "mGMMc_r", 0.1, 1.1, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_wprime,
+                                          "antikt_nsubjettiness:2/antikt_nsubjettiness:1",
+                                          "mGMMc_r", 0.1, 1.1, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_wprime,
+        //                                  "antikt_nsubjettiness:2/antikt_nsubjettiness:1",
+        //                                  "mGMMc_r", 0.1, 1.1, 0, 1.2, pT_low, pT_high);
+
+        // mGMMc_r     mGMMc_m/mGMMc_pt
+        manager << new GeneralCorrelation(no_ej_params_qcd, "mGMMc_m/mGMMc_pt",
+                                          "mGMMc_r", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_qcd, "mGMMc_m/mGMMc_pt",
+        //                                  "mGMMc_r", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_zprime, "mGMMc_m/mGMMc_pt",
+                                          "mGMMc_r", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_zprime, "mGMMc_m/mGMMc_pt",
+        //                                  "mGMMc_r", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_wprime, "mGMMc_m/mGMMc_pt",
+                                          "mGMMc_r", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_wprime, "mGMMc_m/mGMMc_pt",
+        //                                  "mGMMc_r", 0, 0.7, 0, 1.2, pT_low, pT_high);
+
+        // mGMMc_r     mGMMc_m
+        manager << new GeneralCorrelation(no_ej_params_qcd, "mGMMc_m",
+                                          "mGMMc_r", 0, 250, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_qcd, "mGMMc_m",
+        //                                  "mGMMc_r", 0, 250, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_zprime, "mGMMc_m",
+                                          "mGMMc_r", 30, 280, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_zprime, "mGMMc_m",
+        //                                  "mGMMc_r", 30, 280, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_wprime, "mGMMc_m",
+                                          "mGMMc_r", 30, 280, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_wprime, "mGMMc_m",
+        //                                  "mGMMc_r", 30, 280, 0, 1.2, pT_low, pT_high);
+
+        // mGMMc_r     mGMMc_r_second
+        manager << new GeneralCorrelation(no_ej_params_qcd, "mGMMc_r_second",
+                                          "mGMMc_r", 0, 1.2, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_qcd, "mGMMc_r_second",
+        //                                  "mGMMc_r", 0, 1.2, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_zprime, "mGMMc_r_second",
+                                          "mGMMc_r", 0.2, 1.2, 0.2, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_zprime, "mGMMc_r_second",
+        //                                  "mGMMc_r", 0.2, 1.2, 0.2, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_wprime, "mGMMc_r_second",
+                                          "mGMMc_r", 0.2, 1.2, 0.2, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_wprime, "mGMMc_r_second",
+        //                                  "mGMMc_r", 0.2, 1.2, 0.2, 1.2, pT_low, pT_high);
+
+        // mGMMc_r_second     antikt_m/antikt_pt
+        manager << new GeneralCorrelation(no_ej_params_qcd, "antikt_m/antikt_pt",
+                                          "mGMMc_r_second", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_qcd, "antikt_m/antikt_pt",
+        //                                  "mGMMc_r_second", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_zprime, "antikt_m/antikt_pt",
+                                          "mGMMc_r_second", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_zprime, "antikt_m/antikt_pt",
+        //                                  "mGMMc_r_second", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_wprime, "antikt_m/antikt_pt",
+                                          "mGMMc_r_second", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_wprime, "antikt_m/antikt_pt",
+        //                                  "mGMMc_r_second", 0, 0.7, 0, 1.2, pT_low, pT_high);
+
+        // mGMMc_r_second     mGMMc_m/mGMMc_pt
+        manager << new GeneralCorrelation(no_ej_params_qcd, "mGMMc_m/mGMMc_pt",
+                                          "mGMMc_r_second", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_qcd, "mGMMc_m/mGMMc_pt",
+        //                                  "mGMMc_r_second", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_zprime, "mGMMc_m/mGMMc_pt",
+                                          "mGMMc_r_second", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_zprime, "mGMMc_m/mGMMc_pt",
+        //                                  "mGMMc_r_second", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_wprime, "mGMMc_m/mGMMc_pt",
+                                          "mGMMc_r_second", 0, 0.7, 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_wprime, "mGMMc_m/mGMMc_pt",
+        //                                  "mGMMc_r_second", 0, 0.7, 0, 1.2, pT_low, pT_high);
+
+        // mGMMc_r^2     antikt_area_trimmed_three
+        manager << new GeneralCorrelation(no_ej_params_qcd, "antikt_area_trimmed_three",
+                                          "mGMMc_r*mGMMc_r", 0, 1.6, 0, 0.6, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_qcd, "antikt_area_trimmed_three",
+        //                                  "mGMMc_r*mGMMc_r", 0, 1.6, 0, 0.6, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_zprime, "antikt_area_trimmed_three",
+                                          "mGMMc_r*mGMMc_r", 0, 1.8, 0, 0.6, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_zprime, "antikt_area_trimmed_three",
+        //                                  "mGMMc_r*mGMMc_r", 0, 1.8, 0, 0.6, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_wprime, "antikt_area_trimmed_three",
+                                          "mGMMc_r*mGMMc_r", 0, 1.8, 0, 0.6, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_wprime, "antikt_area_trimmed_three",
+        //                                  "mGMMc_r*mGMMc_r", 0, 1.8, 0, 0.6, pT_low, pT_high);
+
+        // mGMMc_dr     antikt_dr
+        manager << new GeneralCorrelation(no_ej_params_qcd, "antikt_dr",
+                                          "mGMMc_dr", 2, 5, 2, 5, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_qcd, "antikt_dr",
+        //                                  "mGMMc_dr", 2, 5, 2, 5, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_zprime, "antikt_dr",
+                                          "mGMMc_dr", 2, 5, 2, 5, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_zprime, "antikt_dr",
+        //                                  "mGMMc_dr", 2, 5, 2, 5, pT_low, pT_high);
+        manager << new GeneralCorrelation(no_ej_params_wprime, "antikt_dr",
+                                          "mGMMc_dr", 2, 5, 2, 5, pT_low, pT_high);
+        //manager << new GeneralCorrelation(ej_params_wprime, "antikt_dr",
+        //                                  "mGMMc_dr", 2, 5, 2, 5, pT_low, pT_high);
+
+        std::vector<util::ParameterSet> no_ejs = {no_ej_params_qcd,
+                                                  no_ej_params_zprime,
+                                                  no_ej_params_wprime};
+        //std::vector<util::ParameterSet> ejs = {ej_params_qcd,
+        //                                       ej_params_zprime,
+        //                                       ej_params_wprime};
+        // mGMMc_pt
+        manager << new GeneralHistogram(no_ejs, "process", "mGMMc_pt", 0, 1000, 0, 3000);
+        //manager << new GeneralHistogram(ejs, "process", "mGMMc_pt", 0, 1000, 0, 3000);
+
+        // antikt_pt
+        manager << new GeneralHistogram(no_ejs, "process", "antikt_pt", 0, 1000, 0, 3000);
+        //manager << new GeneralHistogram(ejs, "process", "antikt_pt", 0, 1000, 0, 3000);
+
+        // mGMMc_r
+        manager << new GeneralHistogram(no_ejs, "process", "mGMMc_r", 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralHistogram(ejs, "process", "mGMMc_r", 0, 1.2, pT_low, pT_high);
+
+        // mGMMc_m
+        manager << new GeneralHistogram(no_ejs, "process", "mGMMc_m", 0, 300, pT_low, pT_high);
+        //manager << new GeneralHistogram(ejs, "process", "mGMMc_m", 0, 300, pT_low, pT_high);
+
+        // antikt_m
+        manager << new GeneralHistogram(no_ejs, "process", "antikt_m", 0, 300, pT_low, pT_high);
+        //manager << new GeneralHistogram(ejs, "process", "antikt_m", 0, 300, pT_low, pT_high);
+
+        // mGMMc_r_avg
+        manager << new GeneralHistogram(no_ejs, "process", "mGMMc_r_avg", 0, 1.2, pT_low, pT_high);
+        //manager << new GeneralHistogram(ejs, "process", "mGMMc_r_avg", 0, 1.2, pT_low, pT_high);
+
+        // mGMMc_dr
+        manager << new GeneralHistogram(no_ejs, "process", "mGMMc_dr", 2, 5, pT_low, pT_high);
+        //manager << new GeneralHistogram(ejs, "process", "mGMMc_dr", 2, 5, pT_low, pT_high);
+
+        // antikt_dr
+        manager << new GeneralHistogram(no_ejs, "process", "antikt_dr", 2, 5, pT_low, pT_high);
+        //manager << new GeneralHistogram(ejs, "process", "antikt_dr", 2, 5, pT_low, pT_high);
+
+        // antikt_area_trimmed_three
+        manager << new GeneralHistogram(no_ejs, "process", "antikt_area_trimmed_three", 0, 2, pT_low, pT_high);
+        //manager << new GeneralHistogram(ejs, "process", "antikt_area_trimmed_three", 0, 2, pT_low, pT_high);
+
+        // antikt_m_trimmed_three
+        manager << new GeneralHistogram(no_ejs, "process", "antikt_m_trimmed_three", 0, 300, pT_low, pT_high);
+        //manager << new GeneralHistogram(ejs, "process", "antikt_m_trimmed_three", 0, 300, pT_low, pT_high);
+
+        // mGMMc_r_second / mGMMc_r
+        manager << new GeneralHistogram(no_ejs, "process", "mGMMc_r_second/mGMMc_r", -2, 2, pT_low, pT_high, true);
+        //manager << new GeneralHistogram(ejs, "process", "mGMMc_r_second/mGMMc_r", -2, 2, pT_low, pT_high, true);
+
+        // antikt_nsubjettiness_1
+        manager << new GeneralHistogram(no_ejs, "process", "antikt_nsubjettiness:0", 0, 0.6, pT_low, pT_high);
+        //manager << new GeneralHistogram(ejs, "process", "antikt_nsubjettiness:0", 0, 0.6, pT_low, pT_high);
+
+        // antikt_nsubjettiness_2
+        manager << new GeneralHistogram(no_ejs, "process", "antikt_nsubjettiness:1", 0, 0.38, pT_low, pT_high);
+        //manager << new GeneralHistogram(ejs, "process", "antikt_nsubjettiness:1", 0, 0.38, pT_low, pT_high);
+
+        // antikt_nsubjettiness_3
+        manager << new GeneralHistogram(no_ejs, "process", "antikt_nsubjettiness:2", 0, 0.25, pT_low, pT_high);
+        //manager << new GeneralHistogram(ejs, "process", "antikt_nsubjettiness:2", 0, 0.25, pT_low, pT_high);
+
+        // deltatop_mGMMc
+        manager << new GeneralHistogram(no_ejs, "process", "deltatop_mGMMc", -1, 4, pT_low, pT_high);
+        //manager << new GeneralHistogram(ejs, "process", "deltatop_mGMMc", -1, 4, pT_low, pT_high);
+    }
+
+    // antikt_pt      mGMMc_pt
+    // these don't have pt cuts
+    manager << new GeneralCorrelation(no_ej_params_qcd, "antikt_pt",
+                                      "mGMMc_pt", 100, 500, 100, 500, 0, 3000);
+    //manager << new GeneralCorrelation(ej_params_qcd, "antikt_pt",
+    //                                  "mGMMc_pt", 100, 500, 100, 500, 0, 3000);
+    manager << new GeneralCorrelation(no_ej_params_zprime, "antikt_pt",
+                                      "mGMMc_pt", 100, 500, 100, 500, 0, 3000);
+    //manager << new GeneralCorrelation(ej_params_zprime, "antikt_pt",
+    //                                  "mGMMc_pt", 100, 500, 100, 500, 0, 3000);
+    manager << new GeneralCorrelation(no_ej_params_zprime, "antikt_pt",
+                                      "mGMMc_pt", 100, 500, 100, 500, 0, 3000);
+    //manager << new GeneralCorrelation(ej_params_zprime, "antikt_pt",
+    //                                  "mGMMc_pt", 100, 500, 100, 500, 0, 3000);
+    }
+    }
+
+
+
+
 
     // INSTALL HISTOGRAMS
     // Standard order:
     // process, NPV, EJW, EJO, PP, seed_pT_cut
-    BOOST_FOREACH(auto process, util::processes) {
-        BOOST_FOREACH(auto EJO, util::EJOs) {
-            BOOST_FOREACH(auto PP, util::PPs) {
-                //BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
-                //    BOOST_FOREACH(auto NPV, util::NPVs) {
-                //        manager <<
-                //            new SigmaEventJetStrength(process, NPV, EJO, PP,
-                //                                      seed_pT_cut);
-                //    }
-                //    BOOST_FOREACH(auto EJW, util::EJWs) {
-                //        manager <<
-                //            new SigmaEventJetNPV(process, EJW, EJO, PP,
-                //                                 seed_pT_cut);
-                //    }
-                //}
-
-                BOOST_FOREACH(auto NPV, util::NPVs) {
-                    BOOST_FOREACH(auto EJW, util::EJWs) {
-                        manager <<
-                            new SigmaEventJetSeedCut(process, NPV, EJW, EJO, PP);
-                    }
-                }
-            }
-
-            BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
-                BOOST_FOREACH(auto NPV, util::NPVs) {
-                    BOOST_FOREACH(auto EJW, util::EJWs) {
-                        manager <<
-                            new SigmaEventJetPP(process, NPV, EJW,
-                                                EJO, seed_pT_cut);
-                    }
-                }
-            }
-        }
-
-        BOOST_FOREACH(auto PP, util::PPs) {
-            BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
-                BOOST_FOREACH(auto NPV, util::NPVs) {
-                    BOOST_FOREACH(auto EJW, util::EJWs) {
-                        manager <<
-                            new SigmaEventJetOffset(process, NPV, EJW, PP,
-                                                    seed_pT_cut);
-                    }
-                }
-            }
-        }
-    }
+    //BOOST_FOREACH(auto TBS, util::TBSs) {
+    //BOOST_FOREACH(auto process, util::processes) {
+    //    BOOST_FOREACH(auto EJO, util::EJOs) {
+    //        BOOST_FOREACH(auto PP, util::PPs) {
+    //            BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+    //                BOOST_FOREACH(auto NPV, util::NPVs) {
+    //                    if (process == "background" && NPV == 0)
+    //                        continue;
+    //                    util::ParameterSet ps(process, NPV, 0, EJO, PP, TBS, seed_pT_cut);
+    //                    manager <<
+    //                        new SigmaEventJetStrength(process, NPV, EJO, PP, TBS,
+    //                                                  seed_pT_cut)
+    //                            <<
+    //                        new JetMultiplicityEJW(ps)
+    //                            <<
+    //                        new MeanFloatVarEJW(ps, "mGMMc_r");
+    //
+    //                }
+    //                BOOST_FOREACH(auto EJW, util::EJWs) {
+    //                    util::ParameterSet ps(process, 0, EJW, EJO, PP, TBS, seed_pT_cut);
+    //                    manager <<
+    //                        new SigmaEventJetNPV(process, EJW, EJO, PP, TBS,
+    //                                             seed_pT_cut)
+    //                            <<
+    //                        new JetMultiplicityNPV(ps)
+    //                            <<
+    //                        new MeanFloatVarNPV(ps, "mGMMc_r");
+    //                }
+    //            }
+    //
+    //            BOOST_FOREACH(auto NPV, util::NPVs) {
+    //                BOOST_FOREACH(auto EJW, util::EJWs) {
+    //                    if (process == "background" && NPV == 0)
+    //                        continue;
+    //                    util::ParameterSet ps(process, NPV, EJW, EJO, PP, TBS, 0);
+    //                    manager <<
+    //                        new SigmaEventJetSeedCut(process, NPV, EJW, EJO, PP, TBS)
+    //                            <<
+    //                        new JetMultiplicitySeedCut(ps)
+    //                            <<
+    //                        new MeanFloatVarSeedCut(ps, "mGMMc_r");
+    //                }
+    //            }
+    //        }
+    //
+    //        BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+    //            BOOST_FOREACH(auto NPV, util::NPVs) {
+    //                BOOST_FOREACH(auto EJW, util::EJWs) {
+    //                    if (process == "background" && NPV == 0)
+    //                        continue;
+    //                    util::ParameterSet ps(process, NPV, EJW, EJO, 0, TBS, seed_pT_cut);
+    //                    //manager <<
+    //                    //    new SigmaEventJetPP(process, NPV, EJW,
+    //                    //                        EJO, seed_pT_cut)
+    //                    //        <<
+    //                    //    new JetMultiplicityPP(ps)
+    //                    //        <<
+    //                    //    new MeanFloatVarPP(ps, "mGMMc_r");
+    //                }
+    //            }
+    //        }
+    //    }
+    //
+    //    BOOST_FOREACH(auto PP, util::PPs) {
+    //        BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+    //            BOOST_FOREACH(auto NPV, util::NPVs) {
+    //                BOOST_FOREACH(auto EJW, util::EJWs) {
+    //                    if (process == "background" && NPV == 0)
+    //                        continue;
+    //                    util::ParameterSet ps(process, NPV, EJW, 0, PP, TBS, seed_pT_cut);
+    //                    manager <<
+    //                        new SigmaEventJetOffset(process, NPV, EJW, PP, TBS,
+    //                                                seed_pT_cut)
+    //                            <<
+    //                        new JetMultiplicityEJO(ps)
+    //                            <<
+    //                        new MeanFloatVarEJO(ps, "mGMMc_r");
+    //                }
+    //            }
+    //        }
+    //    }
+    //}
+    //}
 
     // START RUNNING THE ANALYSIS
-    manager.SetEventCount(2500);
+    manager.SetEventCount(100000);
     manager.Init();
 
     std::cout << "Reweighting." << std::endl;
-    manager.PreparePtReweighting(util::eventname("qcd", 0, 0, 0, 0, 5));
+    manager.PreparePtReweighting(reweight_en);
 
     std::cout << "Starting analysis." << std::endl;
     manager.StartUpdaters();
     while (manager.NextEvent()) {
-        if ((manager._event_iter % 100) == 0) {
-            std::cout << manager._event_iter << std::endl;
-        }
         manager.UpdateUpdaters();
     }
     manager.FinishUpdaters();
 }
 
 int main(int argc, char *argv[]) {
-    gErrorIgnoreLevel = kWarning;
-
-    std::cout << "Called as: ";
-    for (int i = 0; i < argc; i++) {
-        std::cout << argv[i] << " ";
-    }
-    std::cout << std::endl;
-
     po::options_description desc("Allowed options");
     desc.add_options()
         ("help", "Produces help message");
@@ -928,6 +1251,8 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // Histogramming starts here
+    gErrorIgnoreLevel = kWarning;
     SetAtlasStyle();
 
     gROOT->ProcessLine("#include <vector>");
@@ -937,27 +1262,31 @@ int main(int argc, char *argv[]) {
 
     std::cout << "Adding event weights." << std::endl;
 
-    std::string reweight_base = util::filename_base("qcd", 0, 0, 0, 0, 5);
+    std::string reweight_base = util::filename_base("qcd", 0, 0, 0, 0, 0, 5, 0);
     std::vector<std::string> bases;
 
+    BOOST_FOREACH(auto TBS, util::TBSs) {
     BOOST_FOREACH(auto process, util::processes) {
         BOOST_FOREACH(auto NPV, util::NPVs) {
             BOOST_FOREACH(auto EJW, util::EJWs) {
                 BOOST_FOREACH(auto EJO, util::EJOs) {
                     BOOST_FOREACH(auto PP, util::PPs) {
                         BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+                            BOOST_FOREACH(auto seed_noise, util::seed_noises) {
                             std::string fnb =
-                                util::filename(process, NPV, EJW,
-                                               EJO, PP, seed_pT_cut);
+                                util::filename_base(process, NPV, EJW,
+                                                    EJO, PP, TBS, seed_pT_cut, seed_noise);
                             bases.push_back(fnb);
+                            }
                         }
                     }
                 }
             }
         }
     }
+    }
 
-    PolishVec(bases, reweight_base);
+    //PolishVec(bases, reweight_base);
     std::cout << "Starting analysis." << std::endl;
 
     MVAEventJetTest();

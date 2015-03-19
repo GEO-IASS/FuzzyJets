@@ -40,6 +40,7 @@ class FuzzyAnalysis{
     string f_out_name;
     string directory_prefix;
 
+    bool stop_before_clustering;
     bool do_protobuf_serialize;
 
     std::map<string, float*> tree_vars;
@@ -68,6 +69,8 @@ class FuzzyAnalysis{
     TTree *t_t;
     #endif
 
+    bool _non_standard_study;
+
     FuzzyTools *tool;
 
     double _event_jet_strength;
@@ -84,6 +87,8 @@ class FuzzyAnalysis{
     float fTrho;
     float fTevent_jet_strength;
     float fTevent_jet_rho_offset;
+    float fTseed_location_noise;
+    int   fTn_jet_seeds;
 
     float fTCA_pt;
     float fTCA_m;
@@ -94,6 +99,7 @@ class FuzzyAnalysis{
     std::vector<float> CA_nsubjettiness;
 
     float fTantikt_m;
+    float fTantikt_m_second;
     float fTantikt_m_pu;
     float fTantikt_pt;
     float fTantikt_pufrac;
@@ -108,6 +114,7 @@ class FuzzyAnalysis{
     float fTantikt_area_trimmed_two;
 
     float fTantikt_m_trimmed_three;
+    float fTantikt_m_second_trimmed_three;
     float fTantikt_m_pu_trimmed_three;
     float fTantikt_pt_trimmed_three;
     float fTantikt_pufrac_trimmed_three;
@@ -162,6 +169,7 @@ class FuzzyAnalysis{
     std::vector<float> fTmGMMs_phis;
 
     float fTmGMMc_m;
+    float fTmGMMc_m_sigma;
     float fTmGMMc_pt;
     float fTdeltatop_mGMMc;
     float fTmGMMc_m_mean;
@@ -186,6 +194,8 @@ class FuzzyAnalysis{
     std::vector<float> fTmGMMc_phis;
 
     float fTmGMMc_r;
+    float fTmGMMc_phi;
+    float fTmGMMc_eta;
     float fTmGMMc_r_avg;
     float fTmGMMc_r_weighted_avg;
     float fTmGMMc_r_second;
@@ -279,20 +289,37 @@ class FuzzyAnalysis{
     void SetupHistosMap();
     void WriteHistosMap();
     void PiFixStudy();
+    void SigmaDependenceOnMuStudy(Pythia8::Pythia *pythia_8, Pythia8::Pythia *pythia_MB);
+    void PtCutWanderingStudy(Pythia8::Pythia *pythia_8, Pythia8::Pythia *pythia_MB, int NPV, size_t n_events);
+    void SigmaDependenceOnMuCompleteStudy(Pythia8::Pythia *pythia_8,
+                                          Pythia8::Pythia *pythia_MB);
+    void NoiseStudy(Pythia8::Pythia *pythia_8,
+                    Pythia8::Pythia *pythia_MB, int NPV, size_t n_events);
+    void SigmaMassStudy(Pythia8::Pythia *pythia_8, Pythia8::Pythia *pythia_MB);
+    void JetMultiplicityStudy(Pythia8::Pythia *pythia8, Pythia8::Pythia *pythia_MB);
+
     vecPseudoJet DiscretizeParticles(vecPseudoJet const& arg_particles,
-                                                    int n_phi, int n_eta,
-                                                    float eta_cutoff);
+                                     int n_phi, int n_eta,
+                                     float eta_cutoff,
+                                     bool keep_zero_cells);
     vecPseudoJet ChargedParticles(vecPseudoJet const& arg_particles, double eta_max);
     vecPseudoJet UnchargedParticles(vecPseudoJet const& arg_particles, double eta_max);
     void GroomingStudy(vecPseudoJet leading_particles, int event_iter);
     void SubstructureStudy(vecPseudoJet ca_jets, vecPseudoJet antikt_jets, int event_iter);
     void AnalyzeEventNew(int i_evt, Pythia8::Pythia *pythia8, Pythia8::Pythia *pythia_MB, int NPV);
-    void AnalyzeEvent(int i_evt, Pythia8::Pythia *pythia8, Pythia8::Pythia *pythia_MB, int NPV);
+    void AnalyzeEvent(int i_evt, Pythia8::Pythia *pythia8,
+                      Pythia8::Pythia *pythia_MB, int NPV,
+                      vecPseudoJet const & hs_particles_in = std::vector<fastjet::PseudoJet>(),
+                      vecPseudoJet const & tops_in = std::vector<fastjet::PseudoJet>());
     void End();
     void DeclareBranches();
     void ResetBranches();
     void Debug(int debug){
         f_debug = debug;
+    }
+
+    void IsNonStandardStudy() {
+        _non_standard_study = true;
     }
 
     bool QueryFloatValue(std::string name, float *f_out) {
@@ -312,6 +339,14 @@ class FuzzyAnalysis{
         if (tool) {
             tool->SetNEvents(n);
         }
+    }
+
+    void SetToolAlpha(float a) {
+        tool->SetAlpha(a);
+    }
+
+    void SetSeedLocationNoise(float n) {
+        fTseed_location_noise = n;
     }
 
     void SetDoTowerSubtraction(bool d) {

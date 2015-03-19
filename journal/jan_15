@@ -1,0 +1,8 @@
+State of event jet:
+    It turns out that the event jet scheme is fabulously effective at removing *all* or *almost all* particles from an event, which I didn't realize from looking at the histograms of produced values like mGMMc. Because we select principal_value(var) for any var as var(argmax(pT)) over all jets, this means that it often just selects the var of the last jet pushed onto the seed stack! I'm not sure how to resolve this directly, except to ignore the event jet for the purpose of deciding the principal jet. Ultimately, what should matter most are the dynamics ofthe jets with the event jet in place, though it appears that a very small event jet parameter might be able to improve resolution on some kinematic variables like pT and mass, such a small value of the parameter does not much perturb the dynamics of clustering, and so does not much improve the learned radius, for instance. I'll be submitting more data to look at this issue specifically.
+
+Misc Changes:
+    I've added a var for the number of seeds, because this value is not recorded after I removed all the vector variables from the computations. This will allow us to look at the jet multiplicity as a function of \rho and the pT cut without paying the full cost of including the weight/distance/eta/phi vectors for the jets.
+
+Tracking and understanding jet dynamics:
+    UNFINISHED

@@ -5,7 +5,7 @@
 #                                               #
 # Note: source setup.sh before make             #
 # --------------------------------------------- #
-OPTIMIZATION = -O3
+OPTIMIZATION = -O0
 CXXFLAGS = -Wall -Wextra -equal -Werror -Wno-shadow -fstack-protector-all -Wno-unused-but-set-variable -g
 CXXFLAGSEXTRA = -std=c++0x
 CXX = g++
@@ -66,19 +66,38 @@ AtlasUtils.so: AtlasUtils.cc AtlasUtils.h
 	$(CXX) -o $@ -c $<  \
 	$(CXXFLAGS) $(CXXFLAGSEXTRA) -fPIC -shared $(ROOTFLAGSREAL)
 
-Fuzzy:  Fuzzy.so FuzzyTools.so FuzzyAnalysis.so
-	$(CXX) Fuzzy.so FuzzyTools.so FuzzyAnalysis.so -o $@ $(PROFILER) \
+Experimental: Experimental.so ComputationManager.so
+	$(CXX) Experimental.so ComputationManager.so -o $@ \
+	$(CXXFLAGS) $(CXXFLAGSEXTRA) $(ROOTLIBSREAL) $(OPTIMIZATION) \
+	-L$(BOOSTLIBLOCATION) -lboost_program_options
+
+Experimental.so: Experimental.cc
+	$(CXX) -o $@ -c $<  \
+	$(CXXFLAGS) $(CXXFLAGSEXTRA) $(OPTIMIZATION) -fPIC -shared $(ROOTFLAGSREAL) \
+	-isystem $(BOOSTINCDIR)
+
+ComputationManager.so: ComputationManager.cc ComputationManager.h
+	$(CXX) -o $@ -c $<  \
+	$(CXXFLAGS) $(CXXFLAGSEXTRA) $(OPTIMIZATION) -fPIC \
+	-isystem $(BOOSTINCDIR)
+
+Fuzzy:  Fuzzy.so FuzzyTools.so FuzzyAnalysis.so FuzzyUtil.so
+	$(CXX) Fuzzy.so FuzzyTools.so FuzzyAnalysis.so FuzzyUtil.so -o $@ $(PROFILER) \
 	$(CXXFLAGS) $(OPTIMIZATION) $(ROOTLIBS) \
 	-L$(FASTJETLOCATION)/lib $(FASTJETLIBS) \
 	-L$(PYTHIA8LOCATION)/lib -lpythia8 -llhapdfdummy \
 	-L$(BOOSTLIBLOCATION) -lboost_program_options -lNsubjettiness
 
-
-Fuzzy.so: Fuzzy.C    FuzzyTools.so FuzzyAnalysis.so
+Fuzzy.so: Fuzzy.C    FuzzyTools.so FuzzyAnalysis.so FuzzyUtil.so
 	$(CXX) -o $@ -c $< $(PROFILER)  \
 	$(CXXFLAGS) $(OPTIMIZATION) -fPIC -shared $(FASTJETFLAGS) \
 	-isystem $(PYTHIA8LOCATION)/include \
 	-isystem $(BOOSTINCDIR) $(ROOTFLAGS)
+
+FuzzyUtil.so: FuzzyUtil.cc FuzzyUtil.h
+	$(CXX) -o $@ -c $< $(PROFILER) \
+	$(CXXFLAGS) $(OPTIMIZATION) -fPIC -shared $(FASTJETFLAGS) \
+	-isystem $(PYTHIA8LOCATION)/include $(ROOTFLAGS) -INsubjettiness
 
 FuzzyTools.so : FuzzyTools.cc FuzzyTools.h
 	$(CXX) -o $@ -c $< $(PROFILER) \

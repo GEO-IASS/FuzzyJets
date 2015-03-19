@@ -66,7 +66,7 @@ public:
 
     double      min_edge, max_edge;
     size_t      n_bins;
-    
+
     Style_t style;
     Color_t color;
     std::string draw_opts;

@@ -5,6 +5,7 @@
 #include <TROOT.h>
 #include <TStyle.h>
 #include <TCanvas.h>
+#include <TMath.h>
 
 #include <math.h>
 #include <numeric>
@@ -629,6 +630,445 @@ public:
     void Update(EventManager const* event_manager);
 };
 
+class JetMultiplicityProcess : public ScatterBase {
+protected:
+    util::ParameterSet _parameters;
+    std::vector<float> _ns;
+
+public:
+    JetMultiplicityProcess(util::ParameterSet parameters) {
+        _parameters = parameters; // all are used except process
+
+        for (unsigned int i = 1; i <= util::processes.size(); i++) {
+            _xs.push_back(i);
+        }
+        _ys = std::vector<float>(_xs.size(), 0);
+        _ns = std::vector<float>(_xs.size(), 0);
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "JetMultiplicityProcess_"
+            //<< _parameters._process << "_"
+           << _parameters._NPV << "mu_"
+           << _parameters._EJW << "ejw_"
+           << _parameters._EJO << "off_"
+           << _parameters._PP << "pp_"
+           << _parameters._TBS << "tbs_"
+           << _parameters._seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+        _color = kBlack;
+        _style = 20;
+        _x_label = "Processes ";
+        BOOST_FOREACH(auto process, util::processes) {
+            _x_label += process;
+            if (process != util::processes.back())
+                _x_label += ", ";
+        }
+        _y_label = "Average Jet Multiplicity";
+    }
+    void Update(EventManager const* event_manager);
+};
+
+class JetMultiplicityNPV : public ScatterBase {
+protected:
+    util::ParameterSet _parameters;
+    std::vector<float> _ns;
+
+public:
+    JetMultiplicityNPV(util::ParameterSet parameters) {
+        _parameters = parameters; // all are used except process
+
+        BOOST_FOREACH(auto NPV, util::NPVs) {
+            if (_parameters._process == "background" && NPV == 0)
+                continue;
+            _xs.push_back(NPV);
+        }
+        _ys = std::vector<float>(_xs.size(), 0);
+        _ns = std::vector<float>(_xs.size(), 0);
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "JetMultiplicityNPV_"
+           << _parameters._process << "_"
+            //<< _parameters._NPV << "mu_"
+           << _parameters._EJW << "ejw_"
+           << _parameters._EJO << "off_"
+           << _parameters._PP << "pp_"
+           << _parameters._TBS << "tbs_"
+           << _parameters._seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+        _color = kBlack;
+        _style = 20;
+        _x_label = "NPVs";
+        _y_label = "Average Jet Multiplicity";
+    }
+    void Update(EventManager const* event_manager);
+};
+
+class JetMultiplicityEJW : public ScatterBase {
+protected:
+    util::ParameterSet _parameters;
+    std::vector<float> _ns;
+
+public:
+    JetMultiplicityEJW(util::ParameterSet parameters) {
+        _parameters = parameters; // all are used except process
+
+        BOOST_FOREACH(auto EJW, util::EJWs) {
+            _xs.push_back(EJW);
+        }
+        _ys = std::vector<float>(_xs.size(), 0);
+        _ns = std::vector<float>(_xs.size(), 0);
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "JetMultiplicityEJW_"
+           << _parameters._process << "_"
+           << _parameters._NPV << "mu_"
+            //<< _parameters._EJW << "ejw_"
+           << _parameters._EJO << "off_"
+           << _parameters._PP << "pp_"
+           << _parameters._TBS << "tbs_"
+           << _parameters._seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+        _color = kBlack;
+        _style = 20;
+        _x_label = "EJWs";
+        _y_label = "Average Jet Multiplicity";
+    }
+    void Update(EventManager const* event_manager);
+};
+
+class JetMultiplicityEJO : public ScatterBase {
+protected:
+    util::ParameterSet _parameters;
+    std::vector<float> _ns;
+
+public:
+    JetMultiplicityEJO(util::ParameterSet parameters) {
+        _parameters = parameters; // all are used except process
+
+        BOOST_FOREACH(auto EJO, util::EJOs) {
+            _xs.push_back(EJO);
+        }
+        _ys = std::vector<float>(_xs.size(), 0);
+        _ns = std::vector<float>(_xs.size(), 0);
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "JetMultiplicityEJO_"
+           << _parameters._process << "_"
+           << _parameters._NPV << "mu_"
+           << _parameters._EJW << "ejw_"
+            //<< _parameters._EJO << "off_"
+           << _parameters._PP << "pp_"
+           << _parameters._TBS << "tbs_"
+           << _parameters._seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+        _color = kBlack;
+        _style = 20;
+        _x_label = "EJOs";
+        _y_label = "Average Jet Multiplicity";
+    }
+    void Update(EventManager const* event_manager);
+};
+
+class JetMultiplicityPP : public ScatterBase {
+protected:
+    util::ParameterSet _parameters;
+    std::vector<float> _ns;
+
+public:
+    JetMultiplicityPP(util::ParameterSet parameters) {
+        _parameters = parameters; // all are used except process
+
+        for (unsigned int i = 1; i <= util::PPs.size(); i++) {
+            _xs.push_back(util::PPs.at(i));
+        }
+        _ys = std::vector<float>(_xs.size(), 0);
+        _ns = std::vector<float>(_xs.size(), 0);
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "JetMultiplicityPP_"
+           << _parameters._process << "_"
+           << _parameters._NPV << "mu_"
+           << _parameters._EJW << "ejw_"
+           << _parameters._EJO << "off_"
+            //<< _parameters._PP << "pp_"
+           << _parameters._TBS << "tbs_"
+           << _parameters._seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+        _color = kBlack;
+        _style = 20;
+        _x_label = "PPs: 0 = NONE, 1 = SINGLE MERGER";
+        _y_label = "Average Jet Multiplicity";
+    }
+    void Update(EventManager const* event_manager);
+};
+
+class JetMultiplicitySeedCut : public ScatterBase {
+protected:
+    util::ParameterSet _parameters;
+    std::vector<float> _ns;
+public:
+    JetMultiplicitySeedCut(util::ParameterSet parameters) {
+        _parameters = parameters; // all are used except process
+
+        BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+            _xs.push_back(seed_pT_cut);
+        }
+        _ys = std::vector<float>(_xs.size(), 0);
+        _ns = std::vector<float>(_xs.size(), 0);
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "JetMultiplicitySeedCut_"
+           << _parameters._process << "_"
+           << _parameters._NPV << "mu_"
+           << _parameters._EJW << "ejw_"
+           << _parameters._EJO << "off_"
+           << _parameters._PP << "pp_"
+           << _parameters._TBS << "tbs_"
+            //<< _parameters._seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+        _color = kBlack;
+        _style = 20;
+        _x_label = "Seed pT Cuts";
+        _y_label = "Average Jet Multiplicity";
+    }
+    void Update(EventManager const* event_manager);
+};
+
+class MeanFloatVarProcess : public ScatterBase {
+protected:
+    util::ParameterSet _parameters;
+    std::vector<float> _ns;
+    std::string _branch_label;
+
+public:
+    MeanFloatVarProcess(util::ParameterSet parameters, std::string branch_label) {
+        _parameters = parameters; // all are used except process
+        _branch_label = branch_label;
+
+        for (unsigned int i = 1; i <= util::processes.size(); i++) {
+            _xs.push_back(i);
+        }
+        _ys = std::vector<float>(_xs.size(), 0);
+        _ns = std::vector<float>(_xs.size(), 0);
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "MeanFloatVarProcess_"
+           << _branch_label << "_"
+            //<< _parameters._process << "_"
+           << _parameters._NPV << "mu_"
+           << _parameters._EJW << "ejw_"
+           << _parameters._EJO << "off_"
+           << _parameters._PP << "pp_"
+           << _parameters._TBS << "tbs_"
+           << _parameters._seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+        _color = kBlack;
+        _style = 20;
+        _x_label = "Processes ";
+        BOOST_FOREACH(auto process, util::processes) {
+            _x_label += process;
+            if (process != util::processes.back())
+                _x_label += ", ";
+        }
+        _y_label = "Average " + _branch_label;
+    }
+    void Update(EventManager const* event_manager);
+};
+
+class MeanFloatVarNPV : public ScatterBase {
+protected:
+    util::ParameterSet _parameters;
+    std::vector<float> _ns;
+    std::string _branch_label;
+
+public:
+    MeanFloatVarNPV(util::ParameterSet parameters, std::string branch_label) {
+        _parameters = parameters; // all are used except process
+        _branch_label = branch_label;
+
+        BOOST_FOREACH(auto NPV, util::NPVs) {
+            if (_parameters._process == "background" && NPV == 0)
+                continue;
+            _xs.push_back(NPV);
+        }
+        _ys = std::vector<float>(_xs.size(), 0);
+        _ns = std::vector<float>(_xs.size(), 0);
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "MeanFloatVarNPV_"
+           << _branch_label << "_"
+           << _parameters._process << "_"
+            //<< _parameters._NPV << "mu_"
+           << _parameters._EJW << "ejw_"
+           << _parameters._EJO << "off_"
+           << _parameters._PP << "pp_"
+           << _parameters._TBS << "tbs_"
+           << _parameters._seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+        _color = kBlack;
+        _style = 20;
+        _x_label = "NPVs";
+        _y_label = "Average " + _branch_label;
+    }
+    void Update(EventManager const* event_manager);
+};
+
+class MeanFloatVarEJW : public ScatterBase {
+protected:
+    util::ParameterSet _parameters;
+    std::vector<float> _ns;
+    std::string _branch_label;
+
+public:
+    MeanFloatVarEJW(util::ParameterSet parameters, std::string branch_label) {
+        _parameters = parameters; // all are used except process
+        _branch_label = branch_label;
+
+        BOOST_FOREACH(auto EJW, util::EJWs) {
+            _xs.push_back(EJW);
+        }
+        _ys = std::vector<float>(_xs.size(), 0);
+        _ns = std::vector<float>(_xs.size(), 0);
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "MeanFloatVarEJW_"
+           << _branch_label << "_"
+           << _parameters._process << "_"
+           << _parameters._NPV << "mu_"
+            //<< _parameters._EJW << "ejw_"
+           << _parameters._EJO << "off_"
+           << _parameters._PP << "pp_"
+           << _parameters._TBS << "tbs_"
+           << _parameters._seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+        _color = kBlack;
+        _style = 20;
+        _x_label = "EJWs";
+        _y_label = "Average " + _branch_label;
+}
+    void Update(EventManager const* event_manager);
+};
+
+class MeanFloatVarEJO : public ScatterBase {
+protected:
+    util::ParameterSet _parameters;
+    std::vector<float> _ns;
+    std::string _branch_label;
+
+public:
+    MeanFloatVarEJO(util::ParameterSet parameters, std::string branch_label) {
+        _parameters = parameters; // all are used except process
+        _branch_label = branch_label;
+
+        BOOST_FOREACH(auto EJO, util::EJOs) {
+            _xs.push_back(EJO);
+        }
+        _ys = std::vector<float>(_xs.size(), 0);
+        _ns = std::vector<float>(_xs.size(), 0);
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "MeanFloatVarEJO_"
+           << _branch_label << "_"
+           << _parameters._process << "_"
+           << _parameters._NPV << "mu_"
+           << _parameters._EJW << "ejw_"
+            //<< _parameters._EJO << "off_"
+           << _parameters._PP << "pp_"
+           << _parameters._TBS << "tbs_"
+           << _parameters._seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+        _color = kBlack;
+        _style = 20;
+        _x_label = "EJOs";
+        _y_label = "Average " + _branch_label;
+    }
+    void Update(EventManager const* event_manager);
+};
+
+class MeanFloatVarPP : public ScatterBase {
+protected:
+    util::ParameterSet _parameters;
+    std::vector<float> _ns;
+    std::string _branch_label;
+
+public:
+    MeanFloatVarPP(util::ParameterSet parameters, std::string branch_label) {
+        _parameters = parameters; // all are used except process
+        _branch_label = branch_label;
+
+        for (unsigned int i = 1; i <= util::PPs.size(); i++) {
+            _xs.push_back(util::PPs.at(i));
+        }
+        _ys = std::vector<float>(_xs.size(), 0);
+        _ns = std::vector<float>(_xs.size(), 0);
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "MeanFloatVarPP_"
+           << _branch_label << "_"
+           << _parameters._process << "_"
+           << _parameters._NPV << "mu_"
+           << _parameters._EJW << "ejw_"
+           << _parameters._EJO << "off_"
+            //<< _parameters._PP << "pp_"
+           << _parameters._TBS << "tbs_"
+           << _parameters._seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+        _color = kBlack;
+        _style = 20;
+        _x_label = "PPs: 0 = NONE, 1 = SINGLE MERGER";
+        _y_label = "Average " + _branch_label;
+    }
+    void Update(EventManager const* event_manager);
+};
+
+class MeanFloatVarSeedCut : public ScatterBase {
+protected:
+    util::ParameterSet _parameters;
+    std::vector<float> _ns;
+    std::string _branch_label;
+
+public:
+    MeanFloatVarSeedCut(util::ParameterSet parameters, std::string branch_label) {
+        _parameters = parameters; // all are used except process
+        _branch_label = branch_label;
+
+        BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+            _xs.push_back(seed_pT_cut);
+        }
+        _ys = std::vector<float>(_xs.size(), 0);
+        _ns = std::vector<float>(_xs.size(), 0);
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "MeanFloatVarSeedCut_"
+           << _branch_label << "_"
+           << _parameters._process << "_"
+           << _parameters._NPV << "mu_"
+           << _parameters._EJW << "ejw_"
+           << _parameters._EJO << "off_"
+           << _parameters._PP << "pp_"
+           << _parameters._TBS << "tbs_"
+            //<< _parameters._seed_pT_cut << "cut"
+           << ".pdf";
+        _outfile_name = ss.str();
+        _color = kBlack;
+        _style = 20;
+        _x_label = "Seed pT Cuts";
+        _y_label = "Average " + _branch_label;
+    }
+    void Update(EventManager const* event_manager);
+};
+
 class StackedHistogramBase : public UpdatesOnEvent {
 protected:
     const static unsigned int _root_name_length = 20;
@@ -651,8 +1091,12 @@ protected:
     std::string _y_label;
 
     bool _normalized;
+    bool _log_x;
 
     StackedHistogramBase() {
+        _log_x = false;
+        _normalized = false;
+
         _outfile_name = "UNNAMED.PDF";
 
         _title = "UNTITLED";
@@ -663,8 +1107,6 @@ protected:
         _canvas_x = _canvas_y = 800;
         _n_bins = 50;
         _low = 0;
-
-        _normalized = true;
 
         _ticks = 505;
     }
@@ -682,7 +1124,24 @@ public:
             _root_names.push_back(new char[_root_name_length + 1]);
             gen_string(_root_names.at(iter), _root_name_length);
 
-            _hists.push_back(new TH1F(_root_names.at(iter), _title.c_str(), _n_bins, _low, _high));
+            TH1F *new_hist = new TH1F(_root_names.at(iter), _title.c_str(), _n_bins, _low, _high);
+            if (_log_x) {
+                // setup log x binning
+                TAxis *axis = new_hist->GetXaxis();
+                int bins = axis->GetNbins();
+
+                Axis_t from = axis->GetXmin();
+                Axis_t to = axis->GetXmax();
+                Axis_t width = (to - from) / bins;
+                Axis_t *new_bins = new Axis_t[bins + 1];
+
+                for (int i = 0; i <= bins; i++) {
+                    new_bins[i] = TMath::Power(10, from + i * width);
+                }
+                axis->Set(bins, new_bins);
+                delete new_bins;
+            }
+            _hists.push_back(new_hist);
         }
     }
 
@@ -738,6 +1197,55 @@ public:
                          _y_low, _y_high);
     }
     virtual void Finish(__attribute__((unused)) EventManager const* event_manager);
+};
+
+class GeneralCorrelation : public CorrelationBase {
+protected:
+    util::ParameterSet _param;
+    std::string _var_a;
+    std::string _var_b;
+    float _pT_low;
+    float _pT_high;
+
+public:
+    GeneralCorrelation(util::ParameterSet param,
+                       std::string var_a, std::string var_b,
+                       float a_low, float a_high, float b_low, float b_high,
+                       float pT_low, float pT_high) {
+        _pT_low = pT_low;
+        _pT_high = pT_high;
+
+        _canvas_x = 1200;
+        _canvas_y = 1000;
+
+        _param = param;
+        _var_a = var_a;
+        _var_b = var_b;
+        _x_low = a_low;
+        _y_low = b_low;
+        _x_high = a_high;
+        _y_high = b_high;
+
+        _n_bins_x = 50;
+        _n_bins_y = 50;
+
+        std::stringstream ss;
+        ss.str(std::string());
+        _x_label = util::fancy_var_name(var_a);
+        _y_label = util::fancy_var_name(var_b);
+        ss << "Pythia 8  " << util::fancy_var_name(_param._process);
+        _title = ss.str();
+
+        ss.str(std::string());
+        ss << "General_Correlation_"
+           << static_cast<unsigned int>(pT_low) << "_"
+           << static_cast<unsigned int>(pT_high) << "_"
+           << util::sanitize(_var_a) << "_"
+           << util::sanitize(_var_b) << "_"
+           << _param.Print() << ".pdf";
+        _outfile_name = ss.str();
+    }
+    void Update(EventManager const* event_manager);
 };
 
 class WeightDistanceCorrelation : public CorrelationBase {
@@ -982,6 +1490,116 @@ public:
     void Update(EventManager const* event_manager);
 };
 
+class GeneralHistogram : public StackedHistogramBase {
+protected:
+    std::vector<util::ParameterSet> _params;
+
+    // distinguished_param can be any of
+    // process, EJW, EJO, NPV, PP, TBS, cut
+    std::string _distinguished_param;
+    std::string _var;
+    float _pT_low;
+    float _pT_high;
+
+public:
+    GeneralHistogram(std::vector<util::ParameterSet> params, std::string distinguished_param,
+                     std::string var, float low, float high, float pT_low, float pT_high,
+                     const bool log_x = false) {
+        _log_x = log_x;
+        _distinguished_param = distinguished_param;
+        _params = params;
+        _var = var;
+        _low = low;
+        _high = high;
+        _pT_low = pT_low;
+        _normalized = true;
+        _pT_high = pT_high;
+
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "GeneralHistogram_" << _distinguished_param << "_"
+           << _pT_low << "_" << _pT_high << "_"
+           << util::sanitize(_var) << "_"
+           << _params.at(0).PrintExceptDistinguished(_distinguished_param) << ".pdf";
+        _outfile_name = ss.str();
+        _y_label = "Normalized to Unity";
+        _x_label = util::fancy_var_name(_var);
+        _ticks = 505;
+
+        _title = util::latexed_pT_range(_pT_low, _pT_high);
+
+        // generate colors, styles, and labels
+        _labels = {};
+        for (unsigned int i = 0; i < _params.size(); i++) {
+            _labels.push_back(util::fancy_distinguished_param_name(_params.at(i), _distinguished_param));
+        }
+        _styles = std::vector<Style_t>(_labels.size(), 1);
+        _colors = util::get_colors(_labels.size());
+    }
+
+    void Update(EventManager const* event_manager);
+};
+
+class GeneralDiffgram : public StackedHistogramBase {
+protected:
+    std::vector<util::ParameterSet> _params;
+    std::vector<util::ParameterSet> _mparams;
+
+    // distinguished_param can be any of
+    // process, EJW, EJO, NPV, PP, TBS, cut
+    std::string _distinguished_param;
+
+    std::string _var;
+    float _pT_low;
+    float _pT_high;
+
+public:
+    GeneralDiffgram(std::vector<util::ParameterSet> params,
+                     std::vector<util::ParameterSet> mparams,
+                     std::string distinguished_param,
+                     std::string var,
+                     float low, float high, float pT_low, float pT_high,
+                     const bool log_x = false) {
+        _log_x = log_x;
+        _normalized = false;
+        _distinguished_param = distinguished_param;
+        _params = params;
+        _mparams = mparams;
+        _var = var;
+        _low = low;
+        _high = high;
+        _pT_low = pT_low;
+        _pT_high = pT_high;
+
+        std::stringstream ss;
+        ss.str(std::string());
+        ss << "GeneralDiffgram_" << _distinguished_param << "_"
+           << _pT_low << "_" << _pT_high << "_"
+           << util::sanitize(_var) << "_"
+           << _params.at(0).PrintExceptDistinguished(_distinguished_param)
+           << "_minus_"
+           << _mparams.at(0).PrintExceptDistinguished(_distinguished_param) << ".pdf";
+        _outfile_name = ss.str();
+        _y_label = "Arbitrary Units";
+        _x_label = util::fancy_var_name(_var);
+        _ticks = 505;
+
+        _title = util::latexed_pT_range(_pT_low, _pT_high);
+
+        // generate colors, styles, and labels
+        _labels = {};
+        for (unsigned int i = 0; i < _params.size(); i++) {
+            std::string a = util::fancy_distinguished_param_name(_params.at(i), _distinguished_param);
+            std::string b = util::fancy_distinguished_param_name(_mparams.at(i), _distinguished_param);
+            _labels.push_back(a + " - " + b);
+        }
+        _styles = std::vector<Style_t>(_labels.size(), 1);
+        _colors = util::get_colors(_labels.size());
+    }
+
+    void Update(EventManager const* event_manager);
+};
+
 class DeltaRHistogram : public StackedHistogramBase {
 protected:
     std::string _alg_label;
@@ -1018,19 +1636,23 @@ class SigmaEventJetStrength : public StackedHistogramBase {
 protected:
     std::string _process;
     int _NPV;
- // int _EJW;
+    // int _EJW;
     int _EJO;
     int _PP;
+    int _TBS;
     int _seed_pT_cut;
+    int _seed_noise;
 
 public:
     SigmaEventJetStrength(std::string process, int NPV, int EJO,
-                          int PP, int seed_pT_cut) {
+                          int PP, int TBS, int seed_pT_cut, int seed_noise) {
         _process = process;
         _NPV = NPV;
         _EJO = EJO;
         _PP = PP;
+        _TBS = TBS;
         _seed_pT_cut = seed_pT_cut;
+        _seed_noise = seed_noise;
 
         _high = 1;
         _n_bins = 20;
@@ -1045,7 +1667,9 @@ public:
            << _NPV << "mu_"
            << _EJO << "off_"
            << _PP  << "PP_"
-           << _seed_pT_cut << "cut"
+           << _TBS << "TBS_"
+           << _seed_pT_cut << "cut_"
+           << _seed_noise << "noise"
            << ".pdf";
         _outfile_name = ss.str();
 
@@ -1069,19 +1693,23 @@ protected:
     std::string _process;
     int _NPV;
     int _EJW;
-  //int _EJO;
+    //int _EJO;
     int _PP;
+    int _TBS;
     int _seed_pT_cut;
+    int _seed_noise;
 
 public:
     SigmaEventJetOffset(std::string process, int NPV, int EJW,
-                        int PP, int seed_pT_cut) {
+                        int PP, int TBS, int seed_pT_cut, int seed_noise) {
         _process = process;
         _NPV = NPV;
         _EJW = EJW;
-      //_EJO = EJO;
+        //_EJO = EJO;
         _PP = PP;
+        _TBS = TBS;
         _seed_pT_cut = seed_pT_cut;
+        _seed_noise = seed_noise;
 
         _high = 1;
         _n_bins = 20;
@@ -1095,9 +1723,11 @@ public:
         ss << "SigmaEventJetOffset_" << _process << "_"
            << _NPV << "mu_"
            << _EJW << "ejw_"
-         //<< _EJO << "off_"
+            //<< _EJO << "off_"
            << _PP  << "PP_"
-           << _seed_pT_cut << "cut"
+           << _TBS  << "TBS_"
+           << _seed_pT_cut << "cut_"
+           << _seed_noise << "noise"
            << ".pdf";
         _outfile_name = ss.str();
 
@@ -1123,18 +1753,22 @@ protected:
     int _NPV;
     int _EJW;
     int _EJO;
-  //int _PP;
+    //int _PP;
+    int _TBS;
     int _seed_pT_cut;
+    int _seed_noise;
 
 public:
     SigmaEventJetPP(std::string process, int NPV, int EJW,
-                    int EJO, int seed_pT_cut) {
+                    int EJO, int TBS, int seed_pT_cut, int seed_noise) {
         _process = process;
         _NPV = NPV;
         _EJW = EJW;
         _EJO = EJO;
-      //_PP = PP;
+        //_PP = PP;
+        _TBS = TBS;
         _seed_pT_cut = seed_pT_cut;
+        _seed_noise = seed_noise;
 
         _high = 1;
         _n_bins = 20;
@@ -1149,8 +1783,10 @@ public:
            << _NPV << "mu_"
            << _EJW << "ejw_"
            << _EJO << "off_"
-         //<< _PP  << "PP_"
-           << _seed_pT_cut << "cut"
+            //<< _PP  << "PP_"
+           << _TBS  << "TBS_"
+           << _seed_pT_cut << "cut_"
+           << _seed_noise << "noise"
            << ".pdf";
         _outfile_name = ss.str();
 
@@ -1177,17 +1813,21 @@ protected:
     int _EJW;
     int _EJO;
     int _PP;
-  //int _seed_pT_cut;
+    int _TBS;
+    //int _seed_pT_cut;
+    int _seed_noise;
 
 public:
     SigmaEventJetSeedCut(std::string process, int NPV, int EJW,
-                    int EJO, int PP) {
+                         int EJO, int PP, int TBS, int seed_noise) {
         _process = process;
         _NPV = NPV;
         _EJW = EJW;
         _EJO = EJO;
         _PP = PP;
-      //_seed_pT_cut = seed_pT_cut;
+        _TBS = TBS;
+        //_seed_pT_cut = seed_pT_cut;
+        _seed_noise = seed_noise;
 
         _high = 1;
         _n_bins = 20;
@@ -1202,8 +1842,10 @@ public:
            << _NPV << "mu_"
            << _EJW << "ejw_"
            << _EJO << "off_"
-           << _PP  << "PP" // note the no _
-         //<< _seed_pT_cut << "cut"
+           << _PP  << "PP_"
+           << _TBS  << "TBS_"
+            //<< _seed_pT_cut << "cut"
+           << _seed_noise << "noise"
            << ".pdf";
         _outfile_name = ss.str();
 
@@ -1226,20 +1868,24 @@ public:
 class SigmaEventJetNPV : public StackedHistogramBase {
 protected:
     std::string _process;
-  //int _NPV;
+    //int _NPV;
     int _EJW;
     int _EJO;
     int _PP;
+    int _TBS;
     int _seed_pT_cut;
+    int _seed_noise;
 
 public:
     SigmaEventJetNPV(std::string process, int EJW, int EJO,
-                          int PP, int seed_pT_cut) {
+                     int PP, int TBS, int seed_pT_cut, int seed_noise) {
         _process = process;
         _EJW = EJW;
         _EJO = EJO;
         _PP = PP;
+        _TBS = TBS;
         _seed_pT_cut = seed_pT_cut;
+        _seed_noise = seed_noise;
 
         _high = 1;
         _n_bins = 20;
@@ -1254,12 +1900,16 @@ public:
            << _EJW << "ejw_"
            << _EJO << "off_"
            << _PP  << "PP_"
-           << _seed_pT_cut << "cut"
+           << _TBS  << "TBS_"
+           << _seed_pT_cut << "cut_"
+           << _seed_noise << "noise"
            << ".pdf";
         _outfile_name = ss.str();
 
         _labels = {};
         BOOST_FOREACH(auto NPV, util::NPVs) {
+            if (_process == "background" && NPV == 0)
+                continue;
             ss.str(std::string());
             ss << "#mu = " << NPV;
             _labels.push_back(ss.str());

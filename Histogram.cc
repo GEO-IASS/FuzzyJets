@@ -5,6 +5,7 @@
 #include <assert.h>
 
 #include <TColor.h>
+#include <TPaletteAxis.h>
 #include <THStack.h>
 #include <TGraph.h>
 #include <TMultiGraph.h>
@@ -266,33 +267,47 @@ void StackedHistogramBase::Finish(__attribute__((unused)) EventManager
 
         // do other things like set the color
         current_hist->SetLineColor(_colors[hist_iter]);
+        TColor *col = gROOT->GetColor(hist_iter + 2);
+        TColor *col_ref = gROOT->GetColor(_colors[hist_iter]);
+        col->SetRGB(col_ref->GetRed(), col_ref->GetGreen(), col_ref->GetBlue());
+        col->SetAlpha(0.28);
         current_hist->SetLineStyle(_styles[hist_iter]);
+        current_hist->SetFillColor(hist_iter+2);
+        current_hist->SetFillStyle(1001);
         current_hist->SetLineWidth(2);
 
-        assert(current_hist->Integral(-1, current_hist->GetNbinsX() + 1) > 0);
         if (_normalized) {
+            assert(current_hist->Integral(-1, current_hist->GetNbinsX() + 1) > 0);
             float norm = current_hist->Integral(-1, current_hist->GetNbinsX() + 1);
             current_hist->Scale(1./norm);
         }
     }
 
-
+    if (_log_x) {
+        gPad->SetLogx();
+    }
     hist_stack.Draw("nostack");
 
     hist_stack.GetHistogram()->GetXaxis()->SetTitle(_x_label.c_str());
     hist_stack.GetHistogram()->GetYaxis()->SetTitle(_y_label.c_str());
     hist_stack.GetHistogram()->GetXaxis()->SetNdivisions(_ticks);
 
+    hist_stack.SetMaximum(1.4 * hist_stack.GetMaximum("nostack"));
+
+    hist_stack.Draw("nostack");
+
     canvas.Update();
-    TLegend *legend = new TLegend(0.65, 0.75, 0.9, 0.85);
+    TLegend *legend = new TLegend(0.65, 0.75, 0.95, 0.92);
     for (unsigned int hist_iter = 0; hist_iter < _hists.size(); hist_iter++) {
-        legend->AddEntry(_hists[hist_iter], _labels[hist_iter].c_str(), "l");
+        legend->AddEntry(_hists[hist_iter], _labels[hist_iter].c_str(), "f");
     }
 
     legend->SetTextFont(42);
     legend->SetFillStyle(0);
     legend->SetFillColor(0);
     legend->SetBorderSize(0);
+    legend->SetTextSize(1.3 * legend->GetTextSize());
+
 
     legend->Draw();
 
@@ -354,12 +369,26 @@ void CorrelationBase::Finish(__attribute__((unused)) EventManager const* event_m
 
     TCanvas canvas("temporary", "", 0, 0, _canvas_x, _canvas_y);
 
+    gPad->SetRightMargin(0.15);
+
+    Double_t norm = 1/_hist->Integral();
+    _hist->Scale(norm);
+
+
     _hist->SetLabelSize(0.04, "X");
     _hist->SetLabelSize(0.04, "Y");
     _hist->SetXTitle(_x_label.c_str());
     _hist->SetYTitle(_y_label.c_str());
+    _hist->Scale(1./_hist->GetMaximum());
+
+    _hist->SetZTitle("Arb. Units");
 
     _hist->Draw("colz");
+
+    //TPaletteAxis *palette = (TPaletteAxis*)_hist->GetListOfFunctions()->FindObject("palette");
+    //palette->SetTitleOffset(0);
+
+    gPad->Update();
 
 
     std::stringstream ss;
@@ -371,7 +400,7 @@ void CorrelationBase::Finish(__attribute__((unused)) EventManager const* event_m
            << std::fixed << correlation;
     }
     std::string canvas_title = ss.str();
-    myText(0.18, 0.955, kBlack, canvas_title.c_str());
+    myText(0.18, 0.97, kBlack, canvas_title.c_str());
 
 
     ss.str(std::string());
@@ -409,6 +438,17 @@ void WeightDistanceCorrelation::Update(EventManager const* event_manager) {
         _hist->Fill(alg_weight_vec->at(particle_iter),
                     alg_distance_vec->at(particle_iter),
                     reweight);
+    }
+}
+
+void GeneralCorrelation::Update(EventManager const* event_manager) {
+    std::string en = _param.EventName();
+    float pT = (*event_manager)[en].antikt_pt;
+    if (pT > _pT_low && pT <= _pT_high) {
+        Float_t val_a = (*event_manager)[en].GetComposite<Float_t>(_var_a);
+        Float_t val_b = (*event_manager)[en].GetComposite<Float_t>(_var_b);
+        float reweight = event_manager->Reweight(en);
+        _hist->Fill(val_a, val_b, reweight);
     }
 }
 
@@ -811,6 +851,38 @@ void SkewHistogram::Update(EventManager const* event_manager) {
     _hists[1]->Fill((*event_manager)["qcd_5"].mGMMc_m_skew, qcd_reweight);
 }
 
+void GeneralHistogram::Update(EventManager const* event_manager) {
+    for (unsigned int p_i = 0; p_i < _params.size(); p_i++) {
+        std::string en = _params.at(p_i).EventName();
+        float pT = (*event_manager)[en].antikt_pt;
+        if (pT <= _pT_high && pT > _pT_low) {
+            float reweight = event_manager->Reweight(en);
+            float val = (*event_manager)[en].GetComposite<Float_t>(_var);
+            _hists[p_i]->Fill(val, reweight);
+        }
+    }
+}
+
+void GeneralDiffgram::Update(EventManager const* event_manager) {
+    for (unsigned int p_i = 0; p_i < _params.size(); p_i++) {
+        std::string en = _params.at(p_i).EventName();
+        float pT = (*event_manager)[en].antikt_pt;
+        if (pT <= _pT_high && pT > _pT_low) {
+            float reweight = event_manager->Reweight(en);
+            float val = (*event_manager)[en].GetComposite<Float_t>(_var);
+            _hists[p_i]->Fill(val, reweight);
+        }
+
+        en = _mparams.at(p_i).EventName();
+        pT = (*event_manager)[en].antikt_pt;
+        if (pT <= _pT_high && pT > _pT_low) {
+            float reweight = -event_manager->Reweight(en);
+            float val = (*event_manager)[en].GetComposite<Float_t>(_var);
+            _hists[p_i]->Fill(val, reweight);
+        }
+    }
+}
+
 void DeltaRHistogram::Update(EventManager const* event_manager) {
     std::stringstream ss;
 
@@ -881,6 +953,248 @@ void JetMultiplicityPtCut::Update(EventManager const* event_manager) {
     if(_ns[2] == 0) _ys[2] = 0;
 }
 
+void JetMultiplicityProcess::Update(EventManager const* event_manager) {
+    for (unsigned int i = 0; i < util::processes.size(); i++) {
+        std::string en =
+            util::eventname(util::processes.at(i),
+                            _parameters._NPV,
+                            _parameters._EJW,
+                            _parameters._EJO,
+                            _parameters._PP,
+                            _parameters._TBS,
+                            _parameters._seed_pT_cut,
+                            _parameters._seed_noise);
+        float multiplicity = static_cast<float>((*event_manager)[en].n_jet_seeds);
+        float reweight = event_manager->Reweight(en);
+        _ys[i] = (reweight * multiplicity + _ns[i]*_ys[i]) / (reweight + _ns[i]);
+        _ns[i] += reweight;
+        if (_ns[i] == 0) _ys[i] = 0;
+    }
+}
+
+void JetMultiplicityNPV::Update(EventManager const* event_manager) {
+    bool skipped = false;
+    for (unsigned int i = 0; i < util::NPVs.size(); i++) {
+        if (_parameters._process == "background" && util::NPVs.at(i) == 0) {
+            skipped = true;
+            continue;
+        }
+
+        std::string en =
+            util::eventname(_parameters._process,
+                            util::NPVs.at(i),
+                            _parameters._EJW,
+                            _parameters._EJO,
+                            _parameters._PP,
+                            _parameters._TBS,
+                            _parameters._seed_pT_cut,
+                            _parameters._seed_noise);
+        float multiplicity = static_cast<float>((*event_manager)[en].n_jet_seeds);
+        float reweight = event_manager->Reweight(en);
+        unsigned int j = skipped ? i - 1 : i;
+        _ys[j] = (reweight * multiplicity + _ns[j]*_ys[j]) / (reweight + _ns[j]);
+        _ns[j] += reweight;
+        if (_ns[j] == 0) _ys[j] = 0;
+    }
+}
+
+void JetMultiplicityEJW::Update(EventManager const* event_manager) {
+    for (unsigned int i = 0; i < util::EJWs.size(); i++) {
+        std::string en =
+            util::eventname(_parameters._process,
+                            _parameters._NPV,
+                            util::EJWs.at(i),
+                            _parameters._EJO,
+                            _parameters._PP,
+                            _parameters._TBS,
+                            _parameters._seed_pT_cut,
+                            _parameters._seed_noise);
+        float multiplicity = static_cast<float>((*event_manager)[en].n_jet_seeds);
+        float reweight = event_manager->Reweight(en);
+        _ys[i] = (reweight * multiplicity + _ns[i]*_ys[i]) / (reweight + _ns[i]);
+        _ns[i] += reweight;
+        if (_ns[i] == 0) _ys[i] = 0;
+    }
+}
+
+void JetMultiplicityEJO::Update(EventManager const* event_manager) {
+    for (unsigned int i = 0; i < util::EJOs.size(); i++) {
+        std::string en =
+            util::eventname(_parameters._process,
+                            _parameters._NPV,
+                            _parameters._EJW,
+                            util::EJOs.at(i),
+                            _parameters._PP,
+                            _parameters._TBS,
+                            _parameters._seed_pT_cut,
+                            _parameters._seed_noise);
+        float multiplicity = static_cast<float>((*event_manager)[en].n_jet_seeds);
+        float reweight = event_manager->Reweight(en);
+        _ys[i] = (reweight * multiplicity + _ns[i]*_ys[i]) / (reweight + _ns[i]);
+        _ns[i] += reweight;
+        if (_ns[i] == 0) _ys[i] = 0;
+    }
+}
+
+void JetMultiplicityPP::Update(EventManager const* event_manager) {
+    for (unsigned int i = 0; i < util::PPs.size(); i++) {
+        std::string en =
+            util::eventname(_parameters._process,
+                            _parameters._NPV,
+                            _parameters._EJW,
+                            _parameters._EJO,
+                            util::PPs.at(i),
+                            _parameters._TBS,
+                            _parameters._seed_pT_cut,
+                            _parameters._seed_noise);
+        float multiplicity = static_cast<float>((*event_manager)[en].n_jet_seeds);
+        float reweight = event_manager->Reweight(en);
+        _ys[i] = (reweight * multiplicity + _ns[i]*_ys[i]) / (reweight + _ns[i]);
+        _ns[i] += reweight;
+        if (_ns[i] == 0) _ys[i] = 0;
+    }
+}
+
+void JetMultiplicitySeedCut::Update(EventManager const* event_manager) {
+    for (unsigned int i = 0; i < util::seed_pT_cuts.size(); i++) {
+        std::string en =
+            util::eventname(_parameters._process,
+                            _parameters._NPV,
+                            _parameters._EJW,
+                            _parameters._EJO,
+                            _parameters._PP,
+                            _parameters._TBS,
+                            util::seed_pT_cuts.at(i),
+                            _parameters._seed_noise);
+        float multiplicity = static_cast<float>((*event_manager)[en].n_jet_seeds);
+        float reweight = event_manager->Reweight(en);
+        _ys[i] = (reweight * multiplicity + _ns[i]*_ys[i]) / (reweight + _ns[i]);
+        _ns[i] += reweight;
+        if (_ns[i] == 0) _ys[i] = 0;
+    }
+}
+
+void MeanFloatVarProcess::Update(EventManager const* event_manager) {
+    for (unsigned int i = 0; i < util::processes.size(); i++) {
+        std::string en =
+            util::eventname(util::processes.at(i),
+                            _parameters._NPV,
+                            _parameters._EJW,
+                            _parameters._EJO,
+                            _parameters._PP,
+                            _parameters._TBS,
+                            _parameters._seed_pT_cut,
+                            _parameters._seed_noise);
+        float multiplicity = static_cast<float>((*event_manager)[en].Get<Float_t>(_branch_label));
+        float reweight = event_manager->Reweight(en);
+        _ys[i] = (reweight * multiplicity + _ns[i]*_ys[i]) / (reweight + _ns[i]);
+        _ns[i] += reweight;
+        if (_ns[i] == 0) _ys[i] = 0;
+    }
+}
+
+void MeanFloatVarNPV::Update(EventManager const* event_manager) {
+    bool skipped = false;
+    for (unsigned int i = 0; i < util::NPVs.size(); i++) {
+        if (_parameters._process == "background" && util::NPVs.at(i) == 0) {
+            skipped = true;
+            continue;
+        }
+
+        std::string en =
+            util::eventname(_parameters._process,
+                            util::NPVs.at(i),
+                            _parameters._EJW,
+                            _parameters._EJO,
+                            _parameters._PP,
+                            _parameters._TBS,
+                            _parameters._seed_pT_cut,
+                            _parameters._seed_noise);
+        float multiplicity = static_cast<float>((*event_manager)[en].Get<Float_t>(_branch_label));
+        float reweight = event_manager->Reweight(en);
+        unsigned int j = skipped ? i - 1 : i;
+        _ys[j] = (reweight * multiplicity + _ns[j]*_ys[j]) / (reweight + _ns[j]);
+        _ns[j] += reweight;
+        if (_ns[j] == 0) _ys[j] = 0;
+    }
+}
+
+void MeanFloatVarEJW::Update(EventManager const* event_manager) {
+    for (unsigned int i = 0; i < util::EJWs.size(); i++) {
+        std::string en =
+            util::eventname(_parameters._process,
+                            _parameters._NPV,
+                            util::EJWs.at(i),
+                            _parameters._EJO,
+                            _parameters._PP,
+                            _parameters._TBS,
+                            _parameters._seed_pT_cut,
+                            _parameters._seed_noise);
+        float multiplicity = static_cast<float>((*event_manager)[en].Get<Float_t>(_branch_label));
+        float reweight = event_manager->Reweight(en);
+        _ys[i] = (reweight * multiplicity + _ns[i]*_ys[i]) / (reweight + _ns[i]);
+        _ns[i] += reweight;
+        if (_ns[i] == 0) _ys[i] = 0;
+    }
+}
+
+void MeanFloatVarEJO::Update(EventManager const* event_manager) {
+    for (unsigned int i = 0; i < util::EJOs.size(); i++) {
+        std::string en =
+            util::eventname(_parameters._process,
+                            _parameters._NPV,
+                            _parameters._EJW,
+                            util::EJOs.at(i),
+                            _parameters._PP,
+                            _parameters._TBS,
+                            _parameters._seed_pT_cut,
+                            _parameters._seed_noise);
+        float multiplicity = static_cast<float>((*event_manager)[en].Get<Float_t>(_branch_label));
+        float reweight = event_manager->Reweight(en);
+        _ys[i] = (reweight * multiplicity + _ns[i]*_ys[i]) / (reweight + _ns[i]);
+        _ns[i] += reweight;
+        if (_ns[i] == 0) _ys[i] = 0;
+    }
+}
+
+void MeanFloatVarPP::Update(EventManager const* event_manager) {
+    for (unsigned int i = 0; i < util::PPs.size(); i++) {
+        std::string en =
+            util::eventname(_parameters._process,
+                            _parameters._NPV,
+                            _parameters._EJW,
+                            _parameters._EJO,
+                            util::PPs.at(i),
+                            _parameters._TBS,
+                            _parameters._seed_pT_cut,
+                            _parameters._seed_noise);
+        float multiplicity = static_cast<float>((*event_manager)[en].Get<Float_t>(_branch_label));
+        float reweight = event_manager->Reweight(en);
+        _ys[i] = (reweight * multiplicity + _ns[i]*_ys[i]) / (reweight + _ns[i]);
+        _ns[i] += reweight;
+        if (_ns[i] == 0) _ys[i] = 0;
+    }
+}
+
+void MeanFloatVarSeedCut::Update(EventManager const* event_manager) {
+    for (unsigned int i = 0; i < util::seed_pT_cuts.size(); i++) {
+        std::string en =
+            util::eventname(_parameters._process,
+                            _parameters._NPV,
+                            _parameters._EJW,
+                            _parameters._EJO,
+                            _parameters._PP,
+                            _parameters._TBS,
+                            util::seed_pT_cuts.at(i),
+                            _parameters._seed_noise);
+        float multiplicity = static_cast<float>((*event_manager)[en].Get<Float_t>(_branch_label));
+        float reweight = event_manager->Reweight(en);
+        _ys[i] = (reweight * multiplicity + _ns[i]*_ys[i]) / (reweight + _ns[i]);
+        _ns[i] += reweight;
+        if (_ns[i] == 0) _ys[i] = 0;
+    }
+}
+
 void RadiusPtSeedHistogram::Update(EventManager const* event_manager) {
     float reweight = event_manager->Reweight(_event_label_base + "_5");
     float sigma = (*event_manager)[_event_label_base + "_5"].mGMMc_r;
@@ -899,7 +1213,7 @@ void SigmaEventJetStrength::Update(EventManager const* event_manager) {
     for (unsigned int i = 0; i < util::EJWs.size(); i++) {
         std::string en =
             util::eventname(_process, _NPV, util::EJWs.at(i),
-                            _EJO, _PP, _seed_pT_cut);
+                            _EJO, _PP, _TBS, _seed_pT_cut, _seed_noise);
         float reweight = event_manager->Reweight(en);
         float sigma = (*event_manager)[en].mGMMc_r;
         _hists[i]->Fill(sigma, reweight);
@@ -907,13 +1221,18 @@ void SigmaEventJetStrength::Update(EventManager const* event_manager) {
 }
 
 void SigmaEventJetNPV::Update(EventManager const* event_manager) {
+    bool skipped = false;
     for (unsigned int i = 0; i < util::NPVs.size(); i++) {
+        if (_process == "background" && util::NPVs.at(i) == 0) {
+            skipped = true;
+            continue;
+        }
         std::string en =
             util::eventname(_process, util::NPVs.at(i), _EJW,
-                            _EJO, _PP, _seed_pT_cut);
+                            _EJO, _PP, _TBS, _seed_pT_cut, _seed_noise);
         float reweight = event_manager->Reweight(en);
         float sigma = (*event_manager)[en].mGMMc_r;
-        _hists[i]->Fill(sigma, reweight);
+        _hists[skipped ? i - 1 : i]->Fill(sigma, reweight);
     }
 }
 
@@ -921,7 +1240,7 @@ void SigmaEventJetOffset::Update(EventManager const* event_manager) {
     for (unsigned int i = 0; i < util::EJOs.size(); i++) {
         std::string en =
             util::eventname(_process, _NPV, _EJW,
-                            util::EJOs.at(i), _PP, _seed_pT_cut);
+                            util::EJOs.at(i), _PP, _TBS, _seed_pT_cut, _seed_noise);
         float reweight = event_manager->Reweight(en);
         float sigma = (*event_manager)[en].mGMMc_r;
         _hists[i]->Fill(sigma, reweight);
@@ -932,7 +1251,7 @@ void SigmaEventJetPP::Update(EventManager const* event_manager) {
     for (unsigned int i = 0; i < util::PPs.size(); i++) {
         std::string en =
             util::eventname(_process, _NPV, _EJW,
-                            _EJO, util::PPs.at(i), _seed_pT_cut);
+                            _EJO, util::PPs.at(i), _TBS, _seed_pT_cut, _seed_noise);
         float reweight = event_manager->Reweight(en);
         float sigma = (*event_manager)[en].mGMMc_r;
         _hists[i]->Fill(sigma, reweight);
@@ -943,7 +1262,7 @@ void SigmaEventJetSeedCut::Update(EventManager const* event_manager) {
     for (unsigned int i = 0; i < util::seed_pT_cuts.size(); i++) {
         std::string en =
             util::eventname(_process, _NPV, _EJW,
-                            _EJO, _PP, util::seed_pT_cuts.at(i));
+                            _EJO, _PP, _TBS, util::seed_pT_cuts.at(i), _seed_noise);
         float reweight = event_manager->Reweight(en);
         float sigma = (*event_manager)[en].mGMMc_r;
         _hists[i]->Fill(sigma, reweight);

@@ -1,3 +1,4 @@
+#include <sstream>
 #include <iostream>
 #include <cmath>
 
@@ -5,6 +6,7 @@
 
 #include "TLine.h"
 #include "TLatex.h"
+#include "TText.h"
 #include "TMarker.h"
 #include "TPave.h"
 #include "TH1.h"
@@ -267,10 +269,11 @@ TGraphErrors* TH1TOTGraph(TH1 *h1){
     return g1;
 }
 
-void myText(Double_t x,Double_t y,Color_t color, const char *text) {
+void myText(Double_t x,Double_t y,Color_t color, const char *text, const Float_t scale) {
 
-    //Double_t t_size=0.05;
-    TLatex l; //l.SetTextAlign(12); l.SetTextSize(t_size);
+    TLatex l; //l.SetTextAlign(12);
+    Float_t size = l.GetTextSize();
+    l.SetTextSize(size*scale);
     l.SetNDC();
     l.SetTextColor(color);
     l.DrawLatex(x,y,text);

@@ -1,0 +1,92 @@
+Diagnostics of 50 zprime -> ttbar events generated at 900 GeV with
+Pythia and clustered with Fuzzy Jets.
+
+Classification:
+Event 1: 3 pronged with two obvious jets
+Event 2: 3 pronged with two obvious jets
+Event 3: Softer and diffuse, two jets? three jets?
+Event 4: 3 pronged with two obvious jets
+Event 5: 3 pronged with three jets?
+Event 6: 3 pronged with two large jets and another off axis region
+Event 7: 3 pronged with three jets
+Event 8: More diffuse, but with two hardish regions
+Event 9: 3 pronged with two obvious jets
+Event 10: 3 pronged with two obvious jets
+Event 11: 3 pronged with two obvious jets
+Event 12: Very diffuse with many highish pT regions
+Event 13: 3 pronged with one very hard jet and another reasonably hard jet
+Event 14: 3 pronged, roughly. Two largeish jets or four smaller ones
+Event 15: 3 pronged, one very hard jet and another reasonably hard jet
+Event 16: 2/3 pronged, two hard jets
+Event 17: 3 pronged, two hard jets
+Event 18: 3 pronged, two hard jets
+Event 19: 3 pronged, two hard jets and one smaller but still narrow
+Event 20: 3 pronged, two hard jets
+Event 21: 2/3 pronged, two hard jets and a diffuse region between them
+Event 22: 2 pronged, 2 hard jets
+Event 23: 3 pronged, two prongs close and constituting one jet
+Event 24: 3 pronged, two hard jets
+Event 25: 3 pronged, two hard jets
+Event 26: 2/3 prongs, two hard jets
+Event 27: 3 prongs, two hard jets
+Event 28: 4 prongs, two hard jets
+Event 29: 2 prongs, two hard jets
+Event 30: 2 prongs, two hard jets, one softer
+Event 31: 2 prongs, two hard jets, one softer
+Event 32: 3 prongs, two hard jets
+Event 33: 2 prongs, two hard jets
+Event 34: 2 prongs, two hard jets
+Event 34: 3 prongs, two hard jets
+Event 35: 2 prongs, two hard jets
+Event 36: 3 prongs, two hard jets, one softer
+Event 37: 3 prongs, two hard jets
+Event 38: 3 prongs, two hardish jets, event is more diffuse
+Event 39: 2 prongs, two hard jets
+Event 40: 3 prongs, two hard jets
+Event 41: 3 prongs, two hard jets
+Event 42: 3/4 prongs, two hard jets
+Event 43: 3 prongs, two/three hard jets
+Event 44: 2 prongs, two hard jets with wideish cores
+Event 45: 3/4 prongs, two hard jets with wideish cores, one more distant diffuse jet
+Event 46: 2 prongs, two hard jets
+Event 47: 2/3 prongs, two hard jets
+Event 48: 3 prongs, two hard jets
+Event 49: 4 prongs, very diffuse event, two jets? 
+Event 50: 3 prongs, three jets, two other areas with substantial pT
+
+Pathologies and features for mGMMc jets:
+On the basis of number of jets, not events
+
+
+NPV 0, EJS 0, Offset 0, TBS 0
+    # excessive jet overlap/coaxility (mostly same size): 9
+    # two jet splitting (mostly same size): 22
+    # overlapping shape learning (different sizes or locations): 25 (not a pathology)
+    Most problematic events: 3, 12, 13, 17, 21, 25, 26, 28
+
+NPV 0, EJS 0.01, Offset -2, TBS 0
+    # No particles clustered to jets: 1 + a few others with just one or two jets
+    # excessive jet overlap/coaxility (mostly same size): 1
+    # two jet splitting (mostly same size): 4
+    # overlapping shape learning (different sizes or locations): 8
+    Most problematic events: 3, 12, 49
+
+NPV 0, EJS 0.01, Offset -5, TBS 0
+    # No particles clustered to jets: 6 + many others with just one or two jets
+    # excessive jet overlap/coaxility (mostly same size): 0
+    # two jet splitting (mostly same size): 1
+    # overlapping shape learning (different sizes or locations): 7
+    Most problematic events: 3, 12, 26, 27, 32, 37
+    
+NPV 20, EJS 0, Offset 0, TBS 0
+    # excessive jet overlap/coaxility (mostly same size): 4
+    # two jet splitting (mostly same size): 11
+    # overlapping shape learning (different sizes or locations): 6
+    Most problematic events: 1, 3, 14, 38, 49
+
+NPV 20, EJS 0.01, Offset 0, TBS 0
+    # No particles clustered to jets: 48! This is very surprising to me.
+
+NPV 20, EJS 0.005, Offset 0, TBS 0
+    # No particles clustered to jets: 43! Wow. Strange that we still get correction of r distribution...
+

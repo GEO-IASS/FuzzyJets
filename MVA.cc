@@ -39,70 +39,33 @@ void MVAEventJetTest() {
 
     // instantiate TTrees and set up friendships
     // that the the MVA will have event weights
-    BOOST_FOREACH(auto process, util::processes) {
-        BOOST_FOREACH(auto NPV, util::NPVs) {
-            BOOST_FOREACH(auto EJW, util::EJWs) {
-                BOOST_FOREACH(auto EJO, util::EJOs) {
-                    BOOST_FOREACH(auto PP, util::PPs) {
-                        BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
-                            std::string en =
-                                util::eventname(process, NPV, EJW,
-                                                EJO, PP, seed_pT_cut);
-                            base_file_map[en] =
-                                new TFile(util::filename(process, NPV, EJW,
-                                                         EJO, PP, seed_pT_cut).c_str());
-
-                            addendum_file_map[en] =
-                                new TFile(util::filename_w(process, NPV, EJW,
-                                                           EJO, PP, seed_pT_cut).c_str());
-
-                            base_ttree_map[en] =
-                                (TTree *) base_file_map[en]->Get("EventTree");
-
-                            addendum_ttree_map[en] =
-                                (TTree *) addendum_file_map[en]->Get("EventTree");
-
-                            // marry ttree data temporarily with a tree friendship
-                            base_ttree_map[en]->AddFriend(addendum_ttree_map[en]);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    std::vector<float> pT_cuts = {0, 300, 400, 1000};
-    std::cout << "Refer to standard variable order for name explanation."
-              << std::endl;
-    BOOST_FOREACH(auto background_process, util::processes) {
-        BOOST_FOREACH(auto signal_process, util::processes) {
+    BOOST_FOREACH(auto TBS, util::TBSs) {
+        BOOST_FOREACH(auto process, util::processes) {
             BOOST_FOREACH(auto NPV, util::NPVs) {
                 BOOST_FOREACH(auto EJW, util::EJWs) {
                     BOOST_FOREACH(auto EJO, util::EJOs) {
                         BOOST_FOREACH(auto PP, util::PPs) {
                             BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
-                                std::string background_en =
-                                    util::eventname(background_process, NPV, EJW,
-                                                    EJO, PP, seed_pT_cut);
+                                BOOST_FOREACH(auto seed_noise, util::seed_noises) {
+                                std::string en =
+                                    util::eventname(process, NPV, EJW,
+                                                    EJO, PP, TBS, seed_pT_cut, seed_noise);
+                                base_file_map[en] =
+                                    new TFile(util::filename(process, NPV, EJW,
+                                                             EJO, PP, TBS, seed_pT_cut, seed_noise).c_str());
 
-                                std::string signal_en =
-                                    util::eventname(signal_process, NPV, EJW,
-                                                    EJO, PP, seed_pT_cut);
+                                addendum_file_map[en] =
+                                    new TFile(util::filename_w(process, NPV, EJW,
+                                                               EJO, PP, TBS, seed_pT_cut, seed_noise).c_str());
 
-                                for (unsigned int pT_it = 0; pT_it < pT_cuts.size() - 1; pT_it++) {
-                                    float pT_low = pT_cuts.at(pT_it);
-                                    float pT_high = pT_cuts.at(pT_it + 1);
+                                base_ttree_map[en] =
+                                    (TTree *) base_file_map[en]->Get("EventTree");
 
-                                    std::cout << "Generating plots with " << background_en
-                                              << " background and "  << signal_en << " signal \n"
-                                              << "between pT GeV \t" << pT_low << " and " << pT_high
-                                              << "." << std::endl;
+                                addendum_ttree_map[en] =
+                                    (TTree *) addendum_file_map[en]->Get("EventTree");
 
-                                    MVAPlots(base_ttree_map[signal_en],
-                                             base_ttree_map[background_en],
-                                             pT_low, pT_high,
-                                             signal_en,
-                                             background_en);
+                                // marry ttree data temporarily with a tree friendship
+                                base_ttree_map[en]->AddFriend(addendum_ttree_map[en]);
                                 }
                             }
                         }
@@ -111,6 +74,67 @@ void MVAEventJetTest() {
             }
         }
     }
+
+    std::vector<float> pT_cuts = {350, 450, 1000};
+    std::cout << "Refer to standard variable order for name explanation."
+              << std::endl;
+    BOOST_FOREACH(auto background_process, util::processes) {
+        BOOST_FOREACH(auto signal_process, util::processes) {
+            if (background_process == signal_process)
+                continue;
+            BOOST_FOREACH(auto TBS, util::TBSs) {
+                BOOST_FOREACH(auto NPV, util::NPVs) {
+                    BOOST_FOREACH(auto EJW, util::EJWs) {
+                        BOOST_FOREACH(auto EJO, util::EJOs) {
+                            BOOST_FOREACH(auto PP, util::PPs) {
+                                BOOST_FOREACH(auto seed_pT_cut, util::seed_pT_cuts) {
+                                    BOOST_FOREACH(auto seed_noise, util::seed_noises) {
+                                    std::string background_en =
+                                        util::eventname(background_process, NPV, EJW,
+                                                        EJO, PP, TBS, seed_pT_cut, seed_noise);
+
+                                    std::string signal_en =
+                                        util::eventname(signal_process, NPV, EJW,
+                                                        EJO, PP, TBS, seed_pT_cut, seed_noise);
+
+                                    for (unsigned int pT_it = 0; pT_it < pT_cuts.size() - 1; pT_it++) {
+                                        float pT_low = pT_cuts.at(pT_it);
+                                        float pT_high = pT_cuts.at(pT_it + 1);
+
+                                        std::cout << "Generating plots with " << background_en
+                                                  << " background and "  << signal_en << " signal \n"
+                                                  << "between pT GeV \t" << pT_low << " and " << pT_high
+                                                  << "." << std::endl;
+                                        float cut_m_low = -1;
+                                        float cut_m_high = -1;
+                                        if (background_process == "qcd") {
+                                            if (signal_process == "zprime") {
+                                                cut_m_low = 150;
+                                                cut_m_high = 200;
+                                            } else if(signal_process == "wprime") {
+                                                cut_m_low = 50;
+                                                cut_m_high = 110;
+                                            }
+                                        }
+                                        MVAPlots(base_ttree_map[signal_en],
+                                                 base_ttree_map[background_en],
+                                                 pT_low, pT_high,
+                                                 cut_m_low, cut_m_high,
+                                                 signal_en,
+                                                 background_en,
+                                                 signal_process, background_process);
+                                    }
+
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 
     // cleanup
     for (auto it = base_file_map.begin(); it != base_file_map.end(); it++) {
@@ -181,8 +205,11 @@ void MVATest() {
                 MVAPlots(base_ttree_map[signal_process],
                          base_ttree_map[background_process],
                          pT_low, pT_high,
+                         -1., -1.,
                          signal_process,
-                         background_process);
+                         background_process,
+                         processes.at(it),
+                         processes.at(o_it));
 
                 std::cout << std::endl << std::endl;
             }
@@ -200,39 +227,42 @@ void MVATest() {
 
 void MVAPlots(TTree *signal_tree, TTree *background_tree,
               float cut_low, float cut_high,
+              float cut_m_low, float cut_m_high,
               std::string signal_label,
-              std::string background_label) {
+              std::string background_label,
+              std::string signal_process,
+              std::string background_process) {
     // map of variable set labels to efficiency vectors
     std::map<std::string, std::vector<std::vector<float> > > efficiencies_map;
 
     // first thing is to add all the needed data to this efficiencies map
     std::vector<std::vector<std::string>> var_set_labels = {
-        std::vector<std::string>{"AkT 0.2 Area"},
+        //std::vector<std::string>{"AkT 0.2 Area"},
         std::vector<std::string>{"AkT 0.3 Area"},
-        std::vector<std::string>{"AkT 0.3 m/pT"},
-        std::vector<std::string>{"AkT 0.3 m/pT", "AkT 0.3 Area"},
+        //std::vector<std::string>{"AkT 0.3 m/pT"},
+        //std::vector<std::string>{"AkT 0.3 m/pT", "AkT 0.3 Area"},
         std::vector<std::string>{"AkT 0.3 Area", "#sigma"},
-        std::vector<std::string>{"AkT 0.3 m/pT", "#sigma"},
+        //std::vector<std::string>{"AkT 0.3 m/pT", "#sigma"},
         std::vector<std::string>{"#tau_{3}/#tau_{2}"},
         std::vector<std::string>{"#tau_{2}/#tau_{1}"},
         std::vector<std::string>{"#sigma"},
         std::vector<std::string>{"#tau_{3}/#tau_{2}", "#sigma"},
         std::vector<std::string>{"#tau_{2}/#tau_{1}", "#sigma"},
-        std::vector<std::string>{"#tau_{3}", "#tau_{2}"},
-        std::vector<std::string>{"#tau_{2}", "#tau_{1}"},
-        std::vector<std::string>{"#tau_{3}", "#sigma"},
-        std::vector<std::string>{"#tau_{2}", "#sigma"},
-        std::vector<std::string>{"#tau_{1}", "#sigma"}
+        //std::vector<std::string>{"#tau_{3}", "#tau_{2}"},
+        //std::vector<std::string>{"#tau_{2}", "#tau_{1}"},
+        std::vector<std::string>{"#tau_{3}"},
+        std::vector<std::string>{"#tau_{2}"},
+        std::vector<std::string>{"#tau_{1}"}
     };
     std::vector<std::vector<std::string>> var_set_vars = {
-        std::vector<std::string>{"antikt_area_trimmed_two"},
+        //std::vector<std::string>{"antikt_area_trimmed_two"},
         std::vector<std::string>{"antikt_area_trimmed_three"},
-        std::vector<std::string>{"antikt_m_trimmed_three/antikt_pt_trimmed_three"},
-        std::vector<std::string>{"antikt_m_trimmed_three/antikt_pt_trimmed_three",
-                                 "antikt_area_trimmed_three"},
+        //std::vector<std::string>{"antikt_m_trimmed_three/antikt_pt_trimmed_three"},
+        //std::vector<std::string>{"antikt_m_trimmed_three/antikt_pt_trimmed_three",
+        //                         "antikt_area_trimmed_three"},
         std::vector<std::string>{"antikt_area_trimmed_three", "mGMMc_r"},
-        std::vector<std::string>{"antikt_m_trimmed_three/antikt_pt_trimmed_three",
-                                 "mGMMc_r"},
+        //std::vector<std::string>{"antikt_m_trimmed_three/antikt_pt_trimmed_three",
+        //"mGMMc_r"},
         std::vector<std::string>{"antikt_nsubjettiness[2]/antikt_nsubjettiness[1]"},
         std::vector<std::string>{"antikt_nsubjettiness[1]/antikt_nsubjettiness[0]"},
         std::vector<std::string>{"mGMMc_r"},
@@ -240,32 +270,32 @@ void MVAPlots(TTree *signal_tree, TTree *background_tree,
                                  "mGMMc_r"},
         std::vector<std::string>{"antikt_nsubjettiness[1]/antikt_nsubjettiness[0]",
                                  "mGMMc_r"},
-        std::vector<std::string>{"antikt_nsubjettiness[2]", "antikt_nsubjettiness[1]"},
-        std::vector<std::string>{"antikt_nsubjettiness[1]", "antikt_nsubjettiness[0]"},
-        std::vector<std::string>{"antikt_nsubjettiness[2]", "mGMMc_r"},
-        std::vector<std::string>{"antikt_nsubjettiness[1]", "mGMMc_r"},
-        std::vector<std::string>{"antikt_nsubjettiness[0]", "mGMMc_r"}
+        //std::vector<std::string>{"antikt_nsubjettiness[2]", "antikt_nsubjettiness[1]"},
+        //std::vector<std::string>{"antikt_nsubjettiness[1]", "antikt_nsubjettiness[0]"},
+        std::vector<std::string>{"antikt_nsubjettiness[2]"},
+        std::vector<std::string>{"antikt_nsubjettiness[1]"},
+        std::vector<std::string>{"antikt_nsubjettiness[0]"}
     };
     std::vector<std::vector<std::string>> var_set_branches = {
-        std::vector<std::string>{"antikt_area_trimmed_two"},
+        //std::vector<std::string>{"antikt_area_trimmed_two"},
         std::vector<std::string>{"antikt_area_trimmed_three"},
-        std::vector<std::string>{"antikt_m_trimmed_three", "antikt_pt_trimmed_three"},
-        std::vector<std::string>{"antikt_area_trimmed_three",
-                                 "antikt_m_trimmed_three",
-                                 "antikt_pt_trimmed_three"},
+        //std::vector<std::string>{"antikt_m_trimmed_three", "antikt_pt_trimmed_three"},
+        //std::vector<std::string>{"antikt_area_trimmed_three",
+        //                         "antikt_m_trimmed_three",
+        //                         "antikt_pt_trimmed_three"},
         std::vector<std::string>{"antikt_area_trimmed_three", "mGMMc_r"},
-        std::vector<std::string>{"antikt_m_trimmed_three", "antikt_pt_trimmed_three",
-                                 "mGMMc_r"},
+        //std::vector<std::string>{"antikt_m_trimmed_three", "antikt_pt_trimmed_three",
+        //                         "mGMMc_r"},
         std::vector<std::string>{"antikt_nsubjettiness"},
         std::vector<std::string>{"antikt_nsubjettiness"},
         std::vector<std::string>{"mGMMc_r"},
         std::vector<std::string>{"antikt_nsubjettiness", "mGMMc_r"},
         std::vector<std::string>{"antikt_nsubjettiness", "mGMMc_r"},
+        //std::vector<std::string>{"antikt_nsubjettiness"},
+        //std::vector<std::string>{"antikt_nsubjettiness"},
         std::vector<std::string>{"antikt_nsubjettiness"},
         std::vector<std::string>{"antikt_nsubjettiness"},
-        std::vector<std::string>{"antikt_nsubjettiness", "mGMMc_r"},
-        std::vector<std::string>{"antikt_nsubjettiness", "mGMMc_r"},
-        std::vector<std::string>{"antikt_nsubjettiness", "mGMMc_r"}
+        std::vector<std::string>{"antikt_nsubjettiness"}
     };
 
     assert(var_set_labels.size() == var_set_branches.size());
@@ -276,6 +306,7 @@ void MVAPlots(TTree *signal_tree, TTree *background_tree,
         std::vector<float> back_eff;
         MVAEfficiency(signal_tree, background_tree,
                       cut_low, cut_high,
+                      cut_m_low, cut_m_high,
                       var_set_vars.at(var_set_it),
                       var_set_labels.at(var_set_it),
                       var_set_branches.at(var_set_it),
@@ -301,27 +332,41 @@ void MVAPlots(TTree *signal_tree, TTree *background_tree,
 
     // make plots
     std::vector<std::vector<std::string> > plot_var_set = {
-        std::vector<std::string>{"AkT 0.2 Area", "AkT 0.3 Area",
-                                 "AkT 0.3 m/pT", "AkT 0.3 m/pT, AkT 0.3 Area",
+        std::vector<std::string>{"AkT 0.3 Area",
                                  "#sigma",
-                                 "AkT 0.3 Area, #sigma",
-                                 "AkT 0.3 m/pT, #sigma"},
-        std::vector<std::string>{"#tau_{3}/#tau_{2}",
-                                 "#tau_{2}/#tau_{1}",
-                                 "#sigma",
+                                 "AkT 0.3 Area, #sigma"},
+        std::vector<std::string>{"#sigma",
+                                 "#tau_{3}/#tau_{2}",
                                  "#tau_{3}/#tau_{2}, #sigma"},
-        std::vector<std::string>{"#tau_{3}/#tau_{2}",
+        std::vector<std::string>{"#sigma",
                                  "#tau_{2}/#tau_{1}",
-                                 "#sigma",
                                  "#tau_{2}/#tau_{1}, #sigma"},
-        std::vector<std::string>{"#tau_{3}/#tau_{2}",
-                                 "#tau_{2}/#tau_{1}",
-                                 "#sigma",
-                                 "#tau_{3}, #sigma",
-                                 "#tau_{2}, #sigma",
-                                 "#tau_{1}, #sigma"}
+        std::vector<std::string>{"#sigma",
+                                 "#tau_{1}",
+                                 "#tau_{2}",
+                                 "#tau_{3}"}
+
+        //std::vector<std::string>{"AkT 0.2 Area", "AkT 0.3 Area",
+        //                         "AkT 0.3 m/pT", "AkT 0.3 m/pT, AkT 0.3 Area",
+        //                         "#sigma",
+        //                         "AkT 0.3 Area, #sigma",
+        //                         "AkT 0.3 m/pT, #sigma"},
+        //std::vector<std::string>{"#tau_{3}/#tau_{2}",
+        //                         "#tau_{2}/#tau_{1}",
+        //                         "#sigma",
+        //                         "#tau_{3}/#tau_{2}, #sigma"},
+        //std::vector<std::string>{"#tau_{3}/#tau_{2}",
+        //                         "#tau_{2}/#tau_{1}",
+        //                         "#sigma",
+        //                         "#tau_{2}/#tau_{1}, #sigma"},
+        //std::vector<std::string>{"#tau_{3}/#tau_{2}",
+        //                         "#tau_{2}/#tau_{1}",
+        //                         "#sigma",
+        //                         "#tau_{3}, #sigma",
+        //                         "#tau_{2}, #sigma",
+        //                         "#tau_{1}, #sigma"}
     };
-    std::vector<std::string> plot_titles = {"area", "tau32", "tau21", "multitau"};
+    std::vector<std::string> plot_titles = {"area", "tau32", "tau21", "singletaus"};
     for (unsigned int plot_it = 0; plot_it < plot_var_set.size(); plot_it++) {
         std::ostringstream ss;
         ss << "/u/at/chstan/nfs/summer_2014/ForConrad/results/plots/MVA/"
@@ -329,12 +374,17 @@ void MVAPlots(TTree *signal_tree, TTree *background_tree,
            << background_label << "_" << (int) cut_low << "_"
            << (int) cut_high;
 
-        SinglePlot(ss.str(), plot_var_set.at(plot_it), efficiencies_map);
+        std::string pp = ss.str();
+        ss.str(std::string());
+        ss << "Signal: " << util::fancy_var_name(signal_process)
+           << "   Background: " << util::fancy_var_name(background_process);
+        SinglePlot(pp, plot_var_set.at(plot_it), efficiencies_map, ss.str());
     }
 }
 
 void SinglePlot(std::string partial_path, std::vector<std::string> vars,
-                std::map<std::string, std::vector<std::vector<float> > > eff_map) {
+                std::map<std::string, std::vector<std::vector<float> > > eff_map,
+                std::string title) {
     SetupATLASStyle();
 
     TMultiGraph *multi = new TMultiGraph();
@@ -356,17 +406,20 @@ void SinglePlot(std::string partial_path, std::vector<std::string> vars,
     }
     TGraph *inv_random = new TGraph(inv_random_x.size(), &inv_random_x.at(0),
                                     &inv_random_y.at(0));
-    random->SetLineColor(kGray);
+    inv_random->SetLineColor(kGray);
+    inv_random->SetLineStyle(7); // dashed
     inv_multi->Add(inv_random, "c");
 
     TLegend *legend = new TLegend(0.2, 0.25, 0.45, 0.35);
     legend->SetTextFont(42);
+    legend->SetTextSize(legend->GetTextSize() * 3);
     legend->SetFillStyle(0);
     legend->SetFillColor(0);
     legend->SetBorderSize(0);
 
-    TLegend *inv_legend = new TLegend(0.2, 0.25, 0.45, 0.35);
+    TLegend *inv_legend = new TLegend(0.2, 0.3, 0.6, 0.6);
     inv_legend->SetTextFont(42);
+    inv_legend->SetTextSize(legend->GetTextSize() * 3);
     inv_legend->SetFillStyle(0);
     inv_legend->SetFillColor(0);
     inv_legend->SetBorderSize(0);
@@ -375,8 +428,10 @@ void SinglePlot(std::string partial_path, std::vector<std::string> vars,
                                              kRed, kGreen, kOrange,
                                              kViolet, kAzure};
     // add graphs according to variables
+    float min_s_e = 1;
     for (unsigned int var_iter = 0; var_iter < vars.size(); var_iter++) {
         std::vector<float> vec_signal;
+        //std::vector<float> vec_signal_for_inv;
         std::vector<float> vec_background_rej;
         std::vector<float> vec_inv_background_eff;
 
@@ -384,32 +439,41 @@ void SinglePlot(std::string partial_path, std::vector<std::string> vars,
         std::vector<std::vector<float> > data = eff_map[label];
         vec_signal.push_back(0);
         vec_background_rej.push_back(1);
+        float start_b_e = data.at(1).at(0);
         for (unsigned int data_iter = 0; data_iter < data.at(0).size(); data_iter++) {
             float s_e = data.at(0).at(data_iter);
             float b_e = data.at(1).at(data_iter);
             vec_signal.push_back(s_e);
             vec_background_rej.push_back(1.-b_e);
-            vec_inv_background_eff.push_back(1./b_e);
+            if(b_e > start_b_e) {
+                if (s_e < min_s_e) min_s_e = s_e;
+                //vec_signal_for_inv.push_back(s_e);
+                vec_inv_background_eff.push_back(1./b_e);
+            }
         }
         vec_signal.push_back(1);
+        //vec_signal_for_inv.push_back(1);
         vec_background_rej.push_back(0);
         vec_inv_background_eff.push_back(1);
 
         TGraph *efficiency_graph = new TGraph(vec_signal.size(),
                                               &vec_signal.at(0),
                                               &vec_background_rej.at(0));
-        TGraph *inv_efficiency_graph = new TGraph(vec_inv_background_eff.size(),
-                                                  &vec_signal.at(vec_signal.size() -
-                                                                 vec_inv_background_eff.size()),
-                                                  &vec_inv_background_eff.at(0));
+        TGraph *inv_efficiency_graph =
+            new TGraph(vec_inv_background_eff.size(),
+                       &vec_signal.at(vec_signal.size() -
+                                      vec_inv_background_eff.size()),
+                       &vec_inv_background_eff.at(0));
 
         efficiency_graph->SetMarkerColor(available_colors[var_iter]);
         efficiency_graph->SetLineColor(available_colors[var_iter]);
         efficiency_graph->SetMarkerStyle(20); // circle
+        efficiency_graph->SetLineWidth(1.5);
 
         inv_efficiency_graph->SetMarkerColor(available_colors[var_iter]);
         inv_efficiency_graph->SetLineColor(available_colors[var_iter]);
         inv_efficiency_graph->SetMarkerStyle(20); // circle
+        inv_efficiency_graph->SetLineWidth(1.5);
 
         legend->AddEntry(efficiency_graph, label.c_str(), "l");
         inv_legend->AddEntry(inv_efficiency_graph,
@@ -418,6 +482,9 @@ void SinglePlot(std::string partial_path, std::vector<std::string> vars,
         multi->Add(efficiency_graph);
         inv_multi->Add(inv_efficiency_graph);
     }
+
+    legend->AddEntry(random, "Random Tagger", "l");
+    inv_legend->AddEntry(inv_random, "Random Tagger", "l");
 
     TCanvas canvas("temporary", "", 0, 0, 1000, 1000);
     canvas.cd();
@@ -432,6 +499,8 @@ void SinglePlot(std::string partial_path, std::vector<std::string> vars,
     multi->GetXaxis()->SetNdivisions(405);
 
     canvas.Update();
+
+    myText(0.18, 0.955, kBlack, title.c_str());
 
     legend->Draw();
 
@@ -451,16 +520,18 @@ void SinglePlot(std::string partial_path, std::vector<std::string> vars,
     inv_multi->GetXaxis()->SetTitle("Signal Efficiency");
     inv_multi->GetYaxis()->SetTitle("Inverse Background Efficiency");
 
-    inv_multi->GetXaxis()->SetLimits(0, 1);
+    inv_multi->GetXaxis()->SetLimits(min_s_e*0.85, 1);
     inv_multi->GetYaxis()->SetLimits(0, 1);
 
     inv_multi->GetXaxis()->SetNdivisions(405);
 
     inv_canvas.Update();
 
+    myText(0.18, 0.955, kBlack, title.c_str());
+
     inv_legend->Draw();
 
-    DrawAtlasLabel("", 0.2, 0.48);
+    DrawAtlasLabel("", 0.7, 0.86);
 
     out = partial_path + "_inv.pdf";
 
@@ -470,7 +541,7 @@ void SinglePlot(std::string partial_path, std::vector<std::string> vars,
 }
 
 void MVAEfficiency(TTree *signal_tree, TTree *background_tree,
-                   float cut_low, float cut_high,
+                   float cut_low, float cut_high, float cut_m_low, float cut_m_high,
                    std::vector<std::string> const& variables,
                    std::vector<std::string> const& variable_labels,
                    std::vector<std::string> const& required_branches,
@@ -551,11 +622,11 @@ void MVAEfficiency(TTree *signal_tree, TTree *background_tree,
 
     TFile *outputFile = TFile::Open(output_file_location.c_str(), "RECREATE");
     const char *factory_options = "!V:"
-                                  "Silent:"
-                                  "Color:"
-                                  "DrawProgressBar:"
-                                  "Transformations=I:"
-                                  "AnalysisType=Classification";
+        "Silent:"
+        "Color:"
+        "DrawProgressBar:"
+        "Transformations=I:"
+        "AnalysisType=Classification";
 
     TMVA::Factory *factory = new TMVA::Factory("TMVAClassification", outputFile, factory_options);
 
@@ -573,23 +644,26 @@ void MVAEfficiency(TTree *signal_tree, TTree *background_tree,
     std::stringstream ss;
     ss.str(std::string());
     ss << "antikt_pt >= " << cut_low << " && antikt_pt < " << cut_high;
+    if (cut_m_low > 0) {
+        ss << " && antikt_m >= " << cut_m_low << " && antikt_m < " << cut_m_high;
+    }
     std::string cut_string = ss.str();
     TCut pT_cut = TCut(cut_string.c_str());
     const char *preparation_options = "nTrain_Signal=0:"
-                                      "nTrain_Background=0:"
-                                      "nTest_Signal=0:"
-                                      "nTest_Background=0:"
-                                      "SplitMode=Random:"
-                                      "NormMode=NumEvents:"
-                                      "!V";
+        "nTrain_Background=0:"
+        "nTest_Signal=0:"
+        "nTest_Background=0:"
+        "SplitMode=Random:"
+        "NormMode=NumEvents:"
+        "!V";
     factory->PrepareTrainingAndTestTree(pT_cut, pT_cut,
                                         preparation_options);
 
     // Book MVA Methods
 
     const char *PDEFoam_opts = "VolFrac=0.0333:"
-                               "nActiveCells=500:"
-                               "nSampl=1000:";
+        "nActiveCells=500:"
+        "nSampl=1000:";
     if (Methods["PDEFoam"])
         factory->BookMethod(TMVA::Types::kPDEFoam, "PDEFoam", PDEFoam_opts);
 

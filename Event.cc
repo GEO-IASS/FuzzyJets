@@ -62,6 +62,7 @@ void EventBuffer::Init()
 
    _tree->SetBranchAddress("EventNumber", &EventNumber, &b_EventNumber);
    _tree->SetBranchAddress("NPV", &NPV, &b_NPV);
+   _tree->SetBranchAddress("n_jet_seeds", &n_jet_seeds, &b_n_jet_seeds);
    _tree->SetBranchAddress("mGMM_weight_vec", &mGMM_weight_vec, &b_mGMM_weight_vec);
    _tree->SetBranchAddress("mGMMs_weight_vec", &mGMMs_weight_vec, &b_mGMMs_weight_vec);
    _tree->SetBranchAddress("mGMMc_weight_vec", &mGMMc_weight_vec, &b_mGMMc_weight_vec);

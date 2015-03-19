@@ -19,9 +19,13 @@
 
 #ifdef WITHROOT
 #include "TTree.h"
+#include "TBox.h"
 #include "TRandom3.h"
 #include "TError.h"
 #include "TVector3.h"
+#include "TColor.h"
+#include "TPaletteAxis.h"
+#include "TROOT.h"
 #include "TMath.h"
 #include "TMatrix.h"
 #include "TEllipse.h"
@@ -33,6 +37,8 @@
 #include "TLegend.h"
 #include "TLine.h"
 #endif
+
+#include "boost/foreach.hpp"
 
 // Makes debugging a little easier, pretty print vectors
 template<typename T>
@@ -64,6 +70,9 @@ FuzzyTools::FuzzyTools()
     alpha = 1.0;
     m_test = 0;
     max_iters = 100;
+
+    _make_trace_diagrams = false;
+
     clustering_mode = FuzzyTools::NOCLUSTERINGMODE;
     kernel_type = FuzzyTools::NOKERNEL;
 
@@ -77,6 +86,14 @@ FuzzyTools::FuzzyTools()
     min_sigma = 0.01;
 
     directory_prefix = "";
+}
+
+void FuzzyTools::LogVectors(vecPseudoJet jets, vector<MatTwo> jet_parameters) {
+    if (clustering_mode == FuzzyTools::FIXED &&
+        _make_trace_diagrams) {
+        _historical_jets.push_back(jets);
+        _historical_params.push_back(jet_parameters);
+    }
 }
 
 vecPseudoJet
@@ -445,6 +462,7 @@ FuzzyTools::UpdateJetsUniform(vecPseudoJet const& particles,
         }
 
         fastjet::PseudoJet my_jet;
+        jet_phi = fmod(jet_phi, 2*M_PI);
         my_jet.reset_PtYPhiM(1,jet_y,jet_phi,0.);
         out_jets.push_back(my_jet);
     }
@@ -510,6 +528,7 @@ FuzzyTools::UpdateJetsTruncGaus(vecPseudoJet const& particles,
         }
 
         fastjet::PseudoJet my_jet;
+        jet_phi = fmod(jet_phi, 2*M_PI);
         my_jet.reset_PtYPhiM(1.,jet_y,jet_phi,0.);
         out_jets.push_back(my_jet);
 
@@ -621,6 +640,7 @@ FuzzyTools::UpdateJetsGaussianC(vecPseudoJet const& particles,
         }
 
         fastjet::PseudoJet my_jet;
+        jet_phi = fmod(jet_phi, 2*M_PI);
         my_jet.reset_PtYPhiM(1.0, jet_y, jet_phi, 0.);
         out_jets.push_back(my_jet);
 
@@ -715,6 +735,7 @@ FuzzyTools::UpdateJetsGaussian(vecPseudoJet const& particles,
         }
 
         fastjet::PseudoJet my_jet;
+        jet_phi = fmod(jet_phi, 2*M_PI);
         my_jet.reset_PtYPhiM(1.,jet_y,jet_phi,0.);
         out_jets.push_back(my_jet);
 
@@ -867,10 +888,13 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet const& particles,
                                 vector<double>* mUMM_weights_out,
                                 unsigned int &iter_count) {
     assert(kernel_type == FuzzyTools::UNIFORM);
+    _historical_jets.clear();
+    _historical_params.clear();
 
     int cluster_count = seeds.size();
     vector<vector<double> > weights = InitWeights(particles, cluster_count);
     vecPseudoJet mUMM_jets = Initialize(particles, cluster_count, seeds);
+    LogVectors(mUMM_jets, std::vector<MatTwo>());
 
     vector<double> mUMM_weights;
     for (int i = 0; i < cluster_count; i++) {
@@ -881,6 +905,8 @@ FuzzyTools::ClusterFuzzyUniform(vecPseudoJet const& particles,
     for(; iter < max_iters; iter++) {
         ComputeWeightsUniform(particles, &weights, cluster_count, mUMM_jets, mUMM_weights);
         mUMM_jets = UpdateJetsUniform(particles, mUMM_jets, weights, cluster_count, &mUMM_weights);
+        LogVectors(mUMM_jets, std::vector<MatTwo>());
+
         double log_likelihood_norm = LogLikelihoodUniform(particles, mUMM_jets, mUMM_weights) / particles.size();
         if (log(fabs(log_likelihood_norm_last - log_likelihood_norm)) < log_log_likelihood_limit) break;
         log_likelihood_norm_last = log_likelihood_norm;
@@ -976,6 +1002,9 @@ FuzzyTools::ClusterFuzzyTruncGaus(vecPseudoJet const& particles,
                                   unsigned int &iter_count){
     assert(kernel_type == FuzzyTools::TRUNCGAUSSIAN);
 
+    _historical_jets.clear();
+    _historical_params.clear();
+
     int cluster_count = seeds.size();
 
     vector<double> mTGMM_weights;
@@ -986,12 +1015,15 @@ FuzzyTools::ClusterFuzzyTruncGaus(vecPseudoJet const& particles,
     vector<vector<double> > weights = InitWeights(particles,cluster_count);
     vecPseudoJet mTGMM_jets = Initialize(particles,cluster_count,seeds);
     vector<MatTwo> mTGMM_jets_params = Initializeparams(particles,cluster_count);
+    LogVectors(mTGMM_jets, mTGMM_jets_params);
     double log_likelihood_norm_last = 0;
     int iter = 0;
     for (; iter<max_iters; iter++){
         // EM algorithm update steps
         ComputeWeightsTruncGaus(particles,&weights,cluster_count,mTGMM_jets,mTGMM_jets_params, mTGMM_weights);
         mTGMM_jets = UpdateJetsTruncGaus(particles,mTGMM_jets,weights,cluster_count,&mTGMM_jets_params,&mTGMM_weights);
+        LogVectors(mTGMM_jets, mTGMM_jets_params);
+
         double log_likelihood_norm = LogLikelihoodTruncGaus(particles, mTGMM_jets, mTGMM_jets_params, mTGMM_weights) / particles.size();
         if (log(fabs(log_likelihood_norm_last - log_likelihood_norm)) < log_log_likelihood_limit) break;
         log_likelihood_norm_last = log_likelihood_norm;
@@ -1102,6 +1134,9 @@ FuzzyTools::ClusterFuzzyGaussianC(vecPseudoJet const& particles,
                                  unsigned int &iter_count){
     assert(kernel_type == FuzzyTools::GAUSSIAN);
 
+    _historical_jets.clear();
+    _historical_params.clear();
+
     int cluster_count = seeds.size();
 
     vector<double> mGMMc_weights;
@@ -1112,12 +1147,16 @@ FuzzyTools::ClusterFuzzyGaussianC(vecPseudoJet const& particles,
     vector<vector<double> > weights = InitWeights(particles,cluster_count);
     vecPseudoJet mGMMc_jets = Initialize(particles,cluster_count,seeds);
     vector<MatTwo> mGMMc_jets_params = Initializeparams(particles,cluster_count);
+
+    LogVectors(mGMMc_jets, mGMMc_jets_params);
+
     double log_likelihood_norm_last = 0;
     int iter=0;
     for (; iter<max_iters; iter++){
         // EM algorithm update steps
         ComputeWeightsGaussian(particles,&weights,cluster_count,mGMMc_jets,mGMMc_jets_params, mGMMc_weights);
         mGMMc_jets = UpdateJetsGaussianC(particles,mGMMc_jets,weights,cluster_count,&mGMMc_jets_params,&mGMMc_weights);
+        LogVectors(mGMMc_jets, mGMMc_jets_params);
 
         double log_likelihood_norm = LogLikelihoodGaussian(particles, mGMMc_jets, mGMMc_jets_params, mGMMc_weights) / particles.size();
         if (log(fabs(log_likelihood_norm_last - log_likelihood_norm)) < log_log_likelihood_limit) break;
@@ -1323,6 +1362,9 @@ FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet const& particles,
                                  unsigned int &iter_count){
     assert(kernel_type == FuzzyTools::GAUSSIAN);
 
+    _historical_jets.clear();
+    _historical_params.clear();
+
     int cluster_count = seeds.size();
 
     vector<double> mGMM_weights;
@@ -1333,12 +1375,15 @@ FuzzyTools::ClusterFuzzyGaussian(vecPseudoJet const& particles,
     vector<vector<double> > weights = InitWeights(particles,cluster_count);
     vecPseudoJet mGMM_jets = Initialize(particles,cluster_count,seeds);
     vector<MatTwo> mGMM_jets_params = Initializeparams(particles,cluster_count);
+    LogVectors(mGMM_jets, mGMM_jets_params);
+
     double log_likelihood_norm_last = 0;
     int iter=0;
     for (; iter<max_iters; iter++){
         // EM algorithm update steps
         ComputeWeightsGaussian(particles,&weights,cluster_count,mGMM_jets,mGMM_jets_params, mGMM_weights);
         mGMM_jets = UpdateJetsGaussian(particles,mGMM_jets,weights,cluster_count,&mGMM_jets_params,&mGMM_weights);
+        LogVectors(mGMM_jets, mGMM_jets_params);
         double log_likelihood_norm = LogLikelihoodGaussian(particles, mGMM_jets, mGMM_jets_params, mGMM_weights) / particles.size();
         if (log(fabs(log_likelihood_norm_last - log_likelihood_norm)) < log_log_likelihood_limit) break;
         log_likelihood_norm_last = log_likelihood_norm;
@@ -1519,7 +1564,8 @@ FuzzyTools::EventJetDisplay(vecPseudoJet const& particles,
     double eta, phi, pT;
     vector<int> which_jets;
     for (unsigned int i = 0; i < particles.size(); i++) {
-        which_jets.push_back(belongs_idx(weights, i));
+        // do not ignore event jet
+        which_jets.push_back(belongs_idx(weights, i, false));
         eta = particles[i].eta();
         phi = particles[i].phi();
         pT = signedPt(particles[i]);
@@ -1584,6 +1630,210 @@ FuzzyTools::EventJetDisplay(vecPseudoJet const& particles,
         ss << ")";
     }
     canv.Print(ss.str().c_str(), "pdf");
+    #endif
+}
+
+void FuzzyTools::MakeTraceDiagram(vecPseudoJet const& particles,
+                                  int max_pT_idx,
+                                  std::string label,
+                                  unsigned int iter) {
+    if (!_make_trace_diagrams // don't do anything
+        || (label == "mTGMM") // unsupported
+        || (label == "mTGMMs")
+        || (label == "mUMM")) return;
+    assert(_historical_jets.size() && _historical_jets.at(0).size());
+    unsigned int n_jets = _historical_jets.at(0).size();
+    unsigned int n_iters = _historical_jets.size();
+
+    #ifdef WITHROOT
+    gStyle->SetOptStat(0);
+    double min_eta = -5;
+    double max_eta = 5;
+    std::stringstream ss;
+    ss.str(std::string());
+    ss << "MTDC_" << label << "_" << iter;
+    TCanvas canv(ss.str().c_str(), "", 1200, 600);
+    ss.str(std::string());
+    ss << "MTDClead_" << label << "_" << iter;
+    TCanvas canv_lead(ss.str().c_str(), "", 1200, 600);
+    ss.str(std::string());
+
+    ss << "MTDCPres_" << label << "_" << iter;
+    TCanvas canv_pres(ss.str().c_str(), "", 1100, 1000);
+
+    ss.str(std::string());
+    ss << "MTDH_" << label << "_" << iter;
+    TH2F hist(ss.str().c_str(), "", 30, min_eta, max_eta, 28, 0, 2*M_PI);
+
+
+
+    BOOST_FOREACH(fastjet::PseudoJet p, particles) {
+        hist.Fill(p.eta(), p.phi(), signedPt(p));
+    }
+
+    TColor *color = gROOT->GetColor(30); // this makes me want to cry...
+    float base_color = 0.1;
+    std::vector<std::vector<TEllipse> > ellipses;
+
+    for (unsigned int j_i = 0; j_i < n_jets; j_i++) {
+        // draw a jet trail
+        ellipses.push_back(std::vector<TEllipse>());
+        for (unsigned int it = 0; it < n_iters; it++) {
+            float f = (static_cast<float>(it+1))/(n_iters);
+            Color_t color_to_use = static_cast<Color_t>(11 + (1-f)*8);
+            if (color_to_use == 11) color_to_use = 1; // kBlack
+
+            float grayscale = base_color + (1-base_color) * (1-f);
+            color->SetRGB(grayscale, grayscale, grayscale);
+            fastjet::PseudoJet jet = _historical_jets.at(it).at(j_i);
+            MatTwo jet_param = _historical_params.at(it).at(j_i);
+            double lambda1, lambda2, theta;
+            {
+                double a = jet_param.xx;
+                double b = jet_param.yy;
+                double c = jet_param.yx;
+                lambda1 = 0.5*(a+b)+0.5*sqrt((a-b)*(a-b)+4.*c*c);
+                lambda2 = 0.5*(a+b)-0.5*sqrt((a-b)*(a-b)+4.*c*c);
+                theta = 0.;
+                if (c>0) theta=atan((lambda1-a)/c);
+            }
+            TEllipse ell(jet.eta(), jet.phi(),
+                         sqrt(lambda1), sqrt(lambda2),
+                         0, 360, theta*180/M_PI);
+            ell.SetFillStyle(0);
+            ell.SetLineColor(color_to_use);
+            ell.SetFillColor(color_to_use);
+            ellipses.at(j_i).push_back(ell);
+            //canv.cd(1);
+            //ell.Draw();
+            //
+            //canv.cd(2);
+            //ell.Draw();
+        }
+    }
+    canv.Divide(2, 1);
+    canv_lead.Divide(2, 1);
+    canv.cd(1);
+    hist.Draw("colz");
+
+    for (unsigned int it = 0; it < n_iters; it++) {
+        for (unsigned int j_i = 0; j_i < n_jets; j_i++) {
+            if (it > 0 && false &&
+                _historical_jets.at(j_i).at(it).
+                delta_R(_historical_jets.at(j_i).at(it-1)) < 1) {
+                std::cout << "woah" << std::endl;
+                // it does not appear that this actually happens. Huh!
+            }
+            ellipses.at(j_i).at(it).Draw();
+        }
+    }
+
+    canv_lead.cd(1);
+    hist.Draw("colz");
+    assert(max_pT_idx != -1);
+    for (unsigned int it = 0; it < n_iters; it++) {
+        ellipses.at(max_pT_idx).at(it).Draw();
+    }
+
+
+    canv.cd(2);
+    hist.Draw("colz");
+    for (unsigned int it = 0; it < n_iters; it++) {
+        for (unsigned int j_i = 0; j_i < n_jets; j_i++) {
+            ellipses.at(j_i).at(it).Draw();
+        }
+    }
+    gPad->SetLogz();
+    canv.Update();
+
+    canv_lead.cd(2);
+    hist.Draw("colz");
+    for (unsigned int it = 0; it < n_iters; it++) {
+        ellipses.at(max_pT_idx).at(it).Draw();
+    }
+    gPad->SetLogz();
+
+    canv_pres.cd();
+    hist.Draw("colz");
+
+
+
+    gPad->SetLogz();
+    gPad->SetRightMargin(0.15);
+    hist.GetXaxis()->SetTitle("Rapidity");
+
+    hist.GetYaxis()->SetTitleOffset(1.4);
+    hist.GetYaxis()->SetTitle("Azimuthal Angle [rad]");
+    hist.GetZaxis()->SetTitleOffset(3);
+    hist.GetZaxis()->SetTitle("p_{T} [GeV]");
+
+    for (unsigned int it = 0; it < n_iters; it++) {
+        if (it != n_iters - 1 && (it % 3 != 0))
+            continue;
+        for (unsigned int j_i = 0; j_i < n_jets; j_i++) {
+            ellipses.at(j_i).at(it).Draw();
+        }
+    }
+
+//// boxes
+//TBox bl(-6, -2, 6, 0);
+//bl.SetFillColor(kWhite);
+//bl.SetLineStyle(0);
+//bl.Draw();
+//
+//TBox bu(-6, 2*M_PI, 6, 2*M_PI + 2);
+//bu.SetFillColor(kWhite);
+//bu.SetLineStyle(0);
+//bu.Draw();
+//
+//TBox blf(-8, 0, -5, 2*M_PI);
+//blf.SetFillColor(kWhite);
+//blf.SetLineStyle(0);
+//blf.Draw();
+//
+//TBox blr(5, 0, 8, 2*M_PI);
+//blr.SetFillColor(kWhite);
+//blr.SetLineStyle(0);
+//blr.Draw();
+//
+//hist.Draw("axis same");
+
+    gPad->RedrawAxis();
+    TPaletteAxis* palette
+        = (TPaletteAxis*) (hist.GetListOfFunctions()->FindObject("palette"));
+    if(palette) {
+        palette->SetX1NDC(0.85); // Start the palette 86 % of the way across the image
+        palette->SetX2NDC(0.90); // End the palette 91% of the way across the image
+        gPad->Modified(); // Update with the new position
+    }
+
+
+
+    canv_pres.Update();
+
+    ss.str(std::string());
+    ss << directory_prefix << "TraceDiagram_" << label << ".pdf";
+    if (iter == 0 && _n_events != 1) {
+        ss << "(";
+    } else if (iter == _n_events - 1 && _n_events != 1) {
+        ss << ")";
+    }
+
+    canv.Print(ss.str().c_str(), "pdf");
+
+    ss.str(std::string());
+    ss << directory_prefix << "TraceDiagramLead_" << label << ".pdf";
+    if (iter == 0 && _n_events != 1) {
+        ss << "(";
+    } else if (iter == _n_events - 1 && _n_events != 1) {
+        ss << ")";
+    }
+
+    canv_lead.Print(ss.str().c_str(), "pdf");
+
+    ss.str(std::string());
+    ss << directory_prefix << "TraceDiagramPres_" << label << ".pdf";
+    canv_pres.Print(ss.str().c_str(), "pdf");
     #endif
 }
 
@@ -1682,6 +1932,10 @@ FuzzyTools::NewEventDisplay(__attribute__((unused)) vecPseudoJet const& particle
     std::stringstream ss;
     ss.str(std::string());
     ss << directory_prefix << "NewEventDisplay_" << out << ".pdf";
+    if (out == "mGMMc_mod_pi") {
+        canv.Print(ss.str().c_str(), "pdf");
+        return;
+    }
     if (iter == 0) {
         ss << "(";
     } else if (static_cast<unsigned int>(iter) == _n_events - 1) {
@@ -1692,16 +1946,86 @@ FuzzyTools::NewEventDisplay(__attribute__((unused)) vecPseudoJet const& particle
 }
 
 void
+FuzzyTools::ComparisonED(__attribute__((unused)) vecPseudoJet const& particles,
+                         __attribute__((unused)) vecPseudoJet const& ca_jets,
+                         __attribute__((unused)) vecPseudoJet const& tops,
+                         __attribute__((unused)) vecPseudoJet const& mGMM_jets,
+                         __attribute__((unused)) vector<vector<double> > const& weights,
+                         __attribute__((unused)) int which,
+                         __attribute__((unused)) vector<MatTwo> const& mGMM_jets_params,
+                         __attribute__((unused)) vector<double> const& mGMM_weights,
+                         __attribute__((unused)) std::string const& out,
+                         __attribute__((unused)) int iter) {
+    TCanvas canv("TEST", "", 1200, 900);
+    TH2F hist("TESTH", "", 50, -5, 5, 35, 0, 2*M_PI);
+
+    canv.cd();
+    hist.SetXTitle("#eta (Rapidity)");
+    hist.SetYTitle("#phi");
+    hist.Draw();
+    std::vector<TEllipse> ells;
+    for (unsigned int j_i = 0; j_i < ca_jets.size(); j_i++) {
+        for (unsigned int p_i = 0; p_i < ca_jets.at(j_i).constituents().size(); p_i++) {
+            fastjet::PseudoJet p = ca_jets.at(j_i).constituents().at(p_i);
+            if (p.pt() < 0.1) continue;
+            float mp = p.pt() > 50 ? 50 : p.pt();
+            float r = sqrt(mp) / 30;
+            if (r < 0.1) r = 0.03;
+            TEllipse el1(p.eta(),p.phi(), r, r);
+            el1.SetLineStyle(0);
+            el1.SetFillStyle(1001);
+            el1.SetFillColor(j_i + 2);
+            ells.push_back(el1);
+        }
+    }
+
+    for(unsigned int e_i = 0; e_i < ells.size(); e_i++) {
+        ells.at(e_i).Draw();
+    }
+
+    std::vector<TEllipse> j_ells;
+    for (unsigned int i=0; i < mGMM_jets_params.size(); i++) {
+        float loc_eta, loc_phi;
+        double var_eta = mGMM_jets_params[i].xx;
+        double var_phi = mGMM_jets_params[i].yy;
+        double covar  = mGMM_jets_params[i].yx;
+        double temp_a  = 0.5*(var_eta + var_phi);
+        double temp_b  = 0.5*sqrt((var_eta-var_phi)*(var_eta-var_phi) + 4*covar*covar);
+        double lambda_eta = temp_a + temp_b;
+        double lambda_phi = temp_a - temp_b;
+        float theta = 0;
+        if(covar > 0) theta=atan((lambda_eta - var_eta)/covar);
+        loc_eta = mGMM_jets[i].eta();
+        loc_phi = mGMM_jets[i].phi();
+        float x_r = sqrt(lambda_eta);
+        float y_r = sqrt(lambda_phi);
+        theta = theta * 180 / TMath::Pi();
+        TEllipse current_ellipse(loc_eta, loc_phi,
+                                 x_r, y_r,
+                                 0, 360, theta);
+        current_ellipse.SetFillStyle(0);
+        current_ellipse.SetLineWidth(2);
+        j_ells.push_back(current_ellipse);
+    }
+    for(unsigned int eli = 0; eli < j_ells.size(); eli++) {
+        j_ells.at(eli).Draw();
+    }
+    canv.Update();
+    canv.Print("test.pdf", "pdf");
+    return;
+}
+
+void
 FuzzyTools::NewEventDisplayPoster(__attribute__((unused)) vecPseudoJet const& particles,
-                            __attribute__((unused)) vecPseudoJet const& ca_jets,
-                            __attribute__((unused)) vecPseudoJet const& tops,
-                            __attribute__((unused)) vecPseudoJet const& mGMM_jets,
-                            __attribute__((unused)) vector<vector<double> > const& weights,
-                            __attribute__((unused)) int which,
-                            __attribute__((unused)) vector<MatTwo> const& mGMM_jets_params,
-                            __attribute__((unused)) vector<double> const& mGMM_weights,
-                            __attribute__((unused)) std::string const& out,
-                            __attribute__((unused)) int iter) {
+                                  __attribute__((unused)) vecPseudoJet const& ca_jets,
+                                  __attribute__((unused)) vecPseudoJet const& tops,
+                                  __attribute__((unused)) vecPseudoJet const& mGMM_jets,
+                                  __attribute__((unused)) vector<vector<double> > const& weights,
+                                  __attribute__((unused)) int which,
+                                  __attribute__((unused)) vector<MatTwo> const& mGMM_jets_params,
+                                  __attribute__((unused)) vector<double> const& mGMM_weights,
+                                  __attribute__((unused)) std::string const& out,
+                                  __attribute__((unused)) int iter) {
     #ifdef WITHROOT
     double min_eta = -5;
     double max_eta = 5;
@@ -2265,7 +2589,8 @@ FuzzyTools::CentralMoments(vecPseudoJet const& particles,
 
 int
 FuzzyTools::belongs_idx(vector<vector<double> > const& weights,
-                        int particle_index) {
+                        int particle_index,
+                        bool ignore_event_jet) {
     // finds the index of the jet which the particle_indexth particle
     // belongs to. In the case that
     double max_weight = -1;
@@ -2278,8 +2603,9 @@ FuzzyTools::belongs_idx(vector<vector<double> > const& weights,
             which_jet = j;
         }
     }
-    if (max_weight < (1-encountered_weight))
+    if (!ignore_event_jet && (max_weight < (1-encountered_weight)))
         return -1;
+
     return which_jet;
 }
 
@@ -2289,10 +2615,11 @@ FuzzyTools::MLpT(vecPseudoJet particles,
                  vector<vector<double> > weights,
                  int jet_index,
                  __attribute__((unused)) int k,
-                 int m_type){
+                 int m_type,
+                 bool ignore_event_jet){
     fastjet::PseudoJet my_jet;
     for (unsigned int i=0; i<particles.size(); i++){
-        int which_jet = belongs_idx(weights, i);
+        int which_jet = belongs_idx(weights, i, ignore_event_jet);
         if (which_jet==jet_index){
             if (particles.at(i).user_info<MyUserInfo>().isNegPt()) {
                 my_jet-=particles.at(i);

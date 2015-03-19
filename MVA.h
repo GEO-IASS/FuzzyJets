@@ -6,6 +6,7 @@ void MVAEventJetTest();
 
 void MVAEfficiency(TTree *signal_tree, TTree *background_tree,
                    float cut_low, float cut_high,
+                   float cut_m_low, float cut_m_high,
                    std::vector<std::string> const& variables,
                    std::vector<std::string> const& variable_labels,
                    std::vector<std::string> const& required_branches,
@@ -14,14 +15,18 @@ void MVAEfficiency(TTree *signal_tree, TTree *background_tree,
 
 void MVAPlots(TTree *signal_tree, TTree *background_tree,
               float cut_low, float cut_high,
+              float cut_m_low, float cut_m_high,
               std::string signal_label,
-              std::string background_label);
+              std::string background_label,
+              std::string signal_process,
+              std::string background_process);
 
 void getMVAData(std::string location, std::vector<float> &s_eff,
                 std::vector<float> &b_eff);
 
 void SinglePlot(std::string partial_path, std::vector<std::string> vars,
-                std::map<std::string, std::vector<std::vector<float> > > eff_map);
+                std::map<std::string, std::vector<std::vector<float> > > eff_map,
+                std::string title);
 
 
 #endif

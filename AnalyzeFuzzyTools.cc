@@ -50,6 +50,6 @@ void SetupATLASStyle() {
 
 void DrawAtlasLabel(std::string title, double x, double y) {
     ATLAS_LABEL(x, y, kBlack);
-    myText(x, y-0.08, kBlack, "#sqrt{s} = 8000 GeV");
-    myText(x, y-0.14, kBlack, title.c_str());
+    myText(x, y-0.08, kBlack, "#sqrt{s} = 8 TeV");
+    myText(x, y-0.14, kBlack, title.c_str(), 0.4);
 }
